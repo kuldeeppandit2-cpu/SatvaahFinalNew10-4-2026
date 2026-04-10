@@ -285,7 +285,7 @@ export default function SavedProvidersScreen() {
   // Re-join availability room when city_id becomes known (after data loads)
   useEffect(() => {
     if (cityIdRef.current && socketRef.current?.connected) {
-      socketRef.current.emit('join', { room: `city:${cityIdRef.current}` });
+      socketRef.current.emit('join_city', cityIdRef.current);
     }
   }, [providers]);
 

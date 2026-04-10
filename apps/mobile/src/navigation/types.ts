@@ -156,6 +156,11 @@ export type ProviderStackParamList = {
   ProviderProfileEdit: undefined;
   ProviderSubscription: undefined;
   ProviderNotifications: undefined;
+  ProviderRatesConsumer: {
+    contactEventId: string;
+    consumerName?: string;
+    providerCategory?: string;
+  };
 };
 
 // ─── Root Navigator (top-level) ───────────────────────────────────────────────

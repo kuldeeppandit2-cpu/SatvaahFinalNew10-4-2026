@@ -262,13 +262,13 @@ export async function getConsumerTrust(
         },
       }),
       // Signal 3: ratings given (approved only)
-      prisma.rating.count({
-        where: { consumer_id: consumerId, moderation_status: 'approved' },
-      }),
-      // Signal 4: accepted contact events
-      prisma.contactEvent.count({
-        where: { consumer_id: consumerId, status: 'accepted' },
-      }),
+      // NOTE: ratings.consumer_id is consumer_profiles.id — NOT users.id
+      // consumerProfile is resolved above in the same Promise.all — but since
+      // we need consumerProfile.id here and it's fetched in parallel, we
+      // resolve it in a second pass below after consumerProfile is known.
+      Promise.resolve(0),
+      // Signal 4: accepted contact events (same FK issue — resolved below)
+      Promise.resolve(0),
     ]);
 
   if (!consumerUser || consumerUser.deleted_at) {
@@ -282,6 +282,17 @@ export async function getConsumerTrust(
       404
     );
   }
+
+  // Signal 3 + 4: now that consumerProfile is resolved, use consumerProfile.id
+  // ratings.consumer_id and contact_events.consumer_id are consumer_profiles.id (NOT users.id)
+  const [ratingCount, completedEventCount] = await Promise.all([
+    prisma.rating.count({
+      where: { consumer_id: consumerProfile.id, moderation_status: 'approved' },
+    }),
+    prisma.contactEvent.count({
+      where: { consumer_id: consumerProfile.id, status: 'accepted' },
+    }),
+  ]);
 
   // Signal 5: abuse flags — query separately to enable subquery
   const consumerRatingIds = await prisma.rating

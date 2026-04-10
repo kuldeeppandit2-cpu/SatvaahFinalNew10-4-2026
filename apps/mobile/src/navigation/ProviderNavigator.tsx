@@ -33,6 +33,7 @@ import TrustBiographyScreen from '../screens/provider/TrustBiographyScreen';
 import AnalyticsScreen from '../screens/provider/AnalyticsScreen';
 import CertificateScreen from '../screens/provider/CertificateScreen';
 import ProviderProfileEditScreen from '../screens/provider/ProviderProfileEditScreen';
+import ProviderRatesConsumerScreen from '../screens/provider/ProviderRatesConsumerScreen';
 
 import type { ProviderTabParamList, ProviderStackParamList } from './types';
 
@@ -73,6 +74,7 @@ function LeadsStack(): React.ReactElement {
       <Stack.Screen name="TrustHistory" component={TrustHistoryScreen} />
       <Stack.Screen name="ProviderSettings" component={ProviderSettingsScreen} />
       <Stack.Screen name="ProviderSubscription" component={ProviderSubscriptionScreen} />
+      <Stack.Screen name="ProviderRatesConsumer" component={ProviderRatesConsumerScreen} />
     </Stack.Navigator>
   );
 }
