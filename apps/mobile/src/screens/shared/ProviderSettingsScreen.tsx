@@ -17,9 +17,9 @@ export function ProviderSettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.IVORY },
-  title: { fontSize: 22, fontWeight: '700', color: COLORS.CHARCOAL, marginBottom: 8 },
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.ivory },
+  title: { fontSize: 22, fontWeight: '700', color: COLORS.deepInk, marginBottom: 8 },
   subtitle: { fontSize: 16, color: '#888', marginBottom: 32 },
-  back: { paddingHorizontal: 24, paddingVertical: 12, backgroundColor: COLORS.VERDIGRIS, borderRadius: 8 },
+  back: { paddingHorizontal: 24, paddingVertical: 12, backgroundColor: COLORS.verdigris, borderRadius: 8 },
   backText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });
