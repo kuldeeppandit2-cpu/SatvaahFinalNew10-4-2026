@@ -154,6 +154,9 @@ export default function OpenRatingScreen({ route, navigation }: Props) {
         await fetch(upload_url, { method: 'PUT', body: blob, headers: { 'Content-Type': 'image/jpeg' } });
         keys.push(s3_key);
       }
+    } catch {
+      Alert.alert('Photo upload failed', 'Could not upload photos. Your rating will be submitted without them.');
+      return keys; // return any keys already uploaded
     } finally {
       setPhotosUploading(false);
     }

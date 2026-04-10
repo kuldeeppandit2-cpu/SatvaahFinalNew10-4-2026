@@ -21,12 +21,19 @@ import { logger } from '@satvaaah/logger';
 export async function getMyConsumerProfile(req: Request, res: Response): Promise<void> {
   const userId = req.user!.userId;
 
-  const [profile, user] = await Promise.all([
+  const [profile, user, consumerContactCount] = await Promise.all([
     consumerService.getByUserId(userId),
     prisma.user.findUnique({
       where: { id: userId },
       select: { phone: true, subscription_tier: true, referral_code: true, mode: true },
     }),
+    // Count accepted contact events for Trusted Circle threshold (contactCount >= 3)
+    // contact_events.consumer_id is consumer_profiles.id — resolve profile first
+    prisma.consumerProfile.findUnique({ where: { user_id: userId }, select: { id: true } })
+      .then((cp) => cp
+        ? prisma.contactEvent.count({ where: { consumer_id: cp.id, status: 'accepted' } })
+        : 0
+      ),
   ]);
 
   if (!profile) throw new NotFoundError('CONSUMER_NOT_FOUND', 'No consumer profile found for this account');
@@ -52,7 +59,7 @@ export async function getMyConsumerProfile(req: Request, res: Response): Promise
                         ? Math.max(0, profile.lead_usage.leads_allocated - profile.lead_usage.leads_used)
                         : 0,
       leadsAllocated:   profile.lead_usage?.leads_allocated ?? 0,
-      contactCount:     0,  // populated by separate query if needed
+      contactCount:     consumerContactCount,
       created_at:       profile.created_at,
     },
   });

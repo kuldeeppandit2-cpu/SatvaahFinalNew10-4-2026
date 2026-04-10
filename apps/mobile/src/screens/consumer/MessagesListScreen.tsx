@@ -14,7 +14,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../api/client';
-import { useAuthStore } from '../../stores/auth.store';
 
 type Nav = NativeStackNavigationProp<any>;
 
@@ -30,16 +29,13 @@ interface ContactEvent {
 
 export function MessagesListScreen(): React.ReactElement {
   const navigation = useNavigation<Nav>();
-  const accessToken = useAuthStore((s) => s.accessToken);
   const [events, setEvents] = useState<ContactEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const { data } = await apiClient.get('/api/v1/consumers/me/contacts', {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const { data } = await apiClient.get('/api/v1/consumers/me/contacts');
       setEvents(data.data ?? []);
     } catch {
       setEvents([]);
@@ -47,7 +43,7 @@ export function MessagesListScreen(): React.ReactElement {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [accessToken]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
