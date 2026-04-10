@@ -440,7 +440,7 @@ export const AnalyticsScreen: React.FC = () => {
                 icon="👁️"
                 label="Profile Views"
                 value={data.summary.profileViews.toLocaleString('en-IN')}
-                delta={data.summary.profileViews_delta}
+                delta={data.summary.profileViewsDelta}
                 deltaLabel="vs prev"
               />
               <StatCard
