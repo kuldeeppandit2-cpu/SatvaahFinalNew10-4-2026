@@ -28,7 +28,7 @@ const KEYS = {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type UserMode = 'consumer' | 'provider';
-export type SubscriptionTier = 'free' | 'bronze' | 'silver' | 'gold';
+export type SubscriptionTier = 'free' | 'silver' | 'gold';
 
 export interface AuthState {
   // Auth tokens (RS256 JWT — Rule #15)

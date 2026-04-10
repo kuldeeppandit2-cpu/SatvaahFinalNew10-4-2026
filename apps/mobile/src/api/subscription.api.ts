@@ -11,7 +11,7 @@ import { apiClient } from './client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type SubscriptionTier = 'free' | 'bronze' | 'silver' | 'gold';
+export type SubscriptionTier = 'free' | 'silver' | 'gold';
 
 export interface SubscriptionPlan {
   id:             string;       // server returns 'id' not 'plan_id'

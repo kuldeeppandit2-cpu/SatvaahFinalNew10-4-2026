@@ -86,7 +86,7 @@ function emptySchedule(): WeekSchedule {
 }
 
 // Subscription tiers that unlock schedule mode
-const SCHEDULE_TIER_ALLOWED = new Set(['bronze', 'silver', 'gold']);
+const SCHEDULE_TIER_ALLOWED = new Set(['silver', 'gold']);
 
 // ─── Simple Mode Selector ─────────────────────────────────────────────────────
 

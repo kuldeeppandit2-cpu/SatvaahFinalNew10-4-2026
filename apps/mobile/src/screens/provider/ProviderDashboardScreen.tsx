@@ -122,7 +122,7 @@ interface DashboardData {
   earningsThisYearPaise: number;    // 1842000 = Rs 18,420
   competitorCommissionRate: number;  // 0.25
   availabilityStatus: AvailabilityStatus;
-  subscriptionTier: string;           // free | bronze | silver | gold
+  subscriptionTier: string;           // free | silver | gold
 }
 
 // ─── Trust Ring SVG ──────────────────────────────────────────────────────────

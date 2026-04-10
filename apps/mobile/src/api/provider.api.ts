@@ -291,7 +291,7 @@ export interface DashboardData {
   earningsThisYearPaise:    number;   // paise — divide by 100 for Rs
   competitorCommissionRate:  number;   // e.g. 0.25
   availabilityStatus:         AvailabilityStatus;
-  subscriptionTier:           string;   // free|bronze|silver|gold
+  subscriptionTier:           string;   // free|silver|gold
 }
 
 export interface Lead {

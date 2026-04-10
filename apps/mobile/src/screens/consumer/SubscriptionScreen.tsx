@@ -45,10 +45,9 @@ const TIER_CONFIG: Record<
   SubscriptionTier,
   { color: string; badge: string; emoji: string; popular?: boolean }
 > = {
-  free: { color: '#1C1C2E', badge: 'Free', emoji: '🌱' },
-  bronze: { color: '#A0522D', badge: 'Bronze', emoji: '🥉' },
+  free:   { color: '#1C1C2E', badge: 'Free',   emoji: '🌱' },
   silver: { color: LIGHT_VERDIGRIS, badge: 'Silver', emoji: '🥈', popular: true },
-  gold: { color: SAFFRON, badge: 'Gold', emoji: '🥇' },
+  gold:   { color: SAFFRON, badge: 'Gold', emoji: '🥇' },
 };
 
 // ─── Navigation types ──────────────────────────────────────────────────────────
@@ -171,8 +170,8 @@ export default function SubscriptionScreen({
           fetchSubscriptionPlans('consumer'),
           fetchMySubscription(),
         ]);
-        // Sort: free < bronze < silver < gold
-        const order: SubscriptionTier[] = ['free', 'bronze', 'silver', 'gold'];
+        // Sort: free < silver < gold
+        const order: SubscriptionTier[] = ['free', 'silver', 'gold'];
         const sorted = [...plansData].sort(
           (a, b) => order.indexOf(a.tier) - order.indexOf(b.tier),
         );

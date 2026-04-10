@@ -5,9 +5,9 @@
  * Period selector (7d / 30d / year).
  * AI narration from GAAS (Claude Sonnet 4.6 via services/admin port 3009).
  * Charts: profile views, contacts, trust trend, search appearances.
- * Silver+ gets full dashboard. Bronze gets summary only (upgrade prompt shown).
+ * Silver+ gets full dashboard. Free gets summary only (upgrade prompt shown).
  *
- * Subscription tiers: bronze | silver | gold | platinum
+ * Subscription tiers: free | silver | gold  (V036 — bronze/platinum do not exist in DB)
  * GAAS = AI narration generated nightly by lambdas/ai-narration (Claude Sonnet 4.6)
  */
 
@@ -81,7 +81,7 @@ const PERIODS: { key: Period; label: string }[] = [
   { key: 'year', label: '1 year' },
 ];
 
-const FULL_DASHBOARD_TIERS: SubscriptionTier[] = ['silver', 'gold', 'platinum'];
+const FULL_DASHBOARD_TIERS: SubscriptionTier[] = ['silver', 'gold'];
 
 // ─── Sparkline chart component ───────────────────────────────────────────────
 
@@ -298,7 +298,7 @@ export const AnalyticsScreen: React.FC = () => {
   const narrationFade = useRef(new Animated.Value(0)).current;
 
   const isFullDashboard = FULL_DASHBOARD_TIERS.includes(
-    (subscriptionTier || data?.subscriptionTier || 'bronze') as SubscriptionTier
+    (subscriptionTier || data?.subscriptionTier || 'free') as SubscriptionTier
   );
 
   useEffect(() => {
@@ -372,8 +372,8 @@ export const AnalyticsScreen: React.FC = () => {
         <Text style={styles.navTitle}>Analytics</Text>
         <View style={styles.tierPill}>
           <Text style={styles.tierPillText}>
-            {(subscriptionTier || 'bronze').charAt(0).toUpperCase() +
-              (subscriptionTier || 'bronze').slice(1)}
+            {(subscriptionTier || 'free').charAt(0).toUpperCase() +
+              (subscriptionTier || 'free').slice(1)}
           </Text>
         </View>
       </View>

@@ -3,8 +3,8 @@
  * Shared type re-exports — single import point for common domain types.
  */
 
-// Subscription tier — schema enum: free | bronze | silver | gold
-export type SubscriptionTier = 'free' | 'bronze' | 'silver' | 'gold';
+// Subscription tier — schema enum: free | silver | gold  (V036 removed bronze/platinum — they do not exist in DB)
+export type SubscriptionTier = 'free' | 'silver' | 'gold';
 
 // Listing type (provider_profiles.listing_type)
 export type ListingType =

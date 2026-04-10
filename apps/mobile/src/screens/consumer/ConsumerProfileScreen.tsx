@@ -47,7 +47,7 @@ const BORDER = '#E8E0D0';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type SubscriptionTier = 'free' | 'bronze' | 'silver' | 'gold';
+type SubscriptionTier = 'free' | 'silver' | 'gold';
 
 interface ConsumerProfile {
   userId: string;
@@ -98,10 +98,9 @@ function initials(name: string): string {
 
 function tierBadgeColour(tier: SubscriptionTier): { bg: string; text: string; label: string } {
   const map: Record<SubscriptionTier, { bg: string; text: string; label: string }> = {
-    free: { bg: WARM_SAND, text: DEEP_INK, label: 'Free' },
-    bronze: { bg: '#C8691A', text: '#FFFFFF', label: 'Bronze' },
-    silver: { bg: '#E8E0D0', text: '#555', label: 'Silver' },
-    gold: { bg: '#F5C842', text: '#3A2800', label: 'Gold ✦' },
+    free:   { bg: WARM_SAND,  text: DEEP_INK, label: 'Free' },
+    silver: { bg: '#E8E0D0',  text: '#555',   label: 'Silver' },
+    gold:   { bg: '#F5C842',  text: '#3A2800', label: 'Gold ✦' },
   };
   return map[tier];
 }

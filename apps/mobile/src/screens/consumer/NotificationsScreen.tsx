@@ -85,24 +85,24 @@ function routeNotification(
   const { type, data } = notification;
   switch (type) {
     case 'contact_accepted':
-      if (data.event_id) navigation.navigate('Conversation', {
-        contactEventId: data.event_id,
+      if (data.contact_event_id) navigation.navigate('Conversation', {
+        contactEventId: data.contact_event_id,
         otherPartyName: data.provider_name ?? 'Provider',
         otherPartyId: data.provider_id ?? '',
       });
       break;
     case 'rating_reminder':
-      if (data.providerId)
+      if (data.provider_id)
         navigation.navigate('RateProvider', {
-          providerId: data.providerId,
+          providerId: data.provider_id,
           providerName: data.provider_name ?? 'Provider',
-          contactEventId: data.event_id ?? null,
+          contactEventId: data.contact_event_id ?? null,
           ratingType: 'verified',
         });
       break;
     case 'push_discovery':
-      if (data.providerId)
-        navigation.navigate('ProviderProfile', { providerId: data.providerId });
+      if (data.provider_id)
+        navigation.navigate('ProviderProfile', { providerId: data.provider_id });
       break;
     case 'saved_provider_update':
       navigation.navigate('SavedProviders');
