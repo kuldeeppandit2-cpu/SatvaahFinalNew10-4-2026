@@ -82,16 +82,16 @@ const EVENT_META: Record<string, { label: string; icon: string; color: string }>
 };
 
 const TIER_LABELS: Record<TrustTier, string> = {
-  basic: 'Basic',
-  established: 'Established',
-  trusted: 'Trusted',
+  unverified:     'Unverified',
+  basic:          'Basic',
+  trusted:        'Trusted',
   highly_trusted: 'Highly Trusted',
 };
 
 const TIER_COLORS: Record<TrustTier, string> = {
-  basic: '#AAAABC',
-  established: COLORS.saffron,
-  trusted: COLORS.lightVerdigris,
+  unverified:     '#6B6560',
+  basic:          '#AAAABC',
+  trusted:        COLORS.lightVerdigris,
   highly_trusted: COLORS.verdigris,
 };
 
