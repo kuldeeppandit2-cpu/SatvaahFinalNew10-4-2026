@@ -51,6 +51,7 @@ interface ProfileFormData {
   bio:            string;
   whatsappPhone:  string;    // schema: whatsapp_phone
   websiteUrl:     string;    // schema: website_url
+  linkedinUrl:    string;    // UI only — not in schema, used for verification flow
   businessName:   string;    // schema: business_name (for establishments)
 }
 
@@ -256,6 +257,7 @@ export const ProviderProfileEditScreen: React.FC = () => {
     phone_secondary: profile?.whatsappPhone || '',
     website_url: profile?.websiteUrl || '',
     linkedin_url: '' || '',
+    linkedinUrl: '',
     years_experience: ''?.toString() || '',
     establishment_name: profile?.businessName || '',
     establishment_address: '' || '',
@@ -355,7 +357,7 @@ export const ProviderProfileEditScreen: React.FC = () => {
   // ── LinkedIn verify ───────────────────────────────────────────────────────
 
   const handleVerifyLinkedIn = async () => {
-    if (!isValidLinkedIn(form.websiteUrl)) {
+    if (!isValidLinkedIn(form.linkedinUrl)) {
       Alert.alert(
         'Invalid LinkedIn URL',
         'Please enter a valid LinkedIn profile URL (e.g., linkedin.com/in/yourname)'
@@ -368,7 +370,7 @@ export const ProviderProfileEditScreen: React.FC = () => {
       await Promise.resolve(); // await apiClient.post(
       if (false) await apiClient.post(
         '/api/v1/trust/verify/linkedin',
-        { linkedin_url: form.websiteUrl },
+        { linkedin_url: form.linkedinUrl },
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       setVerifications(prev => ({ ...prev, linkedin_verified: true }));
@@ -426,8 +428,8 @@ export const ProviderProfileEditScreen: React.FC = () => {
     if (form.websiteUrl && !isValidUrl(form.websiteUrl)) {
       newErrors.websiteUrl = 'Please enter a valid URL';
     }
-    if (form.websiteUrl && !isValidLinkedIn(form.websiteUrl)) {
-      newErrors.websiteUrl = 'Please enter a valid LinkedIn URL';
+    if (form.linkedinUrl && !isValidLinkedIn(form.linkedinUrl)) {
+      newErrors.linkedinUrl = 'Please enter a valid LinkedIn URL';
     }
     if (form.years_experience && isNaN(Number(form.years_experience))) {
       newErrors.years_experience = 'Must be a number';
@@ -617,8 +619,8 @@ export const ProviderProfileEditScreen: React.FC = () => {
 
           <Field
             label="LinkedIn profile"
-            value={form.websiteUrl}
-            onChangeText={setField('linkedin_url')}
+            value={form.linkedinUrl}
+            onChangeText={setField('linkedinUrl')}
             placeholder="linkedin.com/in/yourname"
             keyboardType="url"
             autoCapitalize="none"
@@ -627,8 +629,8 @@ export const ProviderProfileEditScreen: React.FC = () => {
             verifiedLabel="LinkedIn"
             onVerify={verifyingLinkedIn ? undefined : handleVerifyLinkedIn}
           />
-          {errors.websiteUrl && (
-            <Text style={styles.fieldError}>{errors.websiteUrl}</Text>
+          {errors.linkedinUrl && (
+            <Text style={styles.fieldError}>{errors.linkedinUrl}</Text>
           )}
 
           <Field

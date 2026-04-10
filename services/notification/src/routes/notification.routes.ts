@@ -4,6 +4,20 @@ import { prisma } from '@satvaaah/db';
 import { logger } from '@satvaaah/logger';
 import { NotFoundError, ValidationError } from '@satvaaah/errors';
 
+// Notification copy — title + body for each product event type
+// All strings are final consumer-facing copy. Changes here = deploy required.
+const NOTIFICATION_COPY: Record<string, { title: string; body: string }> = {
+  new_contact_request:   { title: 'New lead 💼',              body: 'Someone wants to hire you. Tap to respond.' },
+  contact_accepted:      { title: 'Provider accepted ✅',      body: 'Your contact request was accepted.' },
+  contact_declined:      { title: 'Provider unavailable',      body: "They're busy right now. Try another provider." },
+  no_show_reroute:       { title: "Provider didn't show up",  body: 'Here are other available providers nearby.' },
+  new_message:           { title: 'New message 💬',            body: 'You have a new message.' },
+  subscription_confirmed:{ title: 'Subscription activated 🎉', body: 'Your plan is now active. Leads are waiting.' },
+  rating_reminder:       { title: 'How was the service?',      body: 'Rate your experience and help others choose.' },
+  certificate_ready:     { title: 'Certificate ready 🏆',      body: 'Your SatvAAh Trust Certificate is ready.' },
+  push_discovery:        { title: 'New provider near you 🌟',  body: 'A highly trusted provider is available in your area.' },
+};
+
 const router = Router();
 
 // ─── GET /api/v1/notifications ────────────────────────────────────────────────
@@ -49,9 +63,26 @@ router.get(
 
     logger.info('GET /notifications');
 
+    // Reconstruct title/body from event_type — notification_log has no title/body columns
+    // FCM sends copy at push time but does not persist it — we rebuild it here from the copy map
+    const DEFAULT_COPY = { title: 'SatvAAh', body: 'You have a new notification.' };
+    const mappedRows = rows.map((row) => {
+      const copy = NOTIFICATION_COPY[row.event_type] ?? DEFAULT_COPY;
+      return {
+        ...row,
+        title: copy.title,
+        body:  copy.body,
+        type:  row.event_type,
+        sentAt:      row.sent_at,
+        readAt:      row.read_at,
+        expiresAt:   null,
+        data:        {},
+      };
+    });
+
     return res.json({
       success: true,
-      data: rows,
+      data: mappedRows,
       meta: {
         total,
         page,
@@ -123,20 +154,6 @@ export default router;
 // Auth: x-internal-key header.
 import { timingSafeEqual } from 'crypto';
 import { sendPush } from '../services/fcmService';
-
-// Notification copy — title + body for each product event type
-// All strings are final consumer-facing copy. Changes here = deploy required.
-const NOTIFICATION_COPY: Record<string, { title: string; body: string }> = {
-  new_contact_request:   { title: 'New lead 💼',              body: 'Someone wants to hire you. Tap to respond.' },
-  contact_accepted:      { title: 'Provider accepted ✅',      body: 'Your contact request was accepted.' },
-  contact_declined:      { title: 'Provider unavailable',      body: "They're busy right now. Try another provider." },
-  no_show_reroute:       { title: "Provider didn't show up",  body: 'Here are other available providers nearby.' },
-  new_message:           { title: 'New message 💬',            body: 'You have a new message.' },
-  subscription_confirmed:{ title: 'Subscription activated 🎉', body: 'Your plan is now active. Leads are waiting.' },
-  rating_reminder:       { title: 'How was the service?',      body: 'Rate your experience and help others choose.' },
-  certificate_ready:     { title: 'Certificate ready 🏆',      body: 'Your SatvAAh Trust Certificate is ready.' },
-  push_discovery:        { title: 'New provider near you 🌟',  body: 'A highly trusted provider is available in your area.' },
-};
 
 function requireInternalKey(req: Request, res: Response, next: any): void {
   const key      = req.headers['x-internal-key'] as string | undefined;

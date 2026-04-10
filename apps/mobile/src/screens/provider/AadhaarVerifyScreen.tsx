@@ -170,8 +170,8 @@ const TrustRing: React.FC<TrustRingProps> = ({
 
 export const AadhaarVerifyScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
-  const { accessToken, user } = useAuthStore();
-  const { trustScore, refreshTrustScore } = useProviderStore();
+  const { accessToken, userId } = useAuthStore();
+  const { profile } = useProviderStore();
 
   const [state, setState] = useState<VerifyState>('privacy');
   const [consentChecked, setConsentChecked] = useState(false);
@@ -309,8 +309,7 @@ export const AadhaarVerifyScreen: React.FC = () => {
       setPrevScore(previous_score ?? 40);
       setNewScore(new_score ?? 65);
 
-      // Refresh local trust score
-      await refreshTrustScore();
+      // Local state already updated via setPrevScore/setNewScore from API response
 
       setState('success');
       playHeroAnimation();
@@ -381,7 +380,7 @@ export const AadhaarVerifyScreen: React.FC = () => {
         <View style={styles.tierPreviewRow}>
           <View style={styles.tierScoreBox}>
             <Text style={styles.tierScoreLabel}>Current</Text>
-            <Text style={styles.tierScoreValue}>{trustScore?.displayScore ?? 40}</Text>
+            <Text style={styles.tierScoreValue}>{prevScore}</Text>
           </View>
           <Text style={styles.tierArrow}>→</Text>
           <View style={[styles.tierScoreBox, styles.tierScoreBoxActive]}>
