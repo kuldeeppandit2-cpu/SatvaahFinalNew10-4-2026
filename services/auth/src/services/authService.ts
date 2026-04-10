@@ -267,26 +267,6 @@ export const authService = {
       throw new ConsentRequiredError('User consent is required to proceed (DPDP Act 2023)');
     }
 
-    // --- DEV BYPASS: Mock token for Expo Go/simulator. REMOVE BEFORE PRODUCTION ---
-    if (firebaseIdToken === 'MOCK_FIREBASE_TOKEN_FOR_TESTING') {
-      const testPhone = '+919000000001';
-      let devUser: UserRow;
-      let devIsNew = false;
-      const devExisting = await prisma.user.findUnique({ where: { phone: testPhone } });
-      if (!devExisting) {
-        devIsNew = true;
-        devUser = await prisma.$transaction(async (tx) => {
-          const u = await tx.user.create({ data: { id: uuidv4(), phone: testPhone, phone_verified: true, mode: 'consumer', subscription_tier: 'free', wa_opted_out: false, referral_code: uuidv4().replace(/-/g,'').slice(0,16).toUpperCase() } });
-          await tx.consentRecord.create({ data: { id: uuidv4(), user_id: u.id, consent_type: 'dpdp_processing', granted_at: new Date(), ip_address: ip, policy_version: '1.0' } });
-          return u;
-        });
-      } else { devUser = devExisting; }
-      const { access_token, refresh_token } = await issueTokenPair(devUser, ip, userAgent);
-      logger.warn('DEV BYPASS: Mock Firebase token accepted — REMOVE BEFORE PRODUCTION');
-      return { access_token, refresh_token, userId: devUser.id, user_id: devUser.id, is_new_user: devIsNew, mode: devUser.mode };
-    }
-    // --- END DEV BYPASS ---
-
     // --- Verify Firebase token via Admin SDK ---
     let decoded: admin.auth.DecodedIdToken;
     try {
