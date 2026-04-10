@@ -146,6 +146,18 @@ async function socketAuthMiddleware(socket: any, next: (err?: Error) => void): P
     const publicKey = process.env.JWT_PUBLIC_KEY?.replace(/\\n/g, '\n') ?? '';
     const payload = jwt.verify(token, publicKey, { algorithms: ['RS256'] }) as any;
     socket.userId = payload.sub;
+    // Look up provider profile id so /trust namespace can join the correct room
+    try {
+      const providerProfile = await prisma.providerProfile.findFirst({
+        where: { user_id: payload.sub },
+        select: { id: true },
+      });
+      if (providerProfile) {
+        socket.providerId = providerProfile.id;
+      }
+    } catch {
+      // Non-fatal — provider room join will simply be skipped
+    }
     // provider_id is NOT in JWT — look up from DB if needed
     next();
   } catch {

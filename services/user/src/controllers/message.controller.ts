@@ -167,9 +167,8 @@ export const sendMessage = async (
       consumer_id: true,
       provider_id: true,
       status: true,
-      provider: {
-        select: { user_id: true },
-      },
+      consumer: { select: { user_id: true } },
+      provider: { select: { user_id: true } },
     },
   });
 
@@ -181,7 +180,12 @@ export const sendMessage = async (
     return;
   }
 
-  if (event.consumer_id !== senderId && event.provider_id !== senderId) {
+  // consumer_id/provider_id are profile UUIDs — senderId is users.id from JWT
+  // Resolve each party's user_id for the auth check
+  const isConsumer = event.consumer?.user_id === senderId;
+  const isProvider = event.provider?.user_id === senderId;
+
+  if (!isConsumer && !isProvider) {
     res.status(403).json({
       success: false,
       error: {
@@ -192,15 +196,15 @@ export const sendMessage = async (
     return;
   }
 
-  // Determine recipient
-  const recipientId =
-    senderId === event.consumer_id ? event.provider_id : event.consumer_id;
+  // Determine recipient profile id (for message storage) and user_id (for FCM)
+  const recipientId = isConsumer ? event.provider_id : event.consumer_id;
+  const recipientUserId = isConsumer ? event.provider?.user_id : event.consumer?.user_id;
 
-  // Get recipient FCM token
-  const recipient = await prisma.user.findUnique({
-    where: { id: recipientId },
+  // Get recipient FCM token (lookup by users.id not profile id)
+  const recipient = recipientUserId ? await prisma.user.findUnique({
+    where: { id: recipientUserId },
     select: { id: true },
-  });
+  }) : null;
 
   // Persist the message
   const message = await prisma.inAppMessage.create({
@@ -245,7 +249,7 @@ export const sendMessage = async (
 
   // ── FCM push to recipient (fire-and-forget) ──────────────────────────
   sendFcmNotification({
-    userId:    recipientId,
+    userId:    recipientUserId ?? recipientId,
     eventType: 'new_message',
     payload: {
       event_id,

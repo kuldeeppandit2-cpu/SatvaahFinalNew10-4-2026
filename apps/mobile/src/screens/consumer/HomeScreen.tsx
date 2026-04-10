@@ -276,6 +276,9 @@ const HomeScreen: React.FC = () => {
       ]);
       setCategories(cats.status === 'fulfilled' ? cats.value : []);
       setRisingBrands(brands.status === 'fulfilled' ? brands.value as RisingBrand[] : []);
+    } catch {
+      setCategories([]);
+      setRisingBrands([]);
     } finally {
       setLoading(false);
     }

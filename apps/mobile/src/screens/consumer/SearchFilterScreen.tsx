@@ -55,6 +55,8 @@ type ConsumerStackParamList = {
   SearchFilter: {
     filters: FilterParams;
     tab: Tab;
+    query?: string;
+    taxonomyNodeId?: string;
   };
 };
 
@@ -173,8 +175,8 @@ const SearchFilterScreen: React.FC = () => {
     };
     // Navigate back with updated filters — SearchResultsScreen reads route.params.filters
     navigation.navigate('SearchResults', {
-      query:          route.params.filters ? '' : '', // preserved by SearchResults
-      taxonomyNodeId: '',
+      query:          route.params.query ?? '',
+      taxonomyNodeId: route.params.taxonomyNodeId ?? '',
       tab:            route.params.tab,
       filters:        newFilters,
     });

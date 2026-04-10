@@ -273,7 +273,7 @@ export const TrustBiographyScreen: React.FC = () => {
     if (!data) return;
     try {
       await Share.share({
-        message: `My SatvAAh Trust Score is ${data.currentScore}. I'm in the top ${100 - data.peerContext.percentile}% of ${data.peerContext.category} providers in ${data.peerContext.city}. satvaaah.com`,
+        message: `My SatvAAh Trust Score is ${data.meta?.currentScore ?? data.current_score}. I'm in the top ${100 - data.peerContext.percentile}% of ${data.peerContext.category} providers in ${data.peerContext.city}. satvaaah.com`,
         title: `${data.providerName} — SatvAAh Trust Biography`,
       });
     } catch (_) {}
@@ -343,7 +343,7 @@ export const TrustBiographyScreen: React.FC = () => {
                 </Text>
               </View>
               <View style={styles.identityScoreBox}>
-                <Text style={styles.identityScoreNum}>{data.currentScore}</Text>
+                <Text style={styles.identityScoreNum}>{data.meta?.currentScore ?? data.current_score}</Text>
                 <Text style={styles.identityScoreLabel}>Trust Score</Text>
               </View>
             </View>
@@ -439,7 +439,7 @@ export const TrustBiographyScreen: React.FC = () => {
               <Text style={styles.identityFooterBold}>{data.listingType}</Text> provider
               in <Text style={styles.identityFooterBold}>{data.peerContext?.city}</Text>,
               with a trust score of{' '}
-              <Text style={styles.identityFooterBold}>{data.currentScore}</Text> earned
+              <Text style={styles.identityFooterBold}>{data.meta?.currentScore ?? data.current_score}</Text> earned
               entirely through verified actions and real customer voice. This is the record
               of your professional life on SatvAAh — portable, permanent, and yours.
             </Text>

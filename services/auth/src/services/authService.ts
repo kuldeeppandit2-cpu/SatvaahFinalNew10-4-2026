@@ -318,6 +318,16 @@ export const authService = {
         });
 
         // DPDP Act 2023 — record explicit consent at registration
+        await tx.consentRecord.create({
+          data: {
+            id: uuidv4(),
+            user_id: created.id,
+            consent_type: 'dpdp_processing',
+            granted_at: new Date(),
+            ip_address: ip,
+            policy_version: '1.0',
+          },
+        });
 
         return created;
       });

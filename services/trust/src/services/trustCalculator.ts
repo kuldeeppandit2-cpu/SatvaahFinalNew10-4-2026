@@ -177,9 +177,18 @@ function evaluateSignal(
 
     // Fallthrough: dynamic boolean field on provider_profiles
     // e.g. 'phone_verified' → provider.phoneVerified
+    // Some signal names don't map cleanly via toCamelCase — use explicit map first
     default: {
-      const camelKey = toCamelCase(signalName);
-      return provider[camelKey] === true;
+      const SIGNAL_TO_PRISMA_FIELD: Record<string, string> = {
+        phone_otp_verified:  'isPhoneVerified',
+        aadhaar_verified:    'isAadhaarVerified',
+        geo_verified:        'isGeoVerified',
+        credential_verified: 'hasCredentials',
+        profile_photo:       'hasProfilePhoto',
+        slot_calendar:       'slotCalendarEnabled',
+      };
+      const prismaKey = SIGNAL_TO_PRISMA_FIELD[signalName] ?? toCamelCase(signalName);
+      return provider[prismaKey] === true;
     }
   }
 }

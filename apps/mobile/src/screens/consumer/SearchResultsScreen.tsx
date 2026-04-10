@@ -79,6 +79,8 @@ type ConsumerStackParamList = {
   SearchFilter: {
     filters: FilterParams;
     tab: Tab;
+    query?: string;
+    taxonomyNodeId?: string;
   };
   ProviderProfile: { providerId: string };
 };
@@ -377,8 +379,8 @@ const SearchResultsScreen: React.FC = () => {
   }, [loadingMore, meta, page, results.length]);
 
   const openFilters = useCallback(() => {
-    navigation.navigate('SearchFilter', { filters, tab });
-  }, [navigation, filters, tab]);
+    navigation.navigate('SearchFilter', { filters, tab, query, taxonomyNodeId });
+  }, [navigation, filters, tab, query, taxonomyNodeId]);
 
   // ── Sort bar ──────────────────────────────────────────────────────────────
 
