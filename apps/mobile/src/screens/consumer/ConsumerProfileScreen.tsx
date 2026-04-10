@@ -128,7 +128,7 @@ function contactTypeIcon(type: ContactHistoryItem['contact_type']): keyof typeof
   const map: Record<ContactHistoryItem['contact_type'], keyof typeof Ionicons.glyphMap> = {
     call: 'call-outline',
     message: 'chatbubble-outline',
-    slotBooking: 'calendar-outline',
+    slot_booking: 'calendar-outline',
   };
   return map[type];
 }
