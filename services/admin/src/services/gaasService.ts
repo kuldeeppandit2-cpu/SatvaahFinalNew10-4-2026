@@ -198,7 +198,7 @@ async function generateNarration(providerId: string, period: string): Promise<st
   }
 
   // 2. Fetch analytics data (re-uses adminService — single source of truth)
-  const analyticsData = await adminService.getProviderAnalytics({ provider_id: providerId, period });
+  const analyticsData = await adminService.getProviderAnalytics({ providerId, period });
 
   // 3. Build prompt
   const prompt = buildPrompt(analyticsData);

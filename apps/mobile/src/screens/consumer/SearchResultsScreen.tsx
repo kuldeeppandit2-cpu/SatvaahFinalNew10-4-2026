@@ -298,7 +298,7 @@ const SearchResultsScreen: React.FC = () => {
     }) => {
       setAvailMap((prev) => ({
         ...prev,
-        [payload.providerId]: payload.isAvailable,
+        [payload.provider_id]: payload.isAvailable,
       }));
       lastAvailTs.current = payload.updatedAt;
     });

@@ -188,7 +188,7 @@ async function handlePaymentCaptured(
     name:           string;
     pricePaise:     number;
   }>(
-    `SELECT lead_credits AS "leadsAllocated", duration_days AS "validityDays",
+    `SELECT leads_allocated AS "leadsAllocated", duration_days AS "validityDays",
             name, price_paise AS "pricePaise"
      FROM subscription_plans WHERE id = $1`,
     [planId],

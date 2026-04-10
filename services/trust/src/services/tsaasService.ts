@@ -71,7 +71,7 @@ export async function getTsaasTrustData(params: {
   providerId: string;
   tsaasClient: TsaasClientInfo;
 }): Promise<TsaasTrustResult> {
-  const { provider_id: providerId } = params;
+  const { providerId } = params;
 
   // ── 1. Fetch provider to get userId ───────────────────────────────────────
   const provider = await prisma.providerProfile.findUnique({

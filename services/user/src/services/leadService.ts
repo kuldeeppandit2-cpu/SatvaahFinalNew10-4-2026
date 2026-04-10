@@ -36,7 +36,7 @@ interface UpdateLeadInput {
 // ─── getLeadsService ──────────────────────────────────────────────────────────
 
 export async function getLeadsService(input: GetLeadsInput) {
-  const { provider_id: providerId, status, page, limit, correlationId } = input;
+  const { providerId, status, page, limit, correlationId } = input;
 
   const skip = (page - 1) * limit;
 
@@ -118,7 +118,7 @@ export async function getLeadsService(input: GetLeadsInput) {
 // ─── updateLeadService ────────────────────────────────────────────────────────
 
 export async function updateLeadService(input: UpdateLeadInput) {
-  const { eventId, provider_id: providerId, action, declineReason, correlationId } = input;
+  const { eventId, providerId, action, declineReason, correlationId } = input;
 
   // ── 1. Load event and verify provider ownership ───────────────────────────
   const event = await prisma.contactEvent.findUnique({
