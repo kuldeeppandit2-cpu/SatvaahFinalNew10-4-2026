@@ -100,7 +100,7 @@ const TIER_CONFIG: Record<ConsumerTrustTier, TierConfig> = {
     colour: LIGHT_VERDIGRIS,
     description: 'Strong rating history. Providers prioritise your contact requests.',
   },
-  highlyTrusted: {
+  highly_trusted: {
     label: 'Highly Trusted',
     min: 80,
     max: 100,
