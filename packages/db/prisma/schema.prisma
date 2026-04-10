@@ -1,0 +1,1559 @@
+// =============================================================================
+// SatvAAh — packages/db/prisma/schema.prisma
+// CANONICAL SCHEMA — Version 2.0 | April 2026
+// 32 models · 17 enums
+//
+// RULES (from MASTER_CONTEXT.md — never break):
+//   • All monetary amounts stored in PAISE (Int). Never rupees. Never Float.
+//   • geo_point / boundary / centroid use PostGIS: Unsupported("geometry(...)").
+//     GiST indexes on those columns MUST be added via raw SQL in migration.
+//   • provider_profiles.trust_score is OWNED by the DB trigger (V018).
+//     App code MUST NEVER write to it directly.
+//   • consumer_profiles.trust_score defaults to 75.
+//   • users.deleted_at enables soft-delete for DPDP Act 2023 compliance.
+//   • All timestamps: @db.Timestamptz(6). Store UTC; convert to Asia/Kolkata in app.
+//   • refresh_tokens.token_hash: bcrypt(JTI, cost=12). Never store raw JTI.
+//   • DigiLocker: store ONLY bcrypt(digilocker_uid + per_record_salt, cost=12).
+//     Never store Aadhaar number anywhere — DB, logs, Redis, S3, ever.
+//   • PostGIS: ST_MakePoint(lng, lat) — longitude FIRST always.
+//   • If this schema and any migration conflict → THIS FILE WINS.
+// =============================================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+  binaryTargets   = ["native", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [uuidOssp(map: "uuid-ossp"), postgis, pgTrgm(map: "pg_trgm"), btreeGist(map: "btree_gist"), pgcrypto]
+}
+
+// =============================================================================
+// ENUMS — 17 total
+// =============================================================================
+
+/// Which mode the user is currently operating in.
+/// Users can hold both a ConsumerProfile and a ProviderProfile simultaneously;
+/// mode dictates the active persona for UI routing and analytics.
+enum UserMode {
+  consumer
+  provider
+}
+
+/// Provider listing type — drives trust signals, profile form, search card, and formula.
+enum ListingType {
+  individual_service // plumber, electrician, maid, cook, driver, photographer, barber, tailor
+  individual_product // milkman, vegetable vendor, homemade products
+  expertise          // cardiologist, advocate, CA, architect, SEBI RIA, IRDAI agent
+  establishment      // Ramu di Hatti, Sharma Mithai, Paradise Biryani — named brand equity
+  product_brand      // A-Z Milk, Fresh Squeeze Co — FMCG brand building trust
+}
+
+/// Search tab — determines which discovery rail a provider appears on.
+enum Tab {
+  products
+  services
+  expertise
+  establishments
+}
+
+/// Trust tier — computed from display_score in trust_scores table.
+/// CORRECTED thresholds (Coherence Review v1):
+///   0–19   → unverified    (grey  #6B6560)
+///   20–39  → basic         (saffron #C8691A)
+///   60–79  → trusted       (light verdigris #6BA89E)
+///   80–100 → highly_trusted (verdigris #2E7D72)
+/// Thresholds are in system_config — not hardcoded here.
+enum TrustTier {
+  unverified
+  basic
+  trusted
+  highly_trusted
+}
+
+/// Provider availability state — broadcast via Socket.IO /availability namespace.
+enum Availability {
+  available
+  busy
+  away
+  offline
+}
+
+/// Type of contact initiated by consumer.
+/// slot_booking requires Gold-tier consumer + provider published calendar.
+enum ContactType {
+  call
+  message
+  slot_booking
+}
+
+/// Lifecycle state of a contact event (consumer side / system side).
+enum ContactStatus {
+  pending   // created, awaiting provider action
+  accepted  // provider accepted → lead counted, consumer phone revealed
+  declined  // provider declined
+  expired   // no action within TTL
+  completed // contact concluded normally
+  no_show   // consumer reported provider no-show
+  cancelled // consumer cancelled before provider responded
+}
+
+/// Provider-side lead status shown on provider Leads screen.
+/// Created by V009 migration as ProviderLeadStatus.
+enum ProviderLeadStatus {
+  pending   // unreviewed by provider
+  accepted  // provider accepted → lead counted, consumer phone revealed
+  declined  // provider declined → lead returned
+  expired   // provider didn't act within TTL → lead returned
+}
+
+/// Discrete actions available to a provider on the Leads screen.
+enum ProviderAction {
+  accept
+  decline
+}
+
+/// Weight tier for a rating — determines its contribution to customer_voice_score.
+enum RatingWeightType {
+  verified_contact // 1.0  — linked to accepted contact_event
+  open_community   // 0.5  — OTP-verified account >= 7 days old, daily limits enforced
+  scraped_external // 0.3  — Google/Zomato/Practo/JustDial/Sulekha. Stale > 90d → 0.15
+}
+
+/// Moderation lifecycle for ratings.
+enum ModerationStatus {
+  pending  // awaiting auto + admin review
+  approved // passed 10-step moderation, counted in score
+  rejected // failed moderation, excluded
+  flagged  // under dispute review
+}
+
+/// Subscription tier — applies to both consumer and provider plans.
+/// Consumer: free → silver → gold  (Gold required for slot_booking contact type)
+/// Provider: same tier labels; features differ per plan row in subscription_plans.
+enum SubscriptionTier {
+  free
+  silver
+  gold
+}
+
+/// DPDP Act 2023 consent types stored in consent_records.
+enum ConsentType {
+  dpdp_processing    // mandatory on first auth — must be true else 400 CONSENT_REQUIRED
+  aadhaar_hash       // given on DigiLocker verification flow
+  data_sharing_tsaas // given when provider opts into TSaaS data sharing
+}
+
+/// Reason for raising a trust flag.
+enum TrustFlagType {
+  rating_manipulation // coordinated fake ratings detected
+  fake_account        // account suspected not to be a real person/business
+  impersonation       // claiming to be someone else
+  spam                // mass unsolicited outreach
+  no_show_pattern     // repeated provider no-shows
+  credential_fraud    // fake or doctored credential documents
+  policy_violation    // other community guideline violations
+}
+
+/// Operational severity of a trust flag — drives admin prioritisation queue.
+enum TrustFlagSeverity {
+  low
+  medium
+  high
+  critical
+}
+
+/// Resolution state of a trust flag.
+enum TrustFlagStatus {
+  open
+  under_review
+  resolved
+  dismissed
+}
+
+/// Notification delivery channel.
+/// CRITICAL: WhatsApp ONLY for CAC (acquisition) + extraordinary events.
+/// Product notifications MUST use FCM. Never WhatsApp for product flow.
+enum NotificationChannel {
+  fcm
+  whatsapp
+}
+
+/// Delivery tracking state for notifications.
+enum DeliveryStatus {
+  sent
+  delivered
+  read
+  failed
+}
+
+// =============================================================================
+// MODEL 1 — User
+// Core identity record. One row per phone number.
+// Providers without claimed accounts exist only in provider_profiles (is_scrape_record=true).
+// =============================================================================
+model User {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  phone             String           @unique @db.VarChar(15)
+  phone_verified    Boolean          @default(false)
+  mode              UserMode         @default(consumer)
+  subscription_tier SubscriptionTier @default(free)
+  fcm_token         String?          @db.VarChar(512)
+  wa_opted_out      Boolean          @default(false)
+  referral_code     String           @unique @db.VarChar(16)
+
+  // DPDP Act 2023 — soft delete. anonymisation Lambda runs within 72h of this being set.
+  // Hard delete is FORBIDDEN. This column gates all PII queries.
+  deleted_at DateTime? @db.Timestamptz(6)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  consumer_profile     ConsumerProfile?
+  provider_profile     ProviderProfile?
+  refresh_tokens       RefreshToken[]
+  consent_records      ConsentRecord[]
+  notification_logs    NotificationLog[]
+  sent_messages        InAppMessage[]       @relation("MessageSender")
+  search_intents       SearchIntent[]
+  subscription_records SubscriptionRecord[]
+  referrals_made       ReferralEvent[]      @relation("Referrer")
+  referrals_received   ReferralEvent[]      @relation("Referred")
+
+  @@index([phone])
+  @@index([deleted_at])
+  @@index([referral_code])
+  @@map("users")
+}
+
+// =============================================================================
+// MODEL 2 — ConsumerProfile
+// Created on first consumer action post-auth.
+// =============================================================================
+model ConsumerProfile {
+  id           String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String  @unique @db.Uuid
+  display_name String  @db.VarChar(100)
+  city_id      String? @db.Uuid
+
+  // Consumer trust score — DEFAULT 75. Written by rating service (unlike provider trust_score).
+  // Increases on: verified ratings submitted, no-show reports vindicated, long account age.
+  // Decreases on: fraudulent rating attempts, repeated no-shows reported by providers.
+  trust_score Int @default(75)
+
+  avatar_s3_key String? @db.VarChar(512)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  user                      User               @relation(fields: [user_id], references: [id], onDelete: Restrict)
+  city                      City?              @relation(fields: [city_id], references: [id], onDelete: SetNull)
+  contact_events            ContactEvent[]     @relation("ConsumerContact")
+  ratings                   Rating[]           @relation("ConsumerRatings")
+  daily_rating_usages       DailyRatingUsage[]
+  consumer_lead_usages      ConsumerLeadUsage[]
+  saved_providers           SavedProvider[]
+  consumer_ratings_received ConsumerRating[]   @relation("ConsumerRated")
+
+  @@index([user_id])
+  @@index([city_id])
+  @@index([trust_score])
+  @@map("consumer_profiles")
+}
+
+// =============================================================================
+// MODEL 3 — ProviderProfile
+// Can exist WITHOUT a user (is_scrape_record=true, user_id=NULL).
+// Claimed when a real user links their account to the scrape record.
+// geo_point: PostGIS geometry — queried only via $queryRaw with ST_ functions.
+// GiST index on geo_point MUST be created via raw SQL in migration V004:
+//   CREATE INDEX idx_provider_geo ON provider_profiles USING GIST (geo_point);
+// =============================================================================
+model ProviderProfile {
+  id               String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String? @unique @db.Uuid
+  city_id          String  @db.Uuid
+  area_id          String? @db.Uuid
+  taxonomy_node_id String? @db.Uuid
+
+  // Identity
+  display_name         String  @db.VarChar(200)
+  business_name        String? @db.VarChar(200)
+  bio                  String? @db.Text
+  profile_photo_s3_key String? @db.VarChar(512)
+  phone                String  @db.VarChar(15)
+  whatsapp_phone       String? @db.VarChar(15)
+  website_url          String? @db.VarChar(500)
+
+  // Listing classification
+  listing_type ListingType
+  tab          Tab
+
+  // Location (PostGIS) — DO NOT query via Prisma ORM. Use $queryRaw + ST_functions.
+  // ST_MakePoint(lng, lat) — longitude FIRST, always.
+  geo_point       Unsupported("geography(Point,4326)")?
+  geo_verified_at DateTime? @db.Timestamptz(6)
+
+  // Availability
+  availability            Availability @default(available)
+  availability_updated_at DateTime?    @db.Timestamptz(6)
+  home_visit_available    Boolean      @default(false)
+
+  // Slot calendar (Gold-tier consumers can book slots when enabled)
+  slot_calendar_enabled Boolean @default(false)
+
+  // TRUST SCORE — OWNED BY DB TRIGGER (V018). App code MUST NEVER write this column.
+  // Trigger: AFTER INSERT/UPDATE ON trust_scores → UPDATE provider_profiles SET trust_score = NEW.display_score
+  trust_score Int @default(0)
+
+  // Verification boolean flags (denormalised from provider_verifications for query perf)
+  is_phone_verified   Boolean @default(false)
+  is_aadhaar_verified Boolean @default(false)
+  is_geo_verified     Boolean @default(false)
+  has_profile_photo   Boolean @default(false)
+  has_credentials     Boolean @default(false)
+
+  // Scraping / claiming
+  is_scrape_record Boolean   @default(false)
+  is_claimed       Boolean   @default(false)
+  scrape_source    String?   @db.VarChar(100)
+  claimed_at       DateTime? @db.Timestamptz(6)
+
+  // Active status
+  is_active           Boolean   @default(true)
+  deactivated_at      DateTime? @db.Timestamptz(6)
+  deactivation_reason String?   @db.VarChar(500)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  user                   User?                @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  city                   City                 @relation(fields: [city_id], references: [id], onDelete: Restrict)
+  area                   Area?                @relation(fields: [area_id], references: [id], onDelete: SetNull)
+  taxonomy_node          TaxonomyNode?        @relation(fields: [taxonomy_node_id], references: [id], onDelete: SetNull)
+  trust_score_record     TrustScore?
+  trust_score_histories  TrustScoreHistory[]
+  contact_events         ContactEvent[]       @relation("ProviderContact")
+  ratings_received       Rating[]             @relation("ProviderRatings")
+  external_ratings       ExternalRating[]
+  verifications          ProviderVerification[]
+  provider_lead_usages   ProviderLeadUsage[]
+  trust_flags            TrustFlag[]
+  certificate_record     CertificateRecord?
+  opensearch_sync_logs   OpenSearchSyncLog[]
+  tsaas_usage_logs       TsaasUsageLog[]
+  saved_by_consumers     SavedProvider[]
+  consumer_ratings_given ConsumerRating[]     @relation("ProviderGiving")
+
+  @@index([city_id])
+  @@index([area_id])
+  @@index([taxonomy_node_id])
+  @@index([listing_type])
+  @@index([tab])
+  @@index([trust_score(sort: Desc)])
+  @@index([is_active, is_scrape_record])
+  @@index([is_claimed])
+
+  @@index([user_id])
+  @@index([listing_type, is_active])
+  @@index([city_id, tab])
+  @@map("provider_profiles")
+}
+
+// =============================================================================
+// MODEL 4 — TrustScore
+// One row per provider. Source of truth for the trust calculation.
+// WRITTEN BY: Lambda:trust-recalculate (SQS). Never directly by app code.
+// DB trigger V018 copies display_score → provider_profiles.trust_score after every update.
+// Formula: display_score = (verification_score × verification_weight)
+//                        + (customer_voice_score × customer_voice_weight)
+//   customer_voice_weight = f(rating_count) via customer_weight_curve config key
+//   customer_weight_curve = 0:0.10, 3:0.20, 10:0.30, 50:0.65, 200:0.70
+//   customer_voice_max_weight = 0.70 (admin-configurable, from system_config)
+//   verification_weight = 1.0 − customer_voice_weight
+// =============================================================================
+model TrustScore {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider_id String @unique @db.Uuid
+
+  display_score Int   @default(0)
+  raw_score     Int   @default(0)
+
+  verification_score    Int   @default(0)
+  verification_weight   Float @default(1.0)
+  customer_voice_score  Int   @default(0)
+  customer_voice_weight Float @default(0.1)
+  rating_count          Int   @default(0)
+
+  trust_tier TrustTier @default(unverified)
+
+  // Detailed signal breakdown (JSONB) — matches signal_name keys in trust_score_config
+  signal_breakdown Json @default("{}")
+
+  last_calculated_at DateTime? @db.Timestamptz(6)
+  created_at         DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime  @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  provider ProviderProfile @relation(fields: [provider_id], references: [id], onDelete: Cascade)
+
+  @@index([provider_id])
+  @@index([display_score(sort: Desc)])
+  @@index([trust_tier])
+
+  @@index([trust_tier, display_score])
+  @@map("trust_scores")
+}
+
+// =============================================================================
+// MODEL 5 — TrustScoreHistory
+// IMMUTABLE audit log. One row per trust-affecting event. Never update or delete.
+// Powers the Trust History screen and compliance audit trail.
+// =============================================================================
+model TrustScoreHistory {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider_id String @db.Uuid
+
+  event_type        String    @db.VarChar(100)
+  delta_pts         Int
+  new_display_score Int
+  new_raw_score     Int
+  new_tier          TrustTier
+  previous_tier     TrustTier?
+
+  source_entity_type String? @db.VarChar(50)
+  source_entity_id   String? @db.Uuid
+  correlation_id     String? @db.VarChar(128)
+  notes              String? @db.Text
+
+  event_at DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relations
+  provider ProviderProfile @relation(fields: [provider_id], references: [id], onDelete: Restrict)
+
+  @@index([provider_id, event_at(sort: Desc)])
+  @@index([event_type])
+  @@index([new_tier])
+  @@map("trust_score_history")
+}
+
+// =============================================================================
+// MODEL 6 — TrustScoreConfig
+// Admin-editable signal weights. Nothing hardcoded in code. One row per
+// (listing_type, signal_name). Admin portal updates this table without code deploy.
+// =============================================================================
+model TrustScoreConfig {
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  listing_type ListingType
+  signal_name  String      @db.VarChar(100)
+
+  max_pts       Int
+  description   String  @db.VarChar(500)
+  is_active     Boolean @default(true)
+  decay_days    Int?    // If set, signal loses points after this many days without re-verification
+
+  // Denominator for normalising verification_score to 0–100.
+  // NULL = computed dynamically from sum of active signal max_pts for this listing_type.
+  raw_max_total Int?
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  @@unique([listing_type, signal_name])
+  @@index([listing_type, is_active])
+  @@map("trust_score_config")
+}
+
+// =============================================================================
+// MODEL 7 — ContactEvent
+// Replaces "bookings" — the core business event in SatvAAh.
+// Consumer contacts provider → provider accepts/declines → lead counted on accept.
+// CRITICAL: NO booking service. Contact events are handled in services/user (port 3002).
+// =============================================================================
+model ContactEvent {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  consumer_id String @db.Uuid
+  provider_id String @db.Uuid
+
+  contact_type    ContactType
+  status          ContactStatus      @default(pending)
+  providerStatus  ProviderLeadStatus @default(pending) @map("provider_status")
+
+  provider_responded_at DateTime? @db.Timestamptz(6)
+  decline_reason        String?   @db.VarChar(500)
+  expiry_at             DateTime? @db.Timestamptz(6)
+
+  // Lead accounting — counted on accept only
+  consumer_lead_deducted Boolean @default(false)
+  provider_lead_counted  Boolean @default(false)
+
+  // Phone visibility
+  provider_phone_revealed_to_consumer Boolean @default(true)
+  consumer_phone_revealed             Boolean @default(false)
+
+  // Slot booking metadata (only populated for contact_type = slot_booking)
+  slot_date             DateTime? @db.Timestamptz(6)
+  slot_duration_minutes Int?
+
+  // No-show tracking
+  no_show_reported_by_consumer Boolean   @default(false)
+  no_show_reported_at          DateTime? @db.Timestamptz(6)
+  no_show_resolved             Boolean   @default(false)
+
+  // Rating prompt lifecycle
+  rating_prompt_skipped_count Int     @default(0)
+  rating_submitted            Boolean @default(false)
+
+  initial_message String? @db.Text
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  consumer         ConsumerProfile @relation("ConsumerContact", fields: [consumer_id], references: [id], onDelete: Restrict)
+  provider         ProviderProfile @relation("ProviderContact", fields: [provider_id], references: [id], onDelete: Restrict)
+  ratings          Rating[]
+  in_app_messages  InAppMessage[]
+  consumer_ratings ConsumerRating[]
+
+  @@index([consumer_id, created_at(sort: Desc)])
+  @@index([provider_id, status])
+  @@index([provider_id, created_at(sort: Desc)])
+  @@index([status, expiry_at])
+  @@index([consumer_id, provider_id])
+  @@map("contact_events")
+}
+
+// =============================================================================
+// MODEL 8 — Rating
+// Provider ratings by consumers. 3 weight tiers (RatingWeightType).
+// contact_event_id NULL for open_community (Products + Establishments — no prior contact needed).
+// Passes through 10-step moderation pipeline in services/rating (port 3005).
+// =============================================================================
+model Rating {
+  id               String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider_id      String  @db.Uuid
+  consumer_id      String  @db.Uuid
+  contact_event_id String? @db.Uuid
+
+  overall_stars     Int
+  weight_type       RatingWeightType
+  weight_value      Float
+  moderation_status ModerationStatus @default(pending)
+
+  // Dimension scores per taxonomy_node.rating_dimensions config
+  dimension_scores Json @default("{}")
+
+  review_text   String?   @db.Text
+  photo_s3_keys String[]  @db.VarChar(512)
+
+  // Moderation
+  auto_moderation_passed Boolean?
+  admin_reviewed_by      String?   @db.Uuid
+  admin_reviewed_at      DateTime? @db.Timestamptz(6)
+  rejection_reason       String?   @db.VarChar(500)
+  moderation_flags       String[]
+
+  // Rating bonus (config key: rating_bonus_leads = 2 leads per submitted rating)
+  bonus_leads_granted    Boolean   @default(false)
+  bonus_leads_granted_at DateTime? @db.Timestamptz(6)
+
+  // For scraped external ratings (weight_type = scraped_external)
+  external_source    String? @db.VarChar(50)
+  external_rating_id String? @db.Uuid
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  provider      ProviderProfile @relation("ProviderRatings", fields: [provider_id], references: [id], onDelete: Restrict)
+  consumer      ConsumerProfile @relation("ConsumerRatings", fields: [consumer_id], references: [id], onDelete: Restrict)
+  contact_event ContactEvent?   @relation(fields: [contact_event_id], references: [id], onDelete: SetNull)
+  trust_flags   TrustFlag[]
+
+  @@index([provider_id, moderation_status])
+  @@index([consumer_id, created_at(sort: Desc)])
+  @@index([contact_event_id])
+  @@index([weight_type])
+  @@index([moderation_status])
+
+  @@index([provider_id, created_at])
+  @@index([consumer_id])
+  @@map("ratings")
+}
+
+// =============================================================================
+// MODEL 9 — DailyRatingUsage
+// Enforces per-consumer daily rating limits by tab (from system_config):
+//   Products: 10/day | Services: 5/day | Expertise: 3/day | Establishments: 8/day
+// UNIQUE on (consumer_id, tab, date). One row per consumer per tab per day.
+// =============================================================================
+model DailyRatingUsage {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  consumer_id String   @db.Uuid
+  tab         Tab
+  date        DateTime @db.Date
+
+  ratings_submitted Int @default(0)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  consumer ConsumerProfile @relation(fields: [consumer_id], references: [id], onDelete: Cascade)
+
+  @@unique([consumer_id, tab, date])
+  @@index([consumer_id, date(sort: Desc)])
+  @@map("daily_rating_usage")
+}
+
+// =============================================================================
+// MODEL 10 — SearchIntent
+// Captured asynchronously on consumer search. Powers Lambda:push-discovery.
+// Lambda fires when a provider crosses push_discovery_trust_threshold config key,
+// matches unnotified / undismissed intents in their area + taxonomy.
+// V012: EXISTS. Never skip. Never delete. Required for push discovery Lambda.
+// =============================================================================
+model SearchIntent {
+  id               String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String  @db.Uuid
+  taxonomy_node_id String? @db.Uuid
+
+  lat          Float  @db.DoublePrecision
+  lng          Float  @db.DoublePrecision
+  search_query String? @db.VarChar(500)
+  tab          Tab?
+
+  searched_at DateTime @default(now()) @db.Timestamptz(6)
+
+  // NULL = never expires (taxonomy_node.search_intent_expiry_days = NULL)
+  expiry_at DateTime? @db.Timestamptz(6)
+
+  // Push discovery tracking
+  notified_at              DateTime? @db.Timestamptz(6)
+  notification_provider_id String?   @db.Uuid
+
+  // Consumer dismissal
+  user_dismissed_at DateTime? @db.Timestamptz(6)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relations
+  user          User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  taxonomy_node TaxonomyNode? @relation(fields: [taxonomy_node_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id, user_dismissed_at])
+  @@index([taxonomy_node_id, notified_at])
+  @@index([expiry_at])
+  @@index([searched_at(sort: Desc)])
+  @@map("search_intents")
+}
+
+// =============================================================================
+// MODEL 11 — TaxonomyNode
+// 1,597 rows seeded from Taxonomy Master v2 in migration V017.
+// Hierarchical: l1 → l2 → l3 → l4 (leaf nodes are selectable categories).
+// Drives: search autocomplete, trust signal requirements, rating dimension forms,
+//         search intent expiry, home visit eligibility.
+// pg_trgm GIN index for autocomplete (raw SQL in V017):
+//   CREATE INDEX idx_taxonomy_trgm ON taxonomy_nodes USING GIN (display_name gin_trgm_ops);
+// =============================================================================
+model TaxonomyNode {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  parent_id String? @db.Uuid
+
+  l1 String  @db.VarChar(100)
+  l2 String? @db.VarChar(100)
+  l3 String? @db.VarChar(100)
+  l4 String? @db.VarChar(100)
+
+  slug         String @unique @db.VarChar(200)
+  display_name String @db.VarChar(200)
+  tab          Tab
+
+  // Profile form — what attributes providers in this category must fill
+  attribute_schema Json @default("{}")
+
+  // Rating form — what dimensions consumers rate on for this category
+  rating_dimensions Json @default("[]")
+
+  // NULL = intent never expires (e.g. daily commodities like milk delivery)
+  search_intent_expiry_days Int?
+
+  verification_required Boolean @default(false)
+  home_visit            Boolean @default(false)
+
+  is_active  Boolean @default(true)
+  sort_order Int     @default(0)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  parent            TaxonomyNode?     @relation("TaxonomyHierarchy", fields: [parent_id], references: [id], onDelete: Restrict)
+  children          TaxonomyNode[]    @relation("TaxonomyHierarchy")
+  provider_profiles ProviderProfile[]
+  search_intents    SearchIntent[]
+
+  @@index([parent_id])
+  @@index([tab, is_active])
+  @@index([l1, l2, l3])
+  @@map("taxonomy_nodes")
+}
+
+// =============================================================================
+// MODEL 12 — ProviderVerification
+// Individual verification event records. Many per provider.
+// CRITICAL: Never store Aadhaar number. Store only bcrypt hash of DigiLocker UID.
+// Rule 2: store ONLY bcrypt(digilocker_uid + per_record_salt, cost=12). Irreversible.
+// =============================================================================
+model ProviderVerification {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider_id String @db.Uuid
+
+  // "phone" | "aadhaar" | "geo" | "credential" | "admin_manual"
+  verification_type String @db.VarChar(50)
+
+  // "pending" | "verified" | "rejected" | "expired"
+  status String @default("pending") @db.VarChar(30)
+
+  // DigiLocker / Aadhaar — HASH ONLY. NEVER store raw UID or Aadhaar number.
+  // hash = bcrypt(digilocker_uid + per_record_salt, cost=12)
+  digilocker_uid_hash String? @db.VarChar(72)
+  per_record_salt     String? @db.VarChar(64)
+  digilocker_name     String? @db.VarChar(200)
+
+  // Geo verification
+  geo_verified_lat      Float? @db.DoublePrecision
+  geo_verified_lng      Float? @db.DoublePrecision
+  geo_verified_radius_m Int?
+
+  // Credential verification
+  credential_name        String?   @db.VarChar(200)
+  credential_issuer      String?   @db.VarChar(200)
+  credential_number_hash String?   @db.VarChar(72)
+  credential_expiry_date DateTime? @db.Date
+  credential_s3_key      String?   @db.VarChar(512)
+
+  // Review
+  verified_at          DateTime? @db.Timestamptz(6)
+  verified_by_admin_id String?   @db.Uuid
+  rejection_reason     String?   @db.VarChar(500)
+  rejection_at         DateTime? @db.Timestamptz(6)
+
+  meta       Json     @default("{}")
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  provider ProviderProfile @relation(fields: [provider_id], references: [id], onDelete: Cascade)
+
+  @@index([provider_id, verification_type])
+  @@index([provider_id, status])
+  @@index([status, created_at(sort: Desc)])
+
+  @@index([provider_id])
+  @@map("provider_verifications")
+}
+
+// =============================================================================
+// MODEL 13 — ConsumerLeadUsage
+// Tracks lead quota per consumer per subscription period.
+// Leads bonus: consumer earns +2 leads per rating (rating_bonus_leads config key).
+// =============================================================================
+model ConsumerLeadUsage {
+  id                   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  consumer_id          String @db.Uuid
+  subscription_plan_id String @db.Uuid
+
+  period_start DateTime @db.Timestamptz(6)
+  period_end   DateTime @db.Timestamptz(6)
+
+  leads_allocated Int
+  leads_used      Int @default(0)
+  leads_bonus     Int @default(0)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  consumer          ConsumerProfile  @relation(fields: [consumer_id], references: [id], onDelete: Cascade)
+  subscription_plan SubscriptionPlan @relation(fields: [subscription_plan_id], references: [id], onDelete: Restrict)
+
+  @@index([consumer_id, period_end(sort: Desc)])
+  @@index([subscription_plan_id])
+  @@map("consumer_lead_usage")
+}
+
+// =============================================================================
+// MODEL 14 — ProviderLeadUsage
+// Monthly lead counters for providers. Leads counted on accept only.
+// month: DATE type (1st of the month, e.g. 2026-04-01).
+// =============================================================================
+model ProviderLeadUsage {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider_id String   @db.Uuid
+  month       DateTime @db.Date
+
+  leads_allocated Int @default(0)
+  leads_received  Int @default(0)
+  leads_accepted  Int @default(0)
+  leads_declined  Int @default(0)
+  leads_expired   Int @default(0)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  provider ProviderProfile @relation(fields: [provider_id], references: [id], onDelete: Cascade)
+
+  @@unique([provider_id, month])
+  @@index([provider_id, month(sort: Desc)])
+  @@map("provider_lead_usage")
+}
+
+// =============================================================================
+// MODEL 15 — SubscriptionPlan
+// Plan catalogue. Separate rows for consumer and provider plan types.
+// price_paise: PAISE (Int). Rs 99 = 9900. Never Float. Never rupees.
+// features JSONB: capability flags, limits, and boost multipliers.
+// =============================================================================
+model SubscriptionPlan {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_type String           @db.VarChar(20)
+  tier      SubscriptionTier
+
+  display_name    String @db.VarChar(100)
+  description     String @db.Text
+  price_paise     Int
+  leads_allocated Int
+  validity_days   Int    @default(30)
+
+  // Feature flags and limits
+  features Json @default("{}")
+
+  is_active  Boolean @default(true)
+  sort_order Int     @default(0)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  subscription_records SubscriptionRecord[]
+  consumer_lead_usages ConsumerLeadUsage[]
+
+  @@unique([user_type, tier])
+  @@index([user_type, is_active])
+  @@map("subscription_plans")
+}
+
+// =============================================================================
+// MODEL 16 — SubscriptionRecord
+// History of subscription purchases. One row per transaction attempt.
+// idempotency_key: client-generated UUID for Razorpay order deduplication.
+// amount_paise: PAISE (Int). Never Float. Never rupees.
+// Razorpay webhook: HMAC-SHA256 signature MUST be verified before processing.
+// =============================================================================
+model SubscriptionRecord {
+  id      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id String @db.Uuid
+  plan_id String @db.Uuid
+
+  // "created" | "pending" | "active" | "expired" | "cancelled" | "refunded"
+  status String @default("created") @db.VarChar(30)
+
+  razorpay_order_id        String? @unique @db.VarChar(100)
+  razorpay_payment_id      String? @unique @db.VarChar(100)
+  razorpay_subscription_id String? @db.VarChar(100)
+  amount_paise             Int
+  idempotency_key          String  @unique @db.Uuid
+
+  started_at  DateTime? @db.Timestamptz(6)
+  expires_at  DateTime? @db.Timestamptz(6)
+
+  cancelled_at        DateTime? @db.Timestamptz(6)
+  cancellation_reason String?   @db.VarChar(500)
+  refund_amount_paise Int?
+  refunded_at         DateTime? @db.Timestamptz(6)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  user User             @relation(fields: [user_id], references: [id], onDelete: Restrict)
+  plan SubscriptionPlan @relation(fields: [plan_id], references: [id], onDelete: Restrict)
+
+  @@index([user_id, status])
+  @@index([user_id, expires_at(sort: Desc)])
+  @@index([razorpay_order_id])
+  @@index([status, expires_at])
+
+  @@index([plan_id])
+  @@map("subscription_records")
+}
+
+// =============================================================================
+// MODEL 17 — RefreshToken
+// RS256 JWT refresh tokens. 30-day expiry.
+// CRITICAL: Store bcrypt(JTI, cost=12). NEVER store raw token or raw JTI.
+// Rotation: on use, revoked_at set on old row + new row inserted (one active per device).
+// =============================================================================
+model RefreshToken {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id   String @db.Uuid
+  device_id String @db.VarChar(256)
+
+  // bcrypt(JTI, cost=12). Verify via: bcrypt.compare(incoming_jti, token_hash)
+  token_hash String @db.VarChar(72)
+
+  expires_at DateTime  @db.Timestamptz(6)
+  revoked_at DateTime? @db.Timestamptz(6)
+
+  user_agent String? @db.VarChar(500)
+  ip_address String? @db.VarChar(45)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, revoked_at])
+  @@index([user_id, device_id])
+  @@index([expires_at])
+  @@index([token_hash])
+  @@map("refresh_tokens")
+}
+
+// =============================================================================
+// MODEL 18 — NotificationLog
+// Audit log for every notification sent (FCM + WhatsApp).
+// Lambda:delivery-monitor checks undelivered FCM > 5 min → triggers WhatsApp fallback.
+// WhatsApp template must be one of the 16 pre-approved Meta templates.
+// =============================================================================
+model NotificationLog {
+  id      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id String @db.Uuid
+
+  channel    NotificationChannel
+  event_type String              @db.VarChar(100)
+
+  fcm_message_id      String?         @db.VarChar(256)
+  fcm_delivery_status DeliveryStatus?
+
+  wa_template_name   String?         @db.VarChar(100)
+  wa_message_id      String?         @db.VarChar(256)
+  wa_delivery_status DeliveryStatus?
+  wa_fallback_sent   Boolean         @default(false)
+
+  related_entity_type String? @db.VarChar(50)
+  related_entity_id   String? @db.Uuid
+
+  sent_at      DateTime  @default(now()) @db.Timestamptz(6)
+  delivered_at DateTime? @db.Timestamptz(6)
+  read_at      DateTime? @db.Timestamptz(6)
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, sent_at(sort: Desc)], map: "notification_log_user_id_sent_at_desc_idx")
+  @@index([event_type])
+  @@index([wa_fallback_sent, sent_at])
+  @@index([fcm_delivery_status])
+
+  @@index([related_entity_id])
+  @@map("notification_log")
+}
+
+// =============================================================================
+// MODEL 19 — InAppMessage
+// Real-time in-app messaging per contact event.
+// Socket.IO /messages namespace, room: conversation:{event_id}.
+// Both consumer and provider's user_id can be the sender_id.
+// =============================================================================
+model InAppMessage {
+  id               String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contact_event_id String  @db.Uuid
+  sender_id        String  @db.Uuid
+
+  message_text String? @db.Text
+  photo_url    String? @db.VarChar(512)
+
+  sent_at      DateTime  @default(now()) @db.Timestamptz(6)
+  delivered_at DateTime? @db.Timestamptz(6)
+  read_at      DateTime? @db.Timestamptz(6)
+
+  is_deleted Boolean @default(false)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt       @db.Timestamptz(6)
+
+  // Relations
+  contact_event ContactEvent @relation(fields: [contact_event_id], references: [id], onDelete: Cascade)
+  sender        User         @relation("MessageSender", fields: [sender_id], references: [id], onDelete: Restrict)
+
+  @@index([contact_event_id, sent_at(sort: Asc)])
+  @@index([sender_id])
+  @@map("in_app_messages")
+}
+
+// =============================================================================
+// MODEL 20 — SystemConfig
+// 68 admin-configurable keys. Seeded in migration V031. Hot-reloaded on SIGHUP.
+// NEVER hardcode any threshold in application code — always read from this table.
+// Key examples: trust_tier_basic_threshold=20, rating_bonus_leads=2,
+//   customer_weight_curve, push_discovery_trust_threshold,
+//   reveal_consumer_phone_on_accept, contact_lead_cost,
+//   rating_expiry_after_skips, certificate_below_grace_days
+// =============================================================================
+model SystemConfig {
+  key         String @id @db.VarChar(100)
+  value       String @db.Text
+  description String? @db.Text
+
+  // "string" | "integer" | "float" | "boolean" | "json"
+  data_type String @default("string") @db.VarChar(20)
+
+  updated_by String?  @db.VarChar(100)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  @@map("system_config")
+}
+
+// =============================================================================
+// MODEL 21 — ConsentRecord
+// DPDP Act 2023 compliance. Immutable consent events.
+// POST /auth/firebase/verify: consent_given=true → INSERT dpdp_processing atomically with user creation.
+// DELETE /users/me/consent/:type → sets withdrawn_at (never hard-deletes).
+// =============================================================================
+model ConsentRecord {
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String      @db.Uuid
+  consent_type ConsentType
+
+  granted_at   DateTime  @default(now()) @db.Timestamptz(6)
+  withdrawn_at DateTime? @db.Timestamptz(6)
+
+  policy_version String @default("1.0") @db.VarChar(20)
+  ip_address     String? @db.VarChar(45)
+  user_agent     String? @db.VarChar(500)
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id], onDelete: Restrict)
+
+  @@unique([user_id, consent_type])
+  @@index([user_id])
+  @@index([consent_type])
+  @@map("consent_records")
+}
+
+// =============================================================================
+// MODEL 22 — TrustFlag
+// Raised by anomaly detection or admin for suspicious trust activity.
+// evidence JSONB: structured proof (burst timestamps, pattern analysis, etc.).
+// resolution: admin notes on how the flag was closed.
+// =============================================================================
+model TrustFlag {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider_id String  @db.Uuid
+  rating_id   String? @db.Uuid
+
+  flag_type TrustFlagType
+  severity  TrustFlagSeverity
+  status    TrustFlagStatus   @default(open)
+
+  evidence Json @default("{}")
+
+  raised_by_system   Boolean @default(true)
+  raised_by_admin_id String? @db.Uuid
+
+  resolution           String?   @db.Text
+  resolved_at          DateTime? @db.Timestamptz(6)
+  resolved_by_admin_id String?   @db.Uuid
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  provider ProviderProfile @relation(fields: [provider_id], references: [id], onDelete: Cascade)
+  rating   Rating?         @relation(fields: [rating_id], references: [id], onDelete: SetNull)
+
+  @@index([provider_id, status])
+  @@index([status, severity])
+  @@index([rating_id])
+  @@index([flag_type])
+
+  @@map("trust_flags")
+}
+
+// =============================================================================
+// MODEL 23 — TsaasApiKey
+// Trust-as-a-Service B2B API keys.
+// hashed_key: bcrypt(raw_api_key, cost=12). Raw key shown to client ONCE only.
+// Auth header: X-TSaaS-API-Key. Endpoints: /api/v2/tsaas/ prefix.
+// =============================================================================
+model TsaasApiKey {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id String @unique @db.VarChar(100)
+
+  hashed_key   String @db.VarChar(72)
+  client_name  String @db.VarChar(200)
+  client_email String @db.VarChar(200)
+
+  monthly_limit Int      @default(1000)
+  calls_used    Int      @default(0)
+  calls_month   DateTime @db.Date
+
+  is_active    Boolean   @default(true)
+  last_used_at DateTime? @db.Timestamptz(6)
+
+  requires_provider_consent Boolean @default(true)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  usage_logs TsaasUsageLog[]
+
+  @@index([client_id])
+  @@index([is_active])
+  @@map("tsaas_api_keys")
+}
+
+// =============================================================================
+// MODEL 24 — TsaasUsageLog
+// Per-call log for TSaaS API usage. Supports billing, abuse detection, SLA reporting.
+// =============================================================================
+model TsaasUsageLog {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id   String @db.VarChar(100)
+  provider_id String @db.Uuid
+
+  endpoint       String @db.VarChar(200)
+  response_code  Int
+  latency_ms     Int?
+  correlation_id String? @db.VarChar(128)
+
+  called_at DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relations
+  api_key  TsaasApiKey     @relation(fields: [client_id], references: [client_id], onDelete: Restrict)
+  provider ProviderProfile @relation(fields: [provider_id], references: [id], onDelete: Restrict)
+
+  @@index([client_id, called_at(sort: Desc)])
+  @@index([provider_id])
+  @@index([response_code])
+  @@map("tsaas_usage_log")
+}
+
+// =============================================================================
+// MODEL (admin_users) — AdminUser
+// Admin portal users only. Separate from consumer/provider phone OTP users.
+// Auth: Firebase email+password. VPN-only in production (port 3099).
+// Critical Rule #19: Phone users can NEVER escalate to admin.
+// =============================================================================
+
+model AdminUser {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String   @unique @db.VarChar(255)
+  display_name String   @db.VarChar(100)
+  is_active    Boolean  @default(true)
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @updatedAt @db.Timestamptz(6)
+  last_login_at DateTime? @db.Timestamptz(6)
+
+  @@index([email])
+  @@index([is_active])
+  @@map("admin_users")
+}
+
+// =============================================================================
+// MODEL 25 — CertificateRecord
+// ONE record per provider lifetime. Idempotency via UNIQUE on provider_id.
+// Issued ONCE when trust_score first crosses 80 (highly_trusted threshold).
+// Format: SAT-{CITY}-{YEAR}-{5DIGIT_SEQ}  e.g. SAT-HYD-2026-08412
+// PDF: s3://satvaaah-documents/certificates/{city_id}/{provider_id}/{certId}.pdf
+// Verify: satvaaah.com/verify/{certId} — public, no auth, CloudFront served.
+// Grace period: certificate_below_grace_days=30 (system_config) before revocation.
+// =============================================================================
+model CertificateRecord {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider_id String @unique @db.Uuid
+  city_id     String? @db.Uuid
+
+  certificate_id   String @unique @db.VarChar(30)
+  issued_at        DateTime  @db.Timestamptz(6)
+  valid_until      DateTime? @db.Timestamptz(6)
+
+  s3_key           String @db.VarChar(512)
+  verification_url String @db.VarChar(512)
+
+  // Grace period tracking
+  below_threshold_since DateTime? @db.Timestamptz(6)
+  is_suspended          Boolean   @default(false)
+  is_revoked            Boolean   @default(false)
+  revoked_at            DateTime? @db.Timestamptz(6)
+  revocation_reason     String?   @db.VarChar(500)
+
+  triggered_by_lambda_id String? @db.VarChar(256)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  provider ProviderProfile @relation(fields: [provider_id], references: [id], onDelete: Restrict)
+  city     City?           @relation(fields: [city_id], references: [id], onDelete: SetNull)
+
+  @@index([certificate_id])
+  @@index([provider_id])
+  @@index([is_revoked, is_suspended])
+  @@map("certificate_records")
+}
+
+// =============================================================================
+// MODEL 26 — ReferralEvent
+// Tracks referral chain: referrer shares code via Branch.io deep link.
+// Reward granted by services/payment (port 3007) after conversion confirmed.
+// Branch.io deferred deep linking persists referral_code through app install.
+// referred_id UNIQUE: one person can only be referred once.
+// =============================================================================
+model ReferralEvent {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  referrer_id String @db.Uuid
+  referred_id String @unique @db.Uuid
+
+  referral_code String @db.VarChar(16)
+
+  converted_at         DateTime? @db.Timestamptz(6)
+  reward_type          String?   @db.VarChar(50)
+  reward_amount_paise  Int?
+  reward_granted       Boolean   @default(false)
+  reward_granted_at    DateTime? @db.Timestamptz(6)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relations
+  referrer User @relation("Referrer", fields: [referrer_id], references: [id], onDelete: Restrict)
+  referred User @relation("Referred", fields: [referred_id], references: [id], onDelete: Restrict)
+
+  @@index([referrer_id])
+  @@index([referral_code])
+  @@index([reward_granted])
+  @@map("referral_events")
+}
+
+// =============================================================================
+// MODEL 27 — SavedProvider
+// Consumer's saved providers list. Composite PK for O(1) existence checks.
+// =============================================================================
+model SavedProvider {
+  consumer_id String @db.Uuid
+  provider_id String @db.Uuid
+
+  saved_at DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relations
+  consumer ConsumerProfile @relation(fields: [consumer_id], references: [id], onDelete: Cascade)
+  provider ProviderProfile @relation(fields: [provider_id], references: [id], onDelete: Cascade)
+
+  @@id([consumer_id, provider_id])
+  @@index([consumer_id, saved_at(sort: Desc)])
+  @@index([provider_id])
+  @@map("saved_providers")
+}
+
+// =============================================================================
+// MODEL 28 — ConsumerRating
+// Provider rates consumer AFTER a completed contact event.
+// Feeds into consumer_profiles.trust_score (services/rating, port 3005).
+// One rating per provider per contact event (UNIQUE constraint).
+// =============================================================================
+model ConsumerRating {
+  id               String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  consumer_id      String @db.Uuid
+  provider_id      String @db.Uuid
+  contact_event_id String @db.Uuid
+
+  overall_stars     Int
+  reliability       Int?
+  payment_behaviour Int?
+  review_note       String? @db.Text
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relations
+  consumer      ConsumerProfile @relation("ConsumerRated", fields: [consumer_id], references: [id], onDelete: Restrict)
+  provider      ProviderProfile @relation("ProviderGiving", fields: [provider_id], references: [id], onDelete: Restrict)
+  contact_event ContactEvent    @relation(fields: [contact_event_id], references: [id], onDelete: Restrict)
+
+  @@unique([provider_id, contact_event_id])
+  @@index([consumer_id])
+  @@index([contact_event_id])
+  @@map("consumer_ratings")
+}
+
+// =============================================================================
+// MODEL 29 — ExternalRating
+// Scraped ratings from Google/Zomato/Practo/JustDial/Sulekha.
+// Lambda:ratings-refresh (EventBridge daily) refreshes these records.
+// is_stale=true after 90 days → weight in rating service halved (0.3 → 0.15).
+// Consumer CANNOT submit scraped_external ratings — only Lambda writes here.
+// =============================================================================
+model ExternalRating {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider_id String @db.Uuid
+
+  platform    String @db.VarChar(50)
+  rating_avg  Float
+  review_count Int
+  platform_url String? @db.VarChar(500)
+
+  scraped_at DateTime @db.Timestamptz(6)
+  is_stale   Boolean  @default(false)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  provider ProviderProfile @relation(fields: [provider_id], references: [id], onDelete: Cascade)
+
+  @@unique([provider_id, platform])
+  @@index([provider_id])
+  @@index([is_stale, scraped_at(sort: Asc)])
+  @@map("external_ratings")
+}
+
+// =============================================================================
+// MODEL 30 — OpenSearchSyncLog
+// Audit log for PostgreSQL → OpenSearch CDC sync (V018 trigger → SQS → Lambda).
+// DLQ: maxReceiveCount=3. SQS message retention: 14 days.
+// sync_status: "queued" | "in_progress" | "success" | "failed" | "dead_letter"
+// =============================================================================
+model OpenSearchSyncLog {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider_id String @db.Uuid
+
+  trigger_type String @db.VarChar(50)
+  sync_status  String @db.VarChar(30)
+
+  sqs_message_id    String? @db.VarChar(256)
+  lambda_request_id String? @db.VarChar(256)
+  attempt_count     Int     @default(1)
+  error_message     String? @db.Text
+  correlation_id    String? @db.VarChar(128)
+
+  synced_at  DateTime? @db.Timestamptz(6)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime  @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  provider ProviderProfile @relation(fields: [provider_id], references: [id], onDelete: Cascade)
+
+  @@index([provider_id, created_at(sort: Desc)])
+  @@index([sync_status])
+  @@index([trigger_type, sync_status])
+  @@map("opensearch_sync_log")
+}
+
+// =============================================================================
+// MODEL 31 — City
+// Launch cities with PostGIS boundary polygons.
+// GiST index (raw SQL in V003):
+//   CREATE INDEX idx_cities_boundary ON cities USING GIST (boundary);
+
+// =============================================================================
+// MODEL 33 — ScrapingJob
+// Tracks each scraping run. Created by V028 migration.
+// =============================================================================
+model ScrapingJob {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  job_name        String   @db.VarChar(200)
+  source          String   @db.VarChar(50)
+  taxonomy_node_id String? @db.Uuid
+  city_id         String?  @db.Uuid
+  area_id         String?  @db.Uuid
+  status          String   @default("queued") @db.VarChar(30)
+  records_scraped Int      @default(0)
+  records_deduped Int      @default(0)
+  records_staged  Int      @default(0)
+  started_at      DateTime? @db.Timestamptz(6)
+  completed_at    DateTime? @db.Timestamptz(6)
+  error_log       String?  @db.Text
+  scheduled_at    DateTime @default(now()) @db.Timestamptz(6)
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  staging_records ScrapeStaging[]
+
+  @@index([status, scheduled_at])
+  @@map("scraping_jobs")
+}
+
+// =============================================================================
+// MODEL 34 — ScrapeStaging
+// NLP-processed, deduped scraping records awaiting admin promotion.
+// =============================================================================
+model ScrapeStaging {
+  id               String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  job_id           String  @db.Uuid
+  source           String  @db.VarChar(50)
+  source_url       String? @db.Text
+  source_entity_id String? @db.VarChar(256)
+  business_name    String? @db.Text
+  phone            String? @db.VarChar(20)
+  phone_normalized String? @db.VarChar(15)
+  address          String? @db.Text
+  lat              Float?  @db.DoublePrecision
+  lng              Float?  @db.DoublePrecision
+  taxonomy_node_id String? @db.Uuid
+  listing_type     String? @db.VarChar(50)
+  raw_data         Json    @default("{}")
+  nlp_extracted    Json?
+  dedup_score      Float?  @db.DoublePrecision
+  is_duplicate     Boolean @default(false)
+  matched_provider_id String? @db.Uuid
+  is_promoted      Boolean  @default(false)
+  promoted_at      DateTime? @db.Timestamptz(6)
+  promoted_by      String?   @db.VarChar(100)
+  staged_at        DateTime  @default(now()) @db.Timestamptz(6)
+
+  job               ScrapingJob         @relation(fields: [job_id], references: [id], onDelete: Cascade)
+  outreach_schedule OutreachSchedule[]
+
+  @@index([staged_at])
+  @@map("scraping_staging")
+}
+
+// =============================================================================
+// MODEL 35 — OutreachSchedule
+// WhatsApp 3-attempt outreach for scraped providers.
+// Lambda:outreach-scheduler (EventBridge every 15 min) reads next_attempt_at index.
+// =============================================================================
+model OutreachSchedule {
+  id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider_id     String? @db.Uuid
+  staging_id      String? @db.Uuid
+  phone           String  @db.VarChar(20)
+  outreach_status String  @default("pending") @db.VarChar(50)
+  attempt_1_at    DateTime? @db.Timestamptz(6)
+  attempt_2_at    DateTime? @db.Timestamptz(6)
+  attempt_3_at    DateTime? @db.Timestamptz(6)
+  next_attempt_at DateTime? @db.Timestamptz(6)
+  wa_message_id_1 String?   @db.VarChar(256)
+  wa_message_id_2 String?   @db.VarChar(256)
+  wa_message_id_3 String?   @db.VarChar(256)
+  opted_out_at    DateTime? @db.Timestamptz(6)
+  conversion_at   DateTime? @db.Timestamptz(6)
+  converted_user_id String? @db.Uuid
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime  @updatedAt       @db.Timestamptz(6)
+
+  staging ScrapeStaging? @relation(fields: [staging_id], references: [id], onDelete: Cascade)
+
+  @@index([next_attempt_at])
+  @@index([phone])
+  @@map("outreach_schedule")
+}
+
+// =============================================================================
+model City {
+  id           String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String @db.VarChar(100)
+  state        String @db.VarChar(100)
+  slug         String @unique @db.VarChar(100)
+  country_code String @default("IND") @db.VarChar(3)
+
+  // PostGIS MultiPolygon — DO NOT query via Prisma ORM. Use $queryRaw + ST_Within.
+  boundary Unsupported("geography(MultiPolygon,4326)")?
+
+  is_active      Boolean @default(true)
+  is_launch_city Boolean @default(false)
+
+  // Per-city ring expansion overrides (NULL = use system_config defaults)
+  ring_1_km Int?
+  ring_2_km Int?
+  ring_3_km Int?
+  ring_4_km Int?
+  ring_5_km Int?
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  areas               Area[]
+  consumer_profiles   ConsumerProfile[]
+  provider_profiles   ProviderProfile[]
+  certificate_records CertificateRecord[]
+
+  @@index([slug])
+  @@index([is_active])
+  @@map("cities")
+}
+
+// =============================================================================
+// MODEL 32 — Area
+// Sub-city localities/neighbourhoods. PostGIS centroid for ring-expansion search.
+// GiST index (raw SQL in V003):
+//   CREATE INDEX idx_areas_centroid ON areas USING GIST (centroid);
+// =============================================================================
+model Area {
+  id      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  city_id String @db.Uuid
+  name    String @db.VarChar(150)
+  slug    String @db.VarChar(150)
+
+  // PostGIS Point centroid — use $queryRaw + ST_Distance for proximity queries.
+  centroid Unsupported("geography(Point,4326)")?
+
+  bbox_min_lat Float? @db.DoublePrecision
+  bbox_max_lat Float? @db.DoublePrecision
+  bbox_min_lng Float? @db.DoublePrecision
+  bbox_max_lng Float? @db.DoublePrecision
+
+  is_active  Boolean @default(true)
+  sort_order Int     @default(0)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  city              City              @relation(fields: [city_id], references: [id], onDelete: Restrict)
+  provider_profiles ProviderProfile[]
+
+  @@unique([city_id, slug])
+  @@index([city_id, is_active])
+  @@map("areas")
+}
+
+// =============================================================================
+// END OF CANONICAL SCHEMA
+// SatvAAh Technologies — CONFIDENTIAL
+// 32 models | 17 enums | Version 2.0 | April 2026
+//
+// PostGIS raw SQL indexes (in migrations — Prisma cannot declare GiST):
+//   V003: CREATE INDEX idx_cities_boundary  ON cities           USING GIST (boundary);
+//   V003: CREATE INDEX idx_areas_centroid   ON areas            USING GIST (centroid);
+//   V004: CREATE INDEX idx_provider_geo     ON provider_profiles USING GIST (geo_point);
+//
+// pg_trgm GIN index for taxonomy autocomplete (V017):
+//   CREATE INDEX idx_taxonomy_trgm ON taxonomy_nodes USING GIN (display_name gin_trgm_ops);
+//
+// V018 DB trigger (app code MUST NEVER write provider_profiles.trust_score):
+//   CREATE OR REPLACE FUNCTION sync_trust_score_to_profile()
+//   RETURNS TRIGGER AS $$
+//   BEGIN
+//     UPDATE provider_profiles
+//     SET trust_score = NEW.display_score
+//     WHERE id = NEW.provider_id;
+//     RETURN NEW;
+//   END;
+//   $$ LANGUAGE plpgsql;
+//
+//   CREATE TRIGGER trg_sync_trust_score
+//   AFTER INSERT OR UPDATE ON trust_scores
+//   FOR EACH ROW EXECUTE FUNCTION sync_trust_score_to_profile();
+// =============================================================================

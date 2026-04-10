@@ -1,0 +1,23 @@
+{
+  "name": "@satvaaah/lambda-ratings-refresh",
+  "version": "1.0.0",
+  "description": "SatvAAh Lambda \u2014 Periodic trust score recalculation from ratings",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sqs": "^3.540.0",
+    "@prisma/client": "^5.13.0",
+    "axios": "^1.6.8",
+    "uuid": "^9.0.0",
+    "winston": "^3.13.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.136",
+    "@types/uuid": "^9.0.7",
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  }
+}

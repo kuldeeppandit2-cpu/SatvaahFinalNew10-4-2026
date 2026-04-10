@@ -1,0 +1,110 @@
+{
+  "expo": {
+    "name": "SatvAAh",
+    "slug": "satvaaah",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#C8691A"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.satvaaah.app",
+      "associatedDomains": [
+        "applinks:satvaaah.com",
+        "applinks:satvaaah.app.link",
+        "applinks:satvaaah-alternate.app.link"
+      ],
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "SatvAAh uses your location to show nearby service providers and to confirm your service area.",
+        "NSCameraUsageDescription": "SatvAAh uses your camera to upload profile photos and credential documents.",
+        "NSPhotoLibraryUsageDescription": "SatvAAh accesses your photo library to upload profile and credential images."
+      },
+      "googleServicesFile": "./GoogleService-Info.plist"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#C8691A"
+      },
+      "package": "com.satvaaah.app",
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "com.google.android.c2dm.permission.RECEIVE"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "satvaaah.com",
+              "pathPrefix": "/provider"
+            },
+            {
+              "scheme": "https",
+              "host": "satvaaah.com",
+              "pathPrefix": "/join"
+            },
+            {
+              "scheme": "https",
+              "host": "satvaaah.com",
+              "pathPrefix": "/verify"
+            },
+            {
+              "scheme": "https",
+              "host": "satvaaah.app.link"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
+      "googleServicesFile": "./google-services.json"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "scheme": "satvaaah",
+    "plugins": [
+      "expo-font",
+      "expo-splash-screen",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "SatvAAh uses your location to show nearby service providers and confirm your service area."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "SatvAAh accesses your photo library for profile and credential images.",
+          "cameraPermission": "SatvAAh uses your camera to upload profile photos and credential documents."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#2E7D72",
+          "sounds": []
+        }
+      ]
+    ]
+  }
+}

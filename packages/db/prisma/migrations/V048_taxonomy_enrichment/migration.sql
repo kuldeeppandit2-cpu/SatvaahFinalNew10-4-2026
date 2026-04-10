@@ -1,0 +1,13 @@
+BEGIN;
+ALTER TABLE taxonomy_nodes ADD COLUMN IF NOT EXISTS pricing_model VARCHAR(100);
+ALTER TABLE taxonomy_nodes ADD COLUMN IF NOT EXISTS price_unit VARCHAR(50);
+ALTER TABLE taxonomy_nodes ADD COLUMN IF NOT EXISTS verification_gate VARCHAR(20);
+ALTER TABLE taxonomy_nodes ADD COLUMN IF NOT EXISTS licence_body_text VARCHAR(200);
+ALTER TABLE taxonomy_nodes ADD COLUMN IF NOT EXISTS provider_prompt VARCHAR(500);
+ALTER TABLE taxonomy_nodes ADD COLUMN IF NOT EXISTS geo_search_default VARCHAR(20);
+ALTER TABLE taxonomy_nodes ADD COLUMN IF NOT EXISTS provider_service_area VARCHAR(20);
+ALTER TABLE taxonomy_nodes ADD COLUMN IF NOT EXISTS default_slot_minutes INT;
+ALTER TABLE taxonomy_nodes ADD COLUMN IF NOT EXISTS search_synonyms TEXT;
+ALTER TABLE taxonomy_nodes ADD COLUMN IF NOT EXISTS icon_emoji VARCHAR(10);
+ALTER TABLE taxonomy_nodes ADD COLUMN IF NOT EXISTS hex_color VARCHAR(7);
+COMMIT;

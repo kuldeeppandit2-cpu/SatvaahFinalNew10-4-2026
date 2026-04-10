@@ -1,0 +1,38 @@
+{
+  "name": "@satvaaah/payment",
+  "version": "1.0.0",
+  "description": "SatvAAh payment service \u2014 Razorpay subscriptions, lead counter, referrals",
+  "main": "dist/app.js",
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
+    "start": "node dist/app.js",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@satvaaah/config": "workspace:*",
+    "@satvaaah/db": "workspace:*",
+    "@satvaaah/errors": "workspace:*",
+    "@satvaaah/logger": "workspace:*",
+    "@satvaaah/middleware": "workspace:*",
+    "@satvaaah/types": "workspace:*",
+    "express": "^4.18.2",
+    "ioredis": "^5.3.2",
+    "jsonwebtoken": "^9.0.2",
+    "uuid": "^9.0.0",
+    "razorpay": "^2.9.0",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/node": "^20.11.0",
+    "@types/uuid": "^9.0.7",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.3.3",
+    "@types/cors": "^2.8.17",
+    "@types/pg": "^8.11.0"
+  }
+}

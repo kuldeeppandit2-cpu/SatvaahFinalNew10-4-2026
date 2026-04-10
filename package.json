@@ -1,0 +1,27 @@
+{
+  "name": "satvaaah",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SatvAAh \u2014 Trust Layer for India's Informal Economy",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "type-check": "turbo run type-check",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "db:generate": "turbo run db:generate"
+  },
+  "devDependencies": {
+    "turbo": "^1.13.0",
+    "typescript": "^5.4.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "dependencies": {
+    "pg": "^8.11.3",
+    "uuid": "^9.0.0"
+  }
+}

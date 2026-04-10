@@ -1,0 +1,113 @@
+{
+  "settings": {
+    "number_of_shards": 3,
+    "number_of_replicas": 1,
+    "index": {
+      "refresh_interval": "1s"
+    },
+    "analysis": {
+      "analyzer": {
+        "satvaaah_standard": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase", "asciifolding", "satvaaah_stop"]
+        }
+      },
+      "filter": {
+        "satvaaah_stop": {
+          "type": "stop",
+          "stopwords": ["_english_"]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "provider_id": {
+        "type": "keyword"
+      },
+      "display_name": {
+        "type": "text",
+        "analyzer": "satvaaah_standard",
+        "fields": {
+          "keyword": { "type": "keyword", "ignore_above": 256 }
+        }
+      },
+      "category_id": {
+        "type": "keyword"
+      },
+      "category_l1": {
+        "type": "keyword"
+      },
+      "category_l2": {
+        "type": "keyword"
+      },
+      "category_l3": {
+        "type": "keyword"
+      },
+      "category_l4": {
+        "type": "text",
+        "analyzer": "satvaaah_standard",
+        "fields": {
+          "keyword": { "type": "keyword", "ignore_above": 256 }
+        }
+      },
+      "tab": {
+        "type": "keyword"
+      },
+      "city_id": {
+        "type": "keyword"
+      },
+      "geo_point": {
+        "type": "geo_point"
+      },
+      "trust_score": {
+        "type": "float"
+      },
+      "trust_tier": {
+        "type": "keyword"
+      },
+      "is_available": {
+        "type": "boolean"
+      },
+      "availability_mode": {
+        "type": "keyword"
+      },
+      "availability_updated_at": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "is_active": {
+        "type": "boolean"
+      },
+      "is_claimed": {
+        "type": "boolean"
+      },
+      "listing_type": {
+        "type": "keyword"
+      },
+      "profile_photo_url": {
+        "type": "keyword",
+        "index": false
+      },
+      "tagline": {
+        "type": "text",
+        "analyzer": "satvaaah_standard"
+      },
+      "years_of_experience": {
+        "type": "integer"
+      },
+      "review_count": {
+        "type": "integer"
+      },
+      "avg_rating": {
+        "type": "float"
+      },
+      "updated_at": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      }
+    }
+  }
+}

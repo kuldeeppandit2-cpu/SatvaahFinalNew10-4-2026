@@ -1,0 +1,139 @@
+# SatvAAh — .gitignore
+# Covers: Node.js, Python, React Native / Expo, TypeScript, secrets, Docker
+
+# ── Secrets (NEVER commit) ────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+google-services.json
+GoogleService-Info.plist
+firebase-adminsdk*.json
+serviceAccountKey.json
+
+# ── Node.js ───────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.pnp
+.pnp.js
+
+# ── TypeScript build output ───────────────────────────────
+dist/
+build/
+*.js.map
+*.d.ts.map
+tsconfig.tsbuildinfo
+
+# ── Python ────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+*.egg
+venv/
+.venv/
+env/
+.env/
+pip-wheel-metadata/
+*.pyc
+
+# ── React Native / Expo ───────────────────────────────────
+.expo/
+.expo-shared/
+*.orig.*
+web-build/
+ios/Pods/
+ios/build/
+android/build/
+android/app/build/
+android/.gradle/
+*.apk
+*.ipa
+*.aab
+
+# ── Turborepo ─────────────────────────────────────────────
+.turbo/
+.cache/
+
+# ── OS ────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+desktop.ini
+
+# ── IDE ───────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*.suo
+.project
+.classpath
+
+# ── Logs ─────────────────────────────────────────────────
+logs/
+*.log
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# ── Test / Coverage ───────────────────────────────────────
+coverage/
+.nyc_output/
+junit.xml
+test-results/
+
+# ── Terraform ─────────────────────────────────────────────
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/.terraform.lock.hcl
+scripts/test-api/node_modules/
+scripts/test-api/dist/
+
+# pnpm
+.pnpm-store/
+.pnpm-debug.log*
+pnpm-debug.log*
+
+# Never commit a nested repo accidentally
+/SatvaahFinal/
+
+# npm / yarn / pnpm caches and stores
+.npm/
+.yarn/
+.cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env files (never commit secrets)
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+apps/admin-web/.next/
+*.bak
+*.bak2
+*.bak3
+*.bak4
+*.bak5

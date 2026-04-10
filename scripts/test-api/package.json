@@ -1,0 +1,33 @@
+{
+  "name": "satvaaah-api-tests",
+  "version": "1.0.0",
+  "description": "SatvAAh backend integration test suite",
+  "private": true,
+  "scripts": {
+    "test": "bash verify-all.sh",
+    "test:auth": "ts-node 01-auth-flow.ts",
+    "test:provider": "ts-node 02-provider-journey.ts",
+    "test:search": "ts-node 03-consumer-search.ts",
+    "test:contact": "ts-node 04-contact-flow.ts",
+    "test:rating": "ts-node 05-rating-flow.ts",
+    "test:trust": "ts-node 06-trust-recalculation.ts",
+    "test:certificate": "ts-node 07-certificate-idempotency.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sqs": "^3.1024.0",
+    "axios": "^1.14.0",
+    "firebase-admin": "^12.7.0",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.20.0",
+    "socket.io-client": "^4.8.3",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^20.19.39",
+    "@types/pg": "^8.20.0",
+    "@types/uuid": "^9.0.8",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

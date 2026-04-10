@@ -1,0 +1,718 @@
+version: "3.9"
+
+# =============================================================================
+# SatvAAh — Trust Layer for India's Informal Economy
+# Docker Compose — Development Environment
+# Hyderabad Launch | Zero Commission
+# =============================================================================
+# Ports:
+#   PostgreSQL   → 5432   (host: postgres)
+#   Redis        → 6379   (host: satvaaah-redis)
+#   MongoDB      → 27017  (host: mongodb)
+#   OpenSearch   → 9200   (host: opensearch)
+#   auth         → 3001
+#   user         → 3002
+#   search       → 3003
+#   trust        → 3004
+#   rating       → 3005
+#   notification → 3006
+#   payment      → 3007
+#   admin        → 3009   (NO 3008 — no booking/provider service)
+#   scraping     → 3010   (Python 3.11)
+#   admin-web    → 3099   (Next.js — separate compose or standalone)
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Shared extension fields — reused across all Node.js services
+# ---------------------------------------------------------------------------
+x-node-service-base: &node-service-base
+  image: node:18-alpine
+  working_dir: /workspace
+  restart: unless-stopped
+  networks:
+    - satvaaah-net
+  volumes:
+    - .:/workspace
+    - node_modules:/workspace/node_modules
+  environment:
+    NODE_ENV: ${NODE_ENV:-development}
+    LOG_LEVEL: ${LOG_LEVEL:-debug}
+  depends_on:
+    postgres:
+      condition: service_healthy
+    satvaaah-redis:
+      condition: service_healthy
+    mongodb:
+      condition: service_healthy
+    opensearch:
+      condition: service_healthy
+    migrate:
+      condition: service_completed_successfully
+    installer:
+      condition: service_completed_successfully
+
+x-node-healthcheck: &node-healthcheck
+  interval: 30s
+  timeout: 10s
+  retries: 5
+  start_period: 40s
+
+services:
+
+  # ===========================================================================
+  # INFRASTRUCTURE — DATABASES & BROKERS
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 15 — Primary relational store (users, trust, ratings, payments)
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgis/postgis:15-3.4-alpine
+    container_name: satvaaah-postgres
+    hostname: postgres
+    restart: unless-stopped
+    networks:
+      - satvaaah-net
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-satvaaah}
+      POSTGRES_USER: ${POSTGRES_USER:-satvaaah_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "psql -U ${POSTGRES_USER:-satvaaah_user} -d ${POSTGRES_DB:-satvaaah} -c 'SELECT 1' -q --no-align -t 2>/dev/null | grep -q 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    command: >
+      postgres
+        -c max_connections=200
+        -c shared_buffers=256MB
+        -c effective_cache_size=768MB
+        -c maintenance_work_mem=64MB
+        -c checkpoint_completion_target=0.9
+        -c wal_buffers=16MB
+        -c default_statistics_target=100
+        -c random_page_cost=1.1
+        -c effective_io_concurrency=200
+        -c work_mem=4MB
+        -c min_wal_size=1GB
+        -c max_wal_size=4GB
+
+  # ---------------------------------------------------------------------------
+  # Redis 7 — Sessions, caches, rate limiting, pub/sub queues
+  # ---------------------------------------------------------------------------
+  satvaaah-redis:
+    image: redis:7-alpine
+    container_name: satvaaah-redis
+    hostname: satvaaah-redis
+    restart: unless-stopped
+    networks:
+      - satvaaah-net
+    volumes:
+      - redis_data:/data
+      - ./scripts/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    ports:
+      - "6379:6379"
+    command: redis-server /usr/local/etc/redis/redis.conf --requirepass ${REDIS_PASSWORD:-}
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD:-}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # ---------------------------------------------------------------------------
+  # MongoDB — Unstructured data: chat logs, activity feeds, scraping results
+  # ---------------------------------------------------------------------------
+  mongodb:
+    image: mongo:7.0
+    container_name: satvaaah-mongodb
+    hostname: mongodb
+    restart: unless-stopped
+    networks:
+      - satvaaah-net
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USER:-satvaaah_mongo_root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD}
+      MONGODB_PASSWORD: ${MONGODB_PASSWORD:-${MONGODB_ROOT_PASSWORD}}
+      MONGO_INITDB_DATABASE: ${MONGODB_DB:-satvaaah_mongo}
+    volumes:
+      - mongodb_data:/data/db
+      - ./scripts/mongodb/init.js:/docker-entrypoint-initdb.d/init.js:ro
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok", "--username", "${MONGODB_ROOT_USER:-satvaaah_mongo_root}", "--password", "${MONGODB_ROOT_PASSWORD}", "--authenticationDatabase", "admin"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
+
+  # ---------------------------------------------------------------------------
+  # OpenSearch 2.x — Full-text search, provider/service discovery
+  # Security disabled for dev. Enable before production.
+  # ---------------------------------------------------------------------------
+  opensearch:
+    image: opensearchproject/opensearch:2.12.0
+    container_name: satvaaah-opensearch
+    hostname: opensearch
+    restart: unless-stopped
+    networks:
+      - satvaaah-net
+    environment:
+      - cluster.name=satvaaah-cluster
+      - node.name=satvaaah-node-01
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+      - plugins.security.disabled=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
+      interval: 20s
+      timeout: 10s
+      retries: 15
+      start_period: 60s
+
+  # ===========================================================================
+  # MICROSERVICES — Node.js 18 (hot reload via nodemon)
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # migrate — Runs ONCE before all services. Applies all Prisma migrations.
+  # All other services depend on this completing successfully.
+  # ---------------------------------------------------------------------------
+  migrate:
+    image: node:18-alpine
+    container_name: satvaaah-migrate
+    working_dir: /workspace
+    restart: "no"
+    networks:
+      - satvaaah-net
+    volumes:
+      - .:/workspace
+    command: sh /workspace/scripts/docker-migrate.sh
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+
+  # ---------------------------------------------------------------------------
+  # installer — Runs pnpm install ONCE. All 8 services wait for this.
+  # Eliminates concurrent pnpm install race conditions on shared node_modules.
+  # ---------------------------------------------------------------------------
+  installer:
+    image: node:18-alpine
+    container_name: satvaaah-installer
+    working_dir: /workspace
+    restart: "no"
+    networks:
+      - satvaaah-net
+    volumes:
+      - .:/workspace
+      - node_modules:/workspace/node_modules
+    command: sh /workspace/scripts/docker-installer.sh
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+
+  # ---------------------------------------------------------------------------
+  # auth — Port 3001 | Firebase verify, JWT issue/refresh, DigiLocker KYC
+  # ---------------------------------------------------------------------------
+  auth:
+    <<: *node-service-base
+    container_name: satvaaah-auth
+    hostname: auth
+    working_dir: /workspace/services/auth
+    command: >
+      sh /workspace/scripts/docker-start.sh 
+    ports:
+      - "3001:3001"
+    environment:
+      SERVICE_DIR: services/auth
+      PORT: ${AUTH_SERVICE_PORT:-3001}
+      SERVICE_NAME: auth
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY}
+      DATABASE_URL: ${DATABASE_URL}
+      PRISMA_QUERY_ENGINE_LIBRARY: /workspace/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/libquery_engine-linux-musl-arm64-openssl-3.0.x.so.node
+      REDIS_URL: ${REDIS_URL}
+      # Firebase Admin SDK
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      FIREBASE_PRIVATE_KEY_ID: ${FIREBASE_PRIVATE_KEY_ID}
+      FIREBASE_PRIVATE_KEY: ${FIREBASE_PRIVATE_KEY}
+      FIREBASE_CLIENT_EMAIL: ${FIREBASE_CLIENT_EMAIL}
+      FIREBASE_CLIENT_ID: ${FIREBASE_CLIENT_ID}
+      FIREBASE_STORAGE_BUCKET: ${FIREBASE_STORAGE_BUCKET}
+      # JWT RS256
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      JWT_ACCESS_TOKEN_EXPIRY: ${JWT_ACCESS_TOKEN_EXPIRY:-15m}
+      JWT_REFRESH_TOKEN_EXPIRY: ${JWT_REFRESH_TOKEN_EXPIRY:-30d}
+      # DigiLocker
+      DIGILOCKER_CLIENT_ID: ${DIGILOCKER_CLIENT_ID}
+      DIGILOCKER_CLIENT_SECRET: ${DIGILOCKER_CLIENT_SECRET}
+      DIGILOCKER_REDIRECT_URI: ${DIGILOCKER_REDIRECT_URI}
+      DIGILOCKER_BASE_URL: ${DIGILOCKER_BASE_URL}
+      # Branch.io (deep links for OTP / magic links)
+      BRANCH_KEY: ${BRANCH_KEY}
+      BRANCH_SECRET: ${BRANCH_SECRET}
+      # Encryption
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      HMAC_SECRET: ${HMAC_SECRET}
+      # AWS (for S3 document upload during KYC)
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+      LAMBDA_DIGILOCKER_VERIFY_ARN: ${LAMBDA_DIGILOCKER_VERIFY_ARN}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
+      RATE_LIMIT_MAX_REQUESTS: ${RATE_LIMIT_MAX_REQUESTS:-100}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      <<: *node-healthcheck
+
+  # ---------------------------------------------------------------------------
+  # user — Port 3002 | Profiles, preferences, trust tier display, consent
+  # ---------------------------------------------------------------------------
+  user:
+    <<: *node-service-base
+    container_name: satvaaah-user
+    hostname: user
+    working_dir: /workspace/services/user
+    command: >
+      sh /workspace/scripts/docker-start.sh 
+    ports:
+      - "3002:3002"
+    environment:
+      SERVICE_DIR: services/user
+      PORT: ${USER_SERVICE_PORT:-3002}
+      SERVICE_NAME: user
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY}
+      DATABASE_URL: ${DATABASE_URL}
+      PRISMA_QUERY_ENGINE_LIBRARY: /workspace/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/libquery_engine-linux-musl-arm64-openssl-3.0.x.so.node
+      REDIS_URL: ${REDIS_URL}
+      MONGODB_URL: ${MONGODB_URL}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      S3_BUCKET_PROFILE_PHOTOS: ${S3_BUCKET_PROFILE_PHOTOS}
+      S3_PRESIGNED_URL_EXPIRY: ${S3_PRESIGNED_URL_EXPIRY:-3600}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      SQS_TRUST_SCORE_UPDATES_URL: ${SQS_TRUST_SCORE_UPDATES_URL}
+      TRUST_TIER_BASIC_THRESHOLD: ${TRUST_TIER_BASIC_THRESHOLD:-20}
+      TRUST_TIER_TRUSTED_THRESHOLD: ${TRUST_TIER_TRUSTED_THRESHOLD:-60}
+      TRUST_TIER_HIGHLY_TRUSTED_THRESHOLD: ${TRUST_TIER_HIGHLY_TRUSTED_THRESHOLD:-80}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3002/health || exit 1"]
+      <<: *node-healthcheck
+
+  # ---------------------------------------------------------------------------
+  # search — Port 3003 | Provider/service discovery, OpenSearch, intent matching
+  # ---------------------------------------------------------------------------
+  search:
+    <<: *node-service-base
+    container_name: satvaaah-search
+    hostname: search
+    working_dir: /workspace/services/search
+    command: >
+      sh /workspace/scripts/docker-start.sh 
+    ports:
+      - "3003:3003"
+    environment:
+      SERVICE_DIR: services/search
+      PORT: ${SEARCH_SERVICE_PORT:-3003}
+      SERVICE_NAME: search
+      OPENSEARCH_USERNAME: ${OPENSEARCH_USERNAME:-admin}
+      OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-admin}
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-dev-internal-key-change-in-prod}
+      DATABASE_URL: ${DATABASE_URL}
+      PRISMA_QUERY_ENGINE_LIBRARY: /workspace/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/libquery_engine-linux-musl-arm64-openssl-3.0.x.so.node
+      REDIS_URL: ${REDIS_URL}
+      OPENSEARCH_URL: ${OPENSEARCH_URL}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      LAMBDA_SEARCH_INDEXER_ARN: ${LAMBDA_SEARCH_INDEXER_ARN}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3003/health || exit 1"]
+      <<: *node-healthcheck
+
+  # ---------------------------------------------------------------------------
+  # trust — Port 3004 | Trust score engine, verifications, tier management
+  # Trust tier thresholds: Basic=20, Trusted=60, HighlyTrusted=80 (MASTER_CONTEXT Rule #22)
+  # ---------------------------------------------------------------------------
+  trust:
+    <<: *node-service-base
+    container_name: satvaaah-trust
+    hostname: trust
+    working_dir: /workspace/services/trust
+    command: >
+      sh /workspace/scripts/docker-start.sh 
+    ports:
+      - "3004:3004"
+    environment:
+      SERVICE_DIR: services/trust
+      PORT: ${TRUST_SERVICE_PORT:-3004}
+      SERVICE_NAME: trust
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY}
+      DATABASE_URL: ${DATABASE_URL}
+      PRISMA_QUERY_ENGINE_LIBRARY: /workspace/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/libquery_engine-linux-musl-arm64-openssl-3.0.x.so.node
+      REDIS_URL: ${REDIS_URL}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      SQS_TRUST_SCORE_UPDATES_URL: ${SQS_TRUST_SCORE_UPDATES_URL}
+      LAMBDA_TRUST_SCORE_ARN: ${LAMBDA_TRUST_SCORE_ARN}
+      LAMBDA_DIGILOCKER_VERIFY_ARN: ${LAMBDA_DIGILOCKER_VERIFY_ARN}
+      DIGILOCKER_CLIENT_ID: ${DIGILOCKER_CLIENT_ID}
+      DIGILOCKER_CLIENT_SECRET: ${DIGILOCKER_CLIENT_SECRET}
+      DIGILOCKER_BASE_URL: ${DIGILOCKER_BASE_URL}
+      TRUST_TIER_BASIC_THRESHOLD: ${TRUST_TIER_BASIC_THRESHOLD:-20}
+      TRUST_TIER_TRUSTED_THRESHOLD: ${TRUST_TIER_TRUSTED_THRESHOLD:-60}
+      TRUST_TIER_HIGHLY_TRUSTED_THRESHOLD: ${TRUST_TIER_HIGHLY_TRUSTED_THRESHOLD:-80}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      HMAC_SECRET: ${HMAC_SECRET}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3004/health || exit 1"]
+      <<: *node-healthcheck
+
+  # ---------------------------------------------------------------------------
+  # rating — Port 3005 | Ratings, reviews, aggregation, moderation
+  # ---------------------------------------------------------------------------
+  rating:
+    <<: *node-service-base
+    container_name: satvaaah-rating
+    hostname: rating
+    working_dir: /workspace/services/rating
+    command: >
+      sh /workspace/scripts/docker-start.sh 
+    ports:
+      - "3005:3005"
+    environment:
+      SERVICE_DIR: services/rating
+      PORT: ${RATING_SERVICE_PORT:-3005}
+      SERVICE_NAME: rating
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY}
+      DATABASE_URL: ${DATABASE_URL}
+      PRISMA_QUERY_ENGINE_LIBRARY: /workspace/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/libquery_engine-linux-musl-arm64-openssl-3.0.x.so.node
+      REDIS_URL: ${REDIS_URL}
+      MONGODB_URL: ${MONGODB_URL}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      SQS_RATING_QUEUE_URL: ${SQS_RATING_QUEUE_URL}
+      LAMBDA_RATING_AGGREGATOR_ARN: ${LAMBDA_RATING_AGGREGATOR_ARN}
+      SQS_TRUST_SCORE_UPDATES_URL: ${SQS_TRUST_SCORE_UPDATES_URL}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3005/health || exit 1"]
+      <<: *node-healthcheck
+
+  # ---------------------------------------------------------------------------
+  # notification — Port 3006 | WhatsApp (Gupshup), push, SMS, in-app
+  # 16 WhatsApp templates (incl. provider_final_reminder_7d = template 16)
+  # ---------------------------------------------------------------------------
+  notification:
+    <<: *node-service-base
+    container_name: satvaaah-notification
+    hostname: notification
+    working_dir: /workspace/services/notification
+    command: >
+      sh /workspace/scripts/docker-start.sh 
+    ports:
+      - "3006:3006"
+    environment:
+      SERVICE_DIR: services/notification
+      PORT: ${NOTIFICATION_SERVICE_PORT:-3006}
+      SERVICE_NAME: notification
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY}
+      DATABASE_URL: ${DATABASE_URL}
+      PRISMA_QUERY_ENGINE_LIBRARY: /workspace/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/libquery_engine-linux-musl-arm64-openssl-3.0.x.so.node
+      REDIS_URL: ${REDIS_URL}
+      MONGODB_URL: ${MONGODB_URL}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      # Gupshup WhatsApp
+      GUPSHUP_API_KEY: ${GUPSHUP_API_KEY}
+      GUPSHUP_APP_NAME: ${GUPSHUP_APP_NAME}
+      GUPSHUP_APP_ID: ${GUPSHUP_APP_ID}
+      GUPSHUP_SOURCE_NUMBER: ${GUPSHUP_SOURCE_NUMBER}
+      GUPSHUP_PARTNER_APP_ID: ${GUPSHUP_PARTNER_APP_ID}
+      GUPSHUP_WEBHOOK_TOKEN: ${GUPSHUP_WEBHOOK_TOKEN}
+      WHATSAPP_TEMPLATE_NAMESPACE: ${WHATSAPP_TEMPLATE_NAMESPACE}
+      # AWS
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      SQS_NOTIFICATION_QUEUE_URL: ${SQS_NOTIFICATION_QUEUE_URL:-http://satvaaah-localstack:4566/000000000000/satvaaah-notification.fifo}
+      GUPSHUP_API_URL: ${GUPSHUP_API_URL:-https://api.gupshup.io/sm/api/v1}
+      GUPSHUP_SOURCE_PHONE: ${GUPSHUP_SOURCE_PHONE}
+      FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON}
+      LAMBDA_NOTIFICATION_SCHEDULER_ARN: ${LAMBDA_NOTIFICATION_SCHEDULER_ARN}
+      LAMBDA_WHATSAPP_SENDER_ARN: ${LAMBDA_WHATSAPP_SENDER_ARN}
+      # Firebase Cloud Messaging (push notifications)
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      FIREBASE_PRIVATE_KEY: ${FIREBASE_PRIVATE_KEY}
+      FIREBASE_CLIENT_EMAIL: ${FIREBASE_CLIENT_EMAIL}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3006/health || exit 1"]
+      <<: *node-healthcheck
+
+  # ---------------------------------------------------------------------------
+  # payment — Port 3007 | Razorpay, UPI, escrow, reconciliation
+  # Zero commission model — no platform fee deductions
+  # ---------------------------------------------------------------------------
+  payment:
+    <<: *node-service-base
+    container_name: satvaaah-payment
+    hostname: payment
+    working_dir: /workspace/services/payment
+    command: >
+      sh /workspace/scripts/docker-start.sh 
+    ports:
+      - "3007:3007"
+    environment:
+      SERVICE_DIR: services/payment
+      PORT: ${PAYMENT_SERVICE_PORT:-3007}
+      SERVICE_NAME: payment
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-*}
+      NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL:-http://notification:3006}
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY}
+      DATABASE_URL: ${DATABASE_URL}
+      PRISMA_QUERY_ENGINE_LIBRARY: /workspace/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/libquery_engine-linux-musl-arm64-openssl-3.0.x.so.node
+      REDIS_URL: ${REDIS_URL}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      # Razorpay
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET}
+      RAZORPAY_ACCOUNT_NUMBER: ${RAZORPAY_ACCOUNT_NUMBER}
+      RAZORPAY_UPI_VPA: ${RAZORPAY_UPI_VPA}
+      # AWS
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      SQS_PAYMENT_EVENTS_QUEUE_URL: ${SQS_PAYMENT_EVENTS_QUEUE_URL:-http://satvaaah-localstack:4566/000000000000/satvaaah-payment-events.fifo}
+      LAMBDA_PAYMENT_RECONCILER_ARN: ${LAMBDA_PAYMENT_RECONCILER_ARN}
+      SQS_TRUST_SCORE_UPDATES_URL: ${SQS_TRUST_SCORE_UPDATES_URL}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      HMAC_SECRET: ${HMAC_SECRET}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3007/health || exit 1"]
+      <<: *node-healthcheck
+
+  # NOTE: Port 3008 intentionally skipped. No booking service. No provider service.
+
+  # ---------------------------------------------------------------------------
+  # admin — Port 3009 | Internal ops, moderation, analytics, user management
+  # ---------------------------------------------------------------------------
+  admin:
+    <<: *node-service-base
+    container_name: satvaaah-admin
+    hostname: admin
+    working_dir: /workspace/services/admin
+    command: >
+      sh /workspace/scripts/docker-start.sh 
+    ports:
+      - "3009:3009"
+    environment:
+      SERVICE_DIR: services/admin
+      PORT: ${ADMIN_SERVICE_PORT:-3009}
+      SERVICE_NAME: admin
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3099}
+      OPENSEARCH_USERNAME: ${OPENSEARCH_USERNAME:-admin}
+      OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-admin}
+      NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL:-http://notification:3006}
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY}
+      DATABASE_URL: ${DATABASE_URL}
+      PRISMA_QUERY_ENGINE_LIBRARY: /workspace/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/libquery_engine-linux-musl-arm64-openssl-3.0.x.so.node
+      REDIS_URL: ${REDIS_URL}
+      MONGODB_URL: ${MONGODB_URL}
+      OPENSEARCH_URL: ${OPENSEARCH_URL}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      # AWS full access for ops
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_ACCOUNT_ID: ${AWS_ACCOUNT_ID}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+      # All SQS queues (admin can purge/inspect)
+      SQS_NOTIFICATION_QUEUE_URL: ${SQS_NOTIFICATION_QUEUE_URL:-http://satvaaah-localstack:4566/000000000000/satvaaah-notification.fifo}
+      SQS_TRUST_SCORE_UPDATES_URL: ${SQS_TRUST_SCORE_UPDATES_URL}
+      SQS_RATING_QUEUE_URL: ${SQS_RATING_QUEUE_URL}
+      SQS_PAYMENT_EVENTS_QUEUE_URL: ${SQS_PAYMENT_EVENTS_QUEUE_URL:-http://satvaaah-localstack:4566/000000000000/satvaaah-payment-events.fifo}
+      SQS_SCRAPING_QUEUE_URL: ${SQS_SCRAPING_QUEUE_URL}
+      SQS_DEAD_LETTER_QUEUE_URL: ${SQS_DEAD_LETTER_QUEUE_URL}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      # Admin-web frontend (Next.js port 3099) served separately
+      ADMIN_WEB_PORT: ${ADMIN_WEB_PORT:-3099}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3009/health || exit 1"]
+      <<: *node-healthcheck
+
+  # ---------------------------------------------------------------------------
+  # scraping — Port 3010 | Python 3.11 | Web scraping, price data, listings
+  # ---------------------------------------------------------------------------
+  # ── LocalStack (SQS) ──────────────────────────────────────────────────────
+  localstack:
+    image: localstack/localstack:3.4
+    container_name: satvaaah-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: sqs
+      DEFAULT_REGION: ap-south-1
+      EAGER_SERVICE_LOADING: "1"
+      SQS_ENDPOINT_STRATEGY: "off"
+    volumes:
+      - "./scripts/localstack-init:/etc/localstack/init/ready.d"
+      - localstack_data:/var/lib/localstack
+    networks:
+      - satvaaah-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:4566/_localstack/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+
+  scraping:
+    image: python:3.11-slim
+    container_name: satvaaah-scraping
+    hostname: scraping
+    restart: unless-stopped
+    working_dir: /workspace
+    networks:
+      - satvaaah-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      satvaaah-redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    volumes:
+      - .:/workspace
+    command: >
+      sh -c "
+        pip install --no-cache-dir -r services/scraping/requirements.txt &&
+        cd services/scraping &&
+        python -m uvicorn main:app --host 0.0.0.0 --port 3010 --reload --reload-dir . --log-level debug
+      "
+    ports:
+      - "3010:3010"
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      ENV: ${NODE_ENV:-development}
+      PORT: ${SCRAPING_SERVICE_PORT:-3010}
+      DATABASE_URL: ${DATABASE_URL}
+      PRISMA_QUERY_ENGINE_LIBRARY: /workspace/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/libquery_engine-linux-musl-arm64-openssl-3.0.x.so.node
+      REDIS_URL: ${REDIS_URL}
+      MONGODB_URL: ${MONGODB_URL}
+      AWS_REGION: ${AWS_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      SQS_SCRAPING_QUEUE_URL: ${SQS_SCRAPING_QUEUE_URL}
+      LAMBDA_SCRAPING_ORCHESTRATOR_ARN: ${LAMBDA_SCRAPING_ORCHESTRATOR_ARN}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:3010/health')\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
+  # gateway — Port 3000 | nginx reverse proxy — single entry point for mobile
+  # ---------------------------------------------------------------------------
+  gateway:
+    image: nginx:alpine
+    container_name: satvaaah-gateway
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - auth
+      - user
+      - search
+      - trust
+      - rating
+      - notification
+      - payment
+      - admin
+    networks:
+      - satvaaah-net
+    restart: unless-stopped
+
+
+networks:
+  satvaaah-net:
+    driver: bridge
+    name: satvaaah-net
+
+
+volumes:
+  node_modules:
+    name: satvaaah_node_modules
+  localstack_data:
+  postgres_data:
+    name: satvaaah_postgres_data
+  redis_data:
+    name: satvaaah_redis_data
+  mongodb_data:
+    name: satvaaah_mongodb_data
+  opensearch_data:
+    name: satvaaah_opensearch_data

@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "lib": ["ES2020"],
+    "strict": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "paths": {
+      "@satvaaah/types": ["./packages/types/src"],
+      "@satvaaah/errors": ["./packages/errors/src"],
+      "@satvaaah/logger": ["./packages/logger/src"],
+      "@satvaaah/middleware": ["./packages/middleware/src"],
+      "@satvaaah/config": ["./packages/config/src"],
+      "@satvaaah/db": ["./packages/db/src"]
+    }
+  }
+}

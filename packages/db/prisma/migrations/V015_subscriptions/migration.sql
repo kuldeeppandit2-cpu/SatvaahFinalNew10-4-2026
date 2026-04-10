@@ -1,0 +1,201 @@
+-- =============================================================================
+-- V015_subscriptions — SatvAAh
+-- Two tables in one migration: subscription_plans + subscription_records.
+-- All monetary amounts in PAISE (INT). Rs 1 = 100 paise. Never float. Never rupees.
+--
+-- subscription_plans:   Admin-managed catalogue of available plans.
+-- subscription_records: Per-user purchase records. Razorpay order/payment IDs stored here.
+--                       idempotency_key prevents duplicate charges on webhook replay.
+--
+-- Also back-fills deferred FK:
+--   consumer_lead_usage.subscription_plan_id → subscription_plans.id (V013 deferred this)
+-- =============================================================================
+
+-- ENUM: subscription subject (consumer-side plans vs provider-side plans differ)
+CREATE TYPE "UserType" AS ENUM (
+  'consumer',
+  'provider'
+);
+
+-- ENUM: subscription lifecycle state
+CREATE TYPE "SubscriptionStatus" AS ENUM (
+  'pending',          -- Razorpay order created, payment not yet confirmed
+  'active',           -- Payment confirmed, subscription running
+  'expired',          -- Past expires_at
+  'cancelled',        -- User-initiated cancellation
+  'payment_failed'    -- Razorpay payment attempt failed
+);
+
+-- =============================================================================
+-- SUBSCRIPTION PLANS (catalogue — admin-managed)
+-- =============================================================================
+CREATE TABLE subscription_plans (
+  id                  UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  -- Human-readable plan name: "Provider Gold Monthly", "Consumer Basic"
+  plan_name           VARCHAR(100)  NOT NULL,
+
+  -- Consumer plans vs provider plans have different feature sets
+  user_type           "UserType"    NOT NULL,
+
+  -- Tier this plan grants (maps to users.subscription_tier)
+  tier                "SubscriptionTier" NOT NULL,
+
+  -- Plan price in PAISE — Rs 0 = free plan, Rs 999 = 99900 paise
+  -- RULE: All amounts in PAISE. Never float. Never rupees.
+  price_paise         INT           NOT NULL DEFAULT 0
+                        CHECK (price_paise >= 0),
+
+  -- Lead quota granted per billing cycle
+  leads_allocated     INT           NOT NULL DEFAULT 0
+                        CHECK (leads_allocated >= 0),
+
+  -- Feature flags and metadata in JSONB
+  -- e.g. { "slot_booking": true, "priority_search": true, "certificate_eligible": true }
+  features            JSONB         NOT NULL DEFAULT '{}',
+
+  -- Billing cycle duration in days (typically 30)
+  billing_cycle_days  INT           NOT NULL DEFAULT 30
+                        CHECK (billing_cycle_days > 0),
+
+  -- Admin can soft-disable a plan (existing subscribers unaffected)
+  is_active           BOOLEAN       NOT NULL DEFAULT TRUE,
+
+  created_at          TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT sp_plan_name_user_type_key UNIQUE (plan_name, user_type)
+);
+
+CREATE INDEX idx_sp_user_type_active
+  ON subscription_plans(user_type, tier)
+  WHERE is_active = TRUE;
+
+CREATE TRIGGER trg_sp_updated_at
+  BEFORE UPDATE ON subscription_plans
+  FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+
+COMMENT ON TABLE  subscription_plans IS
+  'Admin-managed subscription plan catalogue. '
+  'All monetary amounts in PAISE. price_paise=0 for free tier.';
+
+COMMENT ON COLUMN subscription_plans.price_paise IS
+  'Amount in PAISE (INT). Rs 1 = 100 paise. NEVER store rupees or floats.';
+
+COMMENT ON COLUMN subscription_plans.features IS
+  'JSONB feature flags. '
+  'e.g. {"slot_booking": true, "priority_search": true, "certificate_eligible": true}';
+
+-- =============================================================================
+-- SUBSCRIPTION RECORDS (per-user purchases)
+-- =============================================================================
+CREATE TABLE subscription_records (
+  id                    UUID                  PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  -- User who purchased this subscription
+  user_id               UUID                  NOT NULL
+                          REFERENCES users(id) ON DELETE RESTRICT,
+
+  -- Which plan was purchased
+  plan_id               UUID                  NOT NULL
+                          REFERENCES subscription_plans(id) ON DELETE RESTRICT,
+
+  -- Subscription lifecycle
+  status                "SubscriptionStatus"  NOT NULL DEFAULT 'pending',
+  started_at            TIMESTAMPTZ,          -- Set when payment confirmed
+  expires_at            TIMESTAMPTZ,          -- started_at + billing_cycle_days
+
+  -- Razorpay identifiers
+  -- RULE: Verify HMAC-SHA256 webhook signature before setting status = 'active'
+  razorpay_order_id     TEXT,
+  razorpay_payment_id   TEXT,                 -- Set after successful payment
+
+  -- Idempotency: prevents duplicate subscription activation on webhook replay
+  -- Generated by payment service: UUID v4, stored before Razorpay order creation
+  idempotency_key       TEXT                  NOT NULL,
+
+  -- Amount actually charged in PAISE (may differ from plan price_paise for promos)
+  amount_paid_paise     INT                   CHECK (amount_paid_paise >= 0),
+
+  created_at            TIMESTAMPTZ           NOT NULL DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ           NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT sr_idempotency_key_unique UNIQUE (idempotency_key)
+);
+
+-- Active subscription lookup (most common query)
+CREATE INDEX idx_sr_user_active
+  ON subscription_records(user_id, status)
+  WHERE status = 'active';
+
+-- Expiry scanner: EventBridge Lambda finds subscriptions expiring soon
+CREATE INDEX idx_sr_expires_at
+  ON subscription_records(expires_at, status)
+  WHERE status = 'active';
+
+-- Razorpay webhook: find record by order ID
+CREATE INDEX idx_sr_razorpay_order_id
+  ON subscription_records(razorpay_order_id)
+  WHERE razorpay_order_id IS NOT NULL;
+
+-- User purchase history
+CREATE INDEX idx_sr_user_id
+  ON subscription_records(user_id, created_at DESC);
+
+CREATE TRIGGER trg_sr_updated_at
+  BEFORE UPDATE ON subscription_records
+  FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+
+COMMENT ON TABLE  subscription_records IS
+  'Per-user subscription purchases. '
+  'idempotency_key prevents duplicate activation on Razorpay webhook replay. '
+  'amount_paid_paise in PAISE — never rupees, never float.';
+
+COMMENT ON COLUMN subscription_records.idempotency_key IS
+  'UUID v4 generated by payment service before Razorpay order creation. '
+  'Stored before API call; Razorpay webhook uses this to prevent double-processing.';
+
+COMMENT ON COLUMN subscription_records.razorpay_payment_id IS
+  'Set ONLY after HMAC-SHA256 Razorpay webhook signature is verified. '
+  'CRITICAL RULE: Never set status=active without signature verification.';
+
+COMMENT ON COLUMN subscription_records.amount_paid_paise IS
+  'PAISE. May differ from plan price_paise (promo codes, first-time discounts).';
+
+-- =============================================================================
+-- BACK-FILL DEFERRED FK: consumer_lead_usage → subscription_plans
+-- V013 created this column as nullable with a TODO comment.
+-- Now that subscription_plans exists, we can add the FK.
+-- =============================================================================
+ALTER TABLE consumer_lead_usage
+  ADD CONSTRAINT fk_clu_subscription_plan
+  FOREIGN KEY (subscription_plan_id)
+  REFERENCES subscription_plans(id)
+  ON DELETE SET NULL;
+
+-- =============================================================================
+-- SEED: Free plans (price_paise = 0) — always present, cannot be deleted
+-- =============================================================================
+INSERT INTO subscription_plans
+  (plan_name, user_type, tier, price_paise, leads_allocated, billing_cycle_days, features, is_active)
+VALUES
+  (
+    'Consumer Free',
+    'consumer',
+    'free',
+    0,
+    10,
+    30,
+    '{"slot_booking": false, "priority_search": false}',
+    TRUE
+  ),
+  (
+    'Provider Free',
+    'provider',
+    'free',
+    0,
+    5,
+    30,
+    '{"priority_search": false, "certificate_eligible": false}',
+    TRUE
+  );

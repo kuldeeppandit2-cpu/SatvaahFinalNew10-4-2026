@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --saffron: #C8691A;
+  --verdigris: #2E7D72;
+  --deep-ink: #1C1C2E;
+  --ivory: #FAF7F0;
+  --warm-sand: #F0E4CC;
+  --terracotta: #C0392B;
+}
+
+body { background: #F8F9FA; color: var(--deep-ink); font-family: 'Inter', system-ui, sans-serif; }

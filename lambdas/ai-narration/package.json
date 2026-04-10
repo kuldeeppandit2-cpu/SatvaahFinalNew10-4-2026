@@ -1,0 +1,23 @@
+{
+  "name": "@satvaaah/lambda-ai-narration",
+  "version": "1.0.0",
+  "description": "SatvAAh Lambda \u2014 AI narration generator using Claude Sonnet",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.20.0",
+    "@prisma/client": "^5.13.0",
+    "redis": "^4.6.13",
+    "uuid": "^9.0.0",
+    "winston": "^3.13.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.136",
+    "@types/uuid": "^9.0.7",
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  }
+}
