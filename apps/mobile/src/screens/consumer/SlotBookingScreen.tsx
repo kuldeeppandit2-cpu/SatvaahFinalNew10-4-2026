@@ -113,7 +113,7 @@ function SlotCard({ slot, selected, onPress }: SlotCardProps): React.ReactElemen
   // slot_duration_minutes comes from API — never hardcoded (MASTER_CONTEXT Rule #20)
   const durLabel  = `${slot.slot_duration_minutes} min`;
 
-  if (!slot.isAvailable) {
+  if (!slot.is_available) {
     return (
       <View style={[styles.slotCard, styles.slotBooked]}>
         <Text style={styles.slotTimeBooked}>{timeLabel}</Text>
@@ -211,7 +211,7 @@ export function SlotBookingScreen(): React.ReactElement {
   }
 
   const showLeadCost    = leadCost > 0; // hidden at launch
-  const availableCount  = slots.filter((s) => s.isAvailable).length;
+  const availableCount  = slots.filter((s) => s.is_available).length;
 
   return (
     <SafeAreaView style={styles.safeArea}>
