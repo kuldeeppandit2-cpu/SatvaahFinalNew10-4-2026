@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { asyncHandler } from '@satvaaah/middleware';
 import { prisma } from '@satvaaah/db';
 import { logger } from '@satvaaah/logger';
