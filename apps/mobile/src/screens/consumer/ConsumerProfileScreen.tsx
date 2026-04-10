@@ -338,12 +338,26 @@ export default function ConsumerProfileScreen() {
         .map(([id]) => id);
 
       if (trustedIds.length > 0) {
-        const trustedRes = await apiClient
-          .get<{ success: true; data: TrustedCircleMember[] }>(
-            `/api/v1/providers/batch?ids=${trustedIds.join(',')}`,
-          )
-          .catch(() => null);
-        if (trustedRes) setTrustedCircle(trustedRes.data.data);
+        // Fetch each provider individually — /api/v1/providers/:id exists and is public
+        const providerResults = await Promise.all(
+          trustedIds.map((id) =>
+            apiClient
+              .get<{ success: true; data: any }>(`/api/v1/providers/${id}`)
+              .then((res) => {
+                const p = res.data.data;
+                return {
+                  providerId:      p.id,
+                  displayName:     p.displayName ?? p.display_name ?? '',
+                  primaryTaxonomy: p.category ?? p.taxonomyNode?.display_name ?? '',
+                  trustTier:       p.trust?.trustTier ?? p.trust?.trust_tier ?? 'unverified',
+                  trustScore:      p.trust?.displayScore ?? p.trust?.display_score ?? 0,
+                  contactCount:    countByProvider[id] ?? 0,
+                } as TrustedCircleMember;
+              })
+              .catch(() => null),
+          ),
+        );
+        setTrustedCircle(providerResults.filter(Boolean) as TrustedCircleMember[]);
       } else {
         setTrustedCircle([]);
       }
