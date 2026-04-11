@@ -377,10 +377,16 @@ def main():
     l4_nodes = [n for n in taxonomy_nodes 
                 if n.get('tab') in ('services', 'expertise', 'establishments')]
     
-    # If --terms is specified, filter to matching display names
+    # If --terms is specified, filter by keyword across all taxonomy fields
     if args.terms != 'all':
         filter_terms = [t.strip().lower() for t in args.terms.split(',')]
-        l4_nodes = [n for n in l4_nodes if any(f in n.get('display_name','').lower() for f in filter_terms)]
+        def node_matches(n):
+            searchable = ' '.join(filter(None, [
+                n.get('l1',''), n.get('l2',''), n.get('l3',''),
+                n.get('l4',''), n.get('display_name','')
+            ])).lower()
+            return any(f in searchable for f in filter_terms)
+        l4_nodes = [n for n in l4_nodes if node_matches(n)]
     
     # Debug: check first few nodes
     if taxonomy_nodes:
