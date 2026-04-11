@@ -28,12 +28,9 @@ export async function getMyConsumerProfile(req: Request, res: Response): Promise
       select: { phone: true, subscription_tier: true, referral_code: true, mode: true },
     }),
     // Count accepted contact events for Trusted Circle threshold (contactCount >= 3)
-    // contact_events.consumer_id is consumer_profiles.id — resolve profile first
-    prisma.consumerProfile.findUnique({ where: { user_id: userId }, select: { id: true } })
-      .then((cp) => cp
-        ? prisma.contactEvent.count({ where: { consumer_id: cp.id, status: 'accepted' } })
-        : 0
-      ),
+    // audit-ref: DB5 contact_events — consumer_id FK → users.id (V009 SQL, never changed)
+    // consumer_id IS users.id — do NOT resolve to cp.id here
+    prisma.contactEvent.count({ where: { consumer_id: userId, status: 'accepted' } }),
   ]);
 
   if (!profile) throw new NotFoundError('CONSUMER_NOT_FOUND', 'No consumer profile found for this account');

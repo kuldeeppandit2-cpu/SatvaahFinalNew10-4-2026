@@ -140,3 +140,54 @@ router.get(
 );
 
 export default router;
+
+/**
+ * PATCH /api/v1/consumers/me/location
+ * Body: { geo_lat, geo_lng, area_id? }
+ * Persists consumer home location to consumer_profiles.
+ * Called by C9 SetupLocationModal after expo-location resolves.
+ * Required for BG3 push-discovery and area-level search defaults.
+ *
+ * audit-ref: DB2 consumer_profiles — geo_lat, geo_lng, area_id (V050 migration)
+ */
+router.patch(
+  '/me/location',
+  requireAuth,
+  writeLimiter,
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = (req as any).user!.userId;
+    const { geo_lat, geo_lng, area_id } = req.body;
+
+    if (geo_lat === undefined || geo_lng === undefined) {
+      throw new (await import('@satvaaah/errors')).AppError(
+        'VALIDATION_ERROR', 'geo_lat and geo_lng are required', 400
+      );
+    }
+
+    const lat = parseFloat(geo_lat);
+    const lng = parseFloat(geo_lng);
+
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      throw new (await import('@satvaaah/errors')).AppError(
+        'VALIDATION_ERROR', 'geo_lat must be -90..90 and geo_lng must be -180..180', 400
+      );
+    }
+
+    const { prisma } = await import('@satvaaah/db');
+
+    const updated = await prisma.consumerProfile.update({
+      where:  { user_id: userId },
+      data:   {
+        geo_lat:  lat,
+        geo_lng:  lng,
+        ...(area_id ? { area_id } : {}),
+      },
+      select: { id: true, geo_lat: true, geo_lng: true, area_id: true },
+    });
+
+    const { logger } = await import('@satvaaah/logger');
+    logger.info('consumer.location.updated', { userId, lat, lng, area_id: area_id ?? null });
+
+    res.json({ success: true, data: updated });
+  }),
+);

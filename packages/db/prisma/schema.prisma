@@ -223,6 +223,8 @@ model User {
   subscription_records SubscriptionRecord[]
   referrals_made       ReferralEvent[]      @relation("Referrer")
   referrals_received   ReferralEvent[]      @relation("Referred")
+  // audit-ref: DB21 — consumer_lead_usage.consumer_id → users.id (V013 SQL, V051 re-declared)
+  consumer_lead_usages ConsumerLeadUsage[]  @relation("ConsumerLeadUsages")
 
   @@index([phone])
   @@index([deleted_at])
@@ -264,7 +266,6 @@ model ConsumerProfile {
   contact_events            ContactEvent[]     @relation("ConsumerContact")
   ratings                   Rating[]           @relation("ConsumerRatings")
   daily_rating_usages       DailyRatingUsage[]
-  consumer_lead_usages      ConsumerLeadUsage[]
   saved_providers           SavedProvider[]
   consumer_ratings_received ConsumerRating[]   @relation("ConsumerRated")
 
@@ -828,7 +829,9 @@ model ConsumerLeadUsage {
   updated_at DateTime @updatedAt @db.Timestamptz(6)
 
   // Relations
-  consumer          ConsumerProfile  @relation(fields: [consumer_id], references: [id], onDelete: Cascade)
+  // audit-ref: DB21 consumer_lead_usage — consumer_id FK → users.id (V013 SQL, NEVER consumer_profiles.id)
+  // V051 migration re-declares the constraint explicitly to match this Prisma relation.
+  consumer          User             @relation("ConsumerLeadUsages", fields: [consumer_id], references: [id], onDelete: Cascade)
   subscription_plan SubscriptionPlan @relation(fields: [subscription_plan_id], references: [id], onDelete: Restrict)
 
   @@index([consumer_id, period_end(sort: Desc)])

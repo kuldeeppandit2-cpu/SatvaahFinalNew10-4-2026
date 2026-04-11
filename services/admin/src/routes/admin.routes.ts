@@ -351,9 +351,10 @@ router.post(
     logger.info({ adminId: req.admin!.id, nodeId: node.id, slug }, 'taxonomy_node.created');
 
     // Invalidate Redis taxonomy cache so next GET /categories reflects new node
+    // audit-ref: R1 Redis — correct key is categories:v2:* (search service uses this pattern)
     try {
       const { redisClient } = await import('../lib/redis');
-      const keys = await redisClient.keys('taxonomy:*');
+      const keys = await redisClient.keys('categories:*');
       if (keys.length) await redisClient.del(...keys);
     } catch { /* non-fatal */ }
 
@@ -385,9 +386,10 @@ router.patch(
     });
 
     // Invalidate Redis cache
+    // audit-ref: R1 Redis — correct key is categories:v2:* (search service uses this pattern)
     try {
       const { redisClient } = await import('../lib/redis');
-      const keys = await redisClient.keys('taxonomy:*');
+      const keys = await redisClient.keys('categories:*');
       if (keys.length) await redisClient.del(...keys);
     } catch { /* non-fatal */ }
 

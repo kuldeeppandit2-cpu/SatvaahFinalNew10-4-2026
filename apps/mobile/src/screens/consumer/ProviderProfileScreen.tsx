@@ -190,6 +190,16 @@ export function ProviderProfileScreen(): React.ReactElement {
         display_name: setupName.trim(),
         city_id: setupCityId,
       });
+
+      // audit-ref: DB2 consumer_profiles — persist geo_lat/geo_lng/area_id (V050 fields)
+      // Fire-and-forget after profile created — non-fatal if GPS was not captured
+      if (setupGeoCoords) {
+        apiClient.patch('/api/v1/consumers/me/location', {
+          geo_lat: setupGeoCoords.lat,
+          geo_lng: setupGeoCoords.lng,
+        }).catch(() => {}); // non-fatal — location can be updated later
+      }
+
       markProfileSetupComplete();
       setShowSetupModal(false);
       if (pendingContactType) proceedToContact(pendingContactType);
