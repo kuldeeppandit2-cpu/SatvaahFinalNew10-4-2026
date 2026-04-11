@@ -253,7 +253,7 @@ INSERT INTO provider_profiles (
     {node_sql},
     NOW(), NOW()
 )
-ON CONFLICT DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 """
     
     ok = dbx(sql)
