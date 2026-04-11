@@ -64,7 +64,7 @@ export function OnboardingScreen(): React.ReactElement {
         <View style={[s.slide, { width: W, height: SLIDE_H }]}>
           <View style={s.tag}><Text style={s.tagTxt}>THE PROBLEM</Text></View>
           <Text style={s.s1q}>
-            Why pay 10–30% commission{'\n'}to platforms on every purchase?
+            Why pay{'\n'}10–30% commission{'\n'}to platforms{'\n'}on every purchase?
           </Text>
           <View style={s.sp} />
           <Text style={s.intro}>Introducing …</Text>
