@@ -28,21 +28,12 @@ export function ModeSelectionScreen(): React.ReactElement {
 
   const setTokens = useAuthStore((s) => s.setTokens);
   const setUser = useAuthStore((s) => s.setUser);
-  const [consumerName, setConsumerName] = useState('');
-  const [showNameInput, setShowNameInput] = useState(false);
   const setMode = useAuthStore((s) => s.setMode);
 
   async function handleModeSelect(mode: 'consumer' | 'provider'): Promise<void> {
     if (isLoading) return;
     setSelectedMode(mode);
     setIsLoading(true);
-
-    // For consumer mode — collect name if not set
-    if (mode === 'consumer' && !consumerName.trim() && !showNameInput) {
-      setShowNameInput(true);
-      setIsLoading(false);
-      return;
-    }
 
     try {
       // Rule #21: consent_given ALWAYS true — DPDP Act 2023
