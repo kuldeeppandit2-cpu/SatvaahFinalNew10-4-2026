@@ -163,6 +163,28 @@ async function recalculate(providerId: string, correlationId: string, triggeredB
 
   log('trust_scores and trust_score_history written');
 
+  // ── Notify user service to broadcast WS3 trust_score_updated to P8 ──────────
+  // audit-ref: WS3 — broadcastTrustUpdate was never called. This closes the gap.
+  // Fire-and-forget — WS broadcast failure must never fail the Lambda.
+  const userServiceUrl = process.env.USER_SERVICE_URL ?? 'http://user:3002';
+  const internalKey    = process.env.INTERNAL_SERVICE_KEY ?? '';
+  fetch(`${userServiceUrl}/api/v1/internal/trust/broadcast`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', 'x-internal-key': internalKey },
+    body:    JSON.stringify({
+      provider_id:   providerId,
+      display_score: displayScore,
+      trust_tier:    newTier,
+      delta_pts:     deltaPts,
+      event_type:    triggeredBy,
+    }),
+  }).catch((err: Error) => {
+    console.warn(JSON.stringify({
+      level: 'warn', lambda: 'trust-recalculate',
+      msg: 'WS broadcast notify failed (non-fatal)', error: err.message,
+    }));
+  });
+
   // 9. Threshold crossing dispatch
   const crossedHighlyTrusted = displayScore >= highlyTrustedThreshold && prevScore < highlyTrustedThreshold;
   const crossedPushDiscovery = displayScore >= pushDiscoveryThreshold && prevScore < pushDiscoveryThreshold;

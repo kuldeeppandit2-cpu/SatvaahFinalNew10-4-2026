@@ -15,6 +15,7 @@ import providerRoutes      from './routes/provider.routes';
 import consumerRoutes      from './routes/consumer.routes';
 import userRoutes          from './routes/user.routes';
 import verificationRoutes  from './routes/verification.routes';
+import internalRoutes       from './routes/internal.routes';
 import contactRoutes       from './routes/contact.routes';
 import leadRoutes          from './routes/lead.routes';
 import messageRoutes       from './routes/message.routes';
@@ -46,6 +47,7 @@ app.use('/api/v1/contact-events',   contactRoutes);   // CRITICAL: contact/booki
 app.use('/api/v1',                  leadRoutes);      // /api/v1/providers/me/leads
 app.use('/api/v1',                  messageRoutes);   // /api/v1/messages
 app.use('/api/v1',                  verificationRoutes);
+app.use('/api/v1',                  internalRoutes);  // /api/v1/internal/trust/broadcast — Lambda→WS
 
 // 404 for unmatched routes — MUST be before errorHandler
 app.use(notFoundHandler);
