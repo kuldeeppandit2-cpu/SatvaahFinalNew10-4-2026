@@ -56,9 +56,6 @@ import {
 import { useAuthStore } from '../../stores/auth.store';
 import { useLocationStore } from '../../stores/location.store';
 import { ENV } from '../../config/env';
-import { MMKV } from '../../__stubs__/mmkv';
-
-const searchMissStorage = new MMKV({ id: 'satvaaah-search-misses' });
 
 // ─── Navigation ────────────────────────────────────────────────────────────────
 
@@ -82,8 +79,6 @@ type ConsumerStackParamList = {
   SearchFilter: {
     filters: FilterParams;
     tab: Tab;
-    query?: string;
-    taxonomyNodeId?: string;
   };
   ProviderProfile: { providerId: string };
 };
@@ -208,8 +203,6 @@ const SearchResultsScreen: React.FC = () => {
   const [filters, setFilters]           = useState<FilterParams>(
     routeFilters ?? { sort: 'trust_score' },
   );
-  // searchComplete: true after fetch finishes — prevents premature empty state flash
-  const [searchComplete, setSearchComplete] = useState(false);
   // Track availability changes: provider_id → is_available
   const [availMap, setAvailMap]         = useState<Record<string, boolean>>({});
   const wsConnected                     = useRef(false);
@@ -239,25 +232,11 @@ const SearchResultsScreen: React.FC = () => {
         setResults((prev) =>
           pageNum === 1 ? res.data : [...prev, ...res.data],
         );
-        // Store search miss in MMKV if no results found — for future notification
-        if (pageNum === 1 && res.data.length === 0) {
-          const missKey = `miss:${taxonomyNodeId}`;
-          const existing = searchMissStorage.getString(missKey);
-          if (!existing) {
-            searchMissStorage.set(missKey, JSON.stringify({
-              taxonomyNodeId,
-              query,
-              tab,
-              searched_at: new Date().toISOString(),
-            }));
-          }
-        }
       } catch (e: any) {
         setError('Could not load results. Pull down to retry.');
       } finally {
         setLoading(false);
         setLoadingMore(false);
-        if (pageNum === 1) setSearchComplete(true);
       }
     },
     [query, tab, sort, filters, location],
@@ -266,7 +245,6 @@ const SearchResultsScreen: React.FC = () => {
   useEffect(() => {
     setPage(1);
     setResults([]);
-    setSearchComplete(false);  // reset so empty state never shows prematurely
     fetchResults(1);
   }, [query, tab, sort, filters]);
 
@@ -300,7 +278,6 @@ const SearchResultsScreen: React.FC = () => {
       getAvailabilityChanges(since)
         .then((changes) => {
           if (changes.length === 0) return;
-          if (results.length === 0) return; // no cards to update
           const patch: Record<string, boolean> = {};
           changes.forEach((c) => { patch[c.providerId] = c.is_available; });
           setAvailMap((prev) => ({ ...prev, ...patch }));
@@ -319,10 +296,9 @@ const SearchResultsScreen: React.FC = () => {
       mode: string;
       updatedAt: string;
     }) => {
-      if (results.length === 0) return; // no cards to update
       setAvailMap((prev) => ({
         ...prev,
-        [payload.provider_id]: payload.isAvailable,
+        [payload.providerId]: payload.isAvailable,
       }));
       lastAvailTs.current = payload.updatedAt;
     });
@@ -401,8 +377,8 @@ const SearchResultsScreen: React.FC = () => {
   }, [loadingMore, meta, page, results.length]);
 
   const openFilters = useCallback(() => {
-    navigation.navigate('SearchFilter', { filters, tab, query, taxonomyNodeId });
-  }, [navigation, filters, tab, query, taxonomyNodeId]);
+    navigation.navigate('SearchFilter', { filters, tab });
+  }, [navigation, filters, tab]);
 
   // ── Sort bar ──────────────────────────────────────────────────────────────
 
@@ -499,14 +475,14 @@ const SearchResultsScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListEmptyComponent={
-          searchComplete && !loading ? (
+          !loading ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyIcon}>🔍</Text>
               <Text style={styles.emptyTitle}>No providers found yet</Text>
               <Text style={styles.emptyBody}>
                 We searched up to 150km around you. No providers are registered in this category yet.
               </Text>
-              <Text style={styles.emptyNotify}>
+              <Text style={styles.emptyBody}>
                 We'll notify you as soon as a provider registers nearby.
               </Text>
             </View>
@@ -832,15 +808,6 @@ const styles = StyleSheet.create({
     color: '#1C1C2E',
     textAlign: 'center',
     lineHeight: 20,
-    marginBottom: 12,
-  },
-  emptyNotify: {
-    fontSize: 13,
-    fontFamily: 'PlusJakartaSans-SemiBold',
-    color: '#C8691A',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginTop: 4,
   },
 });
 
