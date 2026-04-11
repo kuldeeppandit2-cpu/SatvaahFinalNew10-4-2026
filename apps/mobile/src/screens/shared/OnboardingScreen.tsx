@@ -18,7 +18,9 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<AuthStackParamList, 'Onboarding'>;
-const { width: W } = Dimensions.get('window');
+const { width: W, height: SLIDE_H } = Dimensions.get('window');
+// Slide height = full screen minus progress bar zone (80) + CTA zone (112) + status bar (44)
+const SLIDE_H = H - 236;
 
 // Brand component — used identically on all 4 screens
 function Brand() {
@@ -69,7 +71,7 @@ export function OnboardingScreen(): React.ReactElement {
       >
 
         {/* ── SLIDE 1 — THE PROBLEM ── */}
-        <View style={[s.slide, { width: W }]}>
+        <View style={[s.slide, { width: W, height: SLIDE_H }]}>
 
           {/* Label */}
           <View style={s.labelBox}>
@@ -97,7 +99,7 @@ export function OnboardingScreen(): React.ReactElement {
         </View>
 
         {/* ── SLIDE 2 — ONE APP ── */}
-        <View style={[s.slide, { width: W }]}>
+        <View style={[s.slide, { width: W, height: SLIDE_H }]}>
 
           <View style={s.labelBox}>
             <Text style={s.labelText}>ONE APP. EVERYTHING.</Text>
@@ -133,7 +135,7 @@ export function OnboardingScreen(): React.ReactElement {
         </View>
 
         {/* ── SLIDE 3 — TRUST ── */}
-        <View style={[s.slide, { width: W }]}>
+        <View style={[s.slide, { width: W, height: SLIDE_H }]}>
 
           <View style={s.labelBox}>
             <Text style={s.labelText}>TRUST THAT TRAVELS</Text>
@@ -170,7 +172,7 @@ export function OnboardingScreen(): React.ReactElement {
         </View>
 
         {/* ── SLIDE 4 — TWO IDENTITIES ── */}
-        <View style={[s.slide, { width: W }]}>
+        <View style={[s.slide, { width: W, height: SLIDE_H }]}>
 
           <View style={s.labelBox}>
             <Text style={s.labelText}>TWO IDENTITIES</Text>
@@ -231,7 +233,7 @@ export function OnboardingScreen(): React.ReactElement {
 
 // ── Brand styles ──────────────────────────────────────────────────────────────
 const b = StyleSheet.create({
-  wrap:    { alignItems: 'center', paddingVertical: 20 },
+  wrap:    { alignItems: 'center', paddingVertical: 0 },
   nameRow: { flexDirection: 'row', alignItems: 'center' },
   ink:     { fontSize: 44, fontWeight: '800', color: '#1C1C2E' },
   aaBox:   { backgroundColor: '#C8691A', borderRadius: 7, paddingHorizontal: 6, paddingVertical: 2, marginHorizontal: 1 },
@@ -248,8 +250,8 @@ const s = StyleSheet.create({
   segActive:   { backgroundColor: '#C8691A' },
 
   scroller:    { flex: 1 },
-  slide:       { paddingHorizontal: 24, paddingTop: 20, flex: 1 },
-  flex1:       { flex: 1, minHeight: 8, maxHeight: 40 },
+  slide:       { paddingHorizontal: 24, paddingTop: 20, justifyContent: 'space-between', paddingBottom: 8 },
+  flex1:       { flex: 1 },
 
   // Label pill — black box, white text, left-aligned
   labelBox:    { alignSelf: 'flex-start', backgroundColor: '#1C1C2E', borderRadius: 3, paddingHorizontal: 8, paddingVertical: 4, marginBottom: 16 },
