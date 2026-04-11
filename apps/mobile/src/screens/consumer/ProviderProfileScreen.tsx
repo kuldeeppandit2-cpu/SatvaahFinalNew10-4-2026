@@ -570,7 +570,7 @@ export function ProviderProfileScreen(): React.ReactElement {
                 style={setupStyles.aadhaarBtn}
                 onPress={() => {
                   setShowSetupModal(false);
-                  navigation.navigate('AadhaarVerifyScreen' as any);
+                  navigation.navigate('AadhaarVerify' as any)  // screen registered as 'AadhaarVerify' in ProviderNavigator.tsx;
                 }}
               >
                 <Text style={setupStyles.aadhaarBtnText}>Verify Aadhaar →</Text>
