@@ -217,7 +217,7 @@ export default function CreateProfileStep1Screen({ route, navigation }: Props) {
           <FlatList
             data={categories}
             keyExtractor={(item) => item.id}
-            numColumns={3}  {/* 3-column grid — identical to consumer CategoryBrowseScreen */}
+            numColumns={3}
             columnWrapperStyle={styles.catRow}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.catList}
