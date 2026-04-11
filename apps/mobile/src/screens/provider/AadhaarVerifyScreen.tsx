@@ -294,7 +294,7 @@ export const AadhaarVerifyScreen: React.FC = () => {
 
     try {
       const response = await apiClient.post(
-        '/trust/v1/verify/digilocker',
+        '/api/v1/providers/trust/v1/verify/digilocker',
         {
           code,
           code_verifier: verifier,

@@ -393,12 +393,18 @@ export const CredentialUploadScreen: React.FC = () => {
 
     try {
       // 1. Get pre-signed upload URL
+      // POST /api/v1/providers/me/credentials with credential_type, file_name, content_type
       setUploadProgress(10);
-      const urlRes = await apiClient.get(
-        `/user/v1/provider/credential-upload-url?type=${selectedType.id}`,
+      const urlRes = await apiClient.post(
+        '/api/v1/providers/me/credentials',
+        {
+          credential_type: selectedType.id,
+          file_name:       filename,
+          content_type:    mimeType,
+        },
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
-      const { upload_url, key } = urlRes.data;
+      const { upload_url, s3_key } = urlRes.data.data;
 
       // 2. Upload directly to S3
       setUploadProgress(30);
@@ -430,7 +436,7 @@ export const CredentialUploadScreen: React.FC = () => {
       await apiClient.post(
         '/api/v1/providers/me/credentials/confirm',
         {
-          s3_key:          key,
+          s3_key:          s3_key,
           credential_type: selectedType.id,
           file_name:       filename,
         },
