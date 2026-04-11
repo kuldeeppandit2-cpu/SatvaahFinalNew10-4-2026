@@ -609,7 +609,7 @@ services:
     ports:
       - "4566:4566"
     environment:
-      SERVICES: sqs
+      SERVICES: sqs,lambda
       DEFAULT_REGION: ap-south-1
       EAGER_SERVICE_LOADING: "1"
       SQS_ENDPOINT_STRATEGY: "off"
