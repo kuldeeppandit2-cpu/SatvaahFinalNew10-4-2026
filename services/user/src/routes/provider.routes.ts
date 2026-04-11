@@ -105,6 +105,69 @@ router.post(
 );
 
 /**
+ * GET /api/v1/providers/me/taxonomy-fields
+ * Returns the taxonomy node's attribute_schema (category-specific form fields)
+ * and rating_dimensions for the authenticated provider.
+ * Called by ProviderProfileEditScreen to render dynamic category fields.
+ * Returns empty fields array if no taxonomy node is linked yet.
+ */
+router.get(
+  '/me/taxonomy-fields',
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = (req as any).user.userId;
+
+    const profile = await prisma.providerProfile.findFirst({
+      where: { user_id: userId },
+      select: {
+        id: true,
+        taxonomy_node: {
+          select: {
+            id: true,
+            l1: true,
+            l2: true,
+            l3: true,
+            l4: true,
+            display_name: true,
+            tab: true,
+            listing_type: true,
+            attribute_schema: true,
+            rating_dimensions: true,
+            verification_required: true,
+          },
+        },
+      },
+    });
+
+    if (!profile) throw new AppError('NOT_FOUND', 'Provider profile not found', 404);
+
+    const node = profile.taxonomy_node;
+
+    // attribute_schema shape: { fields: [{ key, label, required, type? }] }
+    // rating_dimensions shape: [{ key, label, weight }]
+    const attributeSchema = (node?.attribute_schema as any) ?? { fields: [] };
+    const ratingDimensions = (node?.rating_dimensions as any) ?? [];
+
+    res.json({
+      success: true,
+      data: {
+        taxonomy_node_id:   node?.id ?? null,
+        category_label:     node?.display_name ?? null,
+        l1: node?.l1 ?? null,
+        l2: node?.l2 ?? null,
+        l3: node?.l3 ?? null,
+        l4: node?.l4 ?? null,
+        tab: node?.tab ?? null,
+        listing_type:       node?.listing_type ?? null,
+        verification_required: node?.verification_required ?? false,
+        attribute_schema:   attributeSchema,
+        rating_dimensions:  ratingDimensions,
+      },
+    });
+  }),
+);
+
+/**
  * GET /api/v1/providers/me/credentials
  * Returns list of provider's verification records.
  */
