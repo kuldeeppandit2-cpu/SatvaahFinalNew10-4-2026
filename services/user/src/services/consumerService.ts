@@ -49,17 +49,26 @@ async function getByUserId(userId: string) {
 // ── Upsert profile ────────────────────────────────────────────────────────────
 
 async function upsertProfile(input: {
-  userId:       string;
-  displayName: string;
-  cityId:      string;
-  avatarS3Key?: string;
-  correlationId: string;
+  user_id?:      string;
+  userId?:       string;
+  displayName:   string;
+  city_id?:      string;
+  cityId?:       string;
+  avatarS3Key?:  string;
+  avatar_url?:   string;
+  correlationId?: string;
 }): Promise<{ profile: any; created: boolean }> {
-  const { userId, displayName, cityId, avatarS3Key, correlationId } = input;
+  const userId      = input.userId      ?? input.user_id      ?? '';
+  const cityId      = input.cityId      ?? input.city_id      ?? null;
+  const displayName = input.displayName;
+  const avatarS3Key = input.avatarS3Key ?? input.avatar_url   ?? undefined;
 
-  // Validate city
-  const city = await prisma.city.findUnique({ where: { id: cityId }, select: { id: true } });
-  if (!city) throw new NotFoundError('INVALID_CITY', `City ${cityId} not found`);
+  if (!userId) throw new NotFoundError('MISSING_USER_ID', 'user_id is required');
+
+  if (cityId) {
+    const city = await prisma.city.findUnique({ where: { id: cityId }, select: { id: true } });
+    if (!city) throw new NotFoundError('INVALID_CITY', `City ${cityId} not found`);
+  }
 
   const existing = await prisma.consumerProfile.findUnique({ where: { user_id: userId } });
 

@@ -281,6 +281,14 @@ export const authService = {
           return u;
         });
       } else { devUser = devExisting; }
+      // Ensure consumerProfile exists — required for contact events, home screen, messages
+      const devConsumerExists = await prisma.consumerProfile.findUnique({ where: { user_id: devUser.id } });
+      if (!devConsumerExists) {
+        await prisma.consumerProfile.create({
+          data: { user_id: devUser.id, display_name: 'Test Consumer' },
+        });
+        logger.warn('DEV BYPASS: ConsumerProfile created for test user');
+      }
       const { access_token, refresh_token } = await issueTokenPair(devUser, ip, userAgent);
       logger.warn('DEV BYPASS: Mock Firebase token accepted — REMOVE BEFORE PRODUCTION');
       return { access_token, refresh_token, userId: devUser.id, user_id: devUser.id, is_new_user: devIsNew, mode: devUser.mode };
@@ -355,8 +363,24 @@ export const authService = {
       user = newUser;
       logger.info(`New user created`);
 
+      // Create consumerProfile for new user — required for contact events, home screen, messages
+      // display_name defaults to phone; consumer profile setup screen updates it on first contact
+      await prisma.consumerProfile.create({
+        data: { user_id: user.id, display_name: phone },
+      });
+      logger.info(`ConsumerProfile created for new user`);
+
     } else {
       user = existingUser;
+
+      // Ensure consumerProfile exists for existing users (covers users created before this fix)
+      const cpExists = await prisma.consumerProfile.findUnique({ where: { user_id: user.id } });
+      if (!cpExists) {
+        await prisma.consumerProfile.create({
+          data: { user_id: user.id, display_name: phone },
+        });
+        logger.info(`ConsumerProfile backfilled for existing user`);
+      }
 
       // Upsert consent record — write if absent (re-login after delete+reinstall)
       const consentExists = await prisma.consentRecord.findFirst({
