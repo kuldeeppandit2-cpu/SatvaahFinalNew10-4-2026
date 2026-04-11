@@ -87,6 +87,7 @@ export function ModeSelectionScreen(): React.ReactElement {
       <Text style={styles.tagline}>Truth that travels</Text>
       <Text style={styles.headline}>Welcome back.</Text>
       <Text style={styles.sub}>How would you like to continue today?</Text>
+      <Text style={styles.maidLawyer}>You can be a lawyer looking for a maid — or a maid looking for a lawyer.</Text>
 
       {/* Consumer Card */}
       <TouchableOpacity
@@ -275,6 +276,15 @@ const styles = StyleSheet.create({
   },
   cardLoader: {
     marginTop: 12,
+  },
+  maidLawyer: {
+    fontFamily: 'PlusJakartaSans-Regular',
+    fontSize: 13,
+    color: '#1C1C2E',
+    textAlign: 'center',
+    marginBottom: 28,
+    lineHeight: 20,
+    paddingHorizontal: 8,
   },
   footer: {
     fontFamily: 'PlusJakartaSans-Regular',
