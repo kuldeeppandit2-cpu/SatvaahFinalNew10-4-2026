@@ -37,6 +37,7 @@ import type { TrustScore }                                    from '../../api/tr
 import { getSavedProviders, saveProvider, unsaveProvider }    from '../../api/contact.api';
 import { TrustBreakdownModal }                                from './TrustBreakdownModal';
 import { useAuthStore }                                       from '../../stores/auth.store';
+import * as Location                                         from 'expo-location';
 import { useConsumerStore }                                   from '../../stores/consumer.store';
 import type { ConsumerStackParamList }                        from '../../navigation/types';
 
@@ -151,6 +152,8 @@ export function ProviderProfileScreen(): React.ReactElement {
   const [setupCities, setSetupCities] = useState<{ id: string; name: string }[]>([]);
   const [setupCityId, setSetupCityId] = useState('');
   const [setupLoading, setSetupLoading] = useState(false);
+  const [setupGeoStatus, setSetupGeoStatus] = useState<'idle' | 'loading' | 'captured' | 'denied'>('idle');
+  const [setupGeoCoords, setSetupGeoCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   // Fetch cities for setup modal on mount
   useEffect(() => {
@@ -162,6 +165,19 @@ export function ProviderProfileScreen(): React.ReactElement {
       })
       .catch(() => {});
   }, []);
+
+  async function captureGeoLocation(): Promise<void> {
+    setSetupGeoStatus('loading');
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') { setSetupGeoStatus('denied'); return; }
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setSetupGeoCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      setSetupGeoStatus('captured');
+    } catch {
+      setSetupGeoStatus('denied');
+    }
+  }
 
   async function handleProfileSetupSubmit(): Promise<void> {
     if (!setupName.trim() || !setupCityId) {
@@ -176,7 +192,6 @@ export function ProviderProfileScreen(): React.ReactElement {
       });
       markProfileSetupComplete();
       setShowSetupModal(false);
-      // Now proceed with the original contact action
       if (pendingContactType) proceedToContact(pendingContactType);
     } catch {
       Alert.alert('Error', 'Could not save your profile. Please try again.');
@@ -489,11 +504,12 @@ export function ProviderProfileScreen(): React.ReactElement {
       {/* ── Consumer Profile Setup Modal — shown once before first contact ── */}
       <Modal visible={showSetupModal} transparent animationType="slide" onRequestClose={() => setShowSetupModal(false)}>
         <KeyboardAvoidingView style={setupStyles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={setupStyles.card}>
+          <ScrollView style={setupStyles.card} keyboardShouldPersistTaps="handled">
             <Text style={setupStyles.title}>Before you connect</Text>
-            <Text style={setupStyles.sub}>Tell providers who you are so they can help you better.</Text>
+            <Text style={setupStyles.sub}>Providers need to know who you are to help you.</Text>
 
-            <Text style={setupStyles.label}>Your name</Text>
+            {/* Name */}
+            <Text style={setupStyles.label}>Your name *</Text>
             <TextInput
               style={setupStyles.input}
               placeholder="e.g. Rahul Sharma"
@@ -502,7 +518,8 @@ export function ProviderProfileScreen(): React.ReactElement {
               autoFocus
             />
 
-            <Text style={setupStyles.label}>Your city</Text>
+            {/* City */}
+            <Text style={setupStyles.label}>Your city *</Text>
             <View style={setupStyles.cityRow}>
               {setupCities.map((city) => (
                 <TouchableOpacity
@@ -517,14 +534,52 @@ export function ProviderProfileScreen(): React.ReactElement {
               ))}
             </View>
 
+            {/* Geo location */}
+            <Text style={setupStyles.label}>Your location *</Text>
+            <Text style={setupStyles.hint}>Helps providers near you find you faster.</Text>
             <TouchableOpacity
-              style={[setupStyles.btn, setupLoading && setupStyles.btnDisabled]}
+              style={[setupStyles.geoBtn, setupGeoStatus === 'captured' && setupStyles.geoBtnCaptured]}
+              onPress={captureGeoLocation}
+              disabled={setupGeoStatus === 'loading'}
+            >
+              <Text style={setupStyles.geoBtnText}>
+                {setupGeoStatus === 'idle' && '📍 Capture my location'}
+                {setupGeoStatus === 'loading' && '⏳ Getting location…'}
+                {setupGeoStatus === 'captured' && '✅ Location captured'}
+                {setupGeoStatus === 'denied' && '⚠️ Permission denied — tap to retry'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Aadhaar — optional */}
+            <View style={setupStyles.aadhaarBox}>
+              <Text style={setupStyles.aadhaarTitle}>🔒 Aadhaar verification (optional)</Text>
+              <Text style={setupStyles.aadhaarSub}>
+                Verified consumers get priority responses, better trust scores, and build credibility with providers.
+              </Text>
+              <TouchableOpacity
+                style={setupStyles.aadhaarBtn}
+                onPress={() => {
+                  setShowSetupModal(false);
+                  navigation.navigate('AadhaarVerifyScreen' as any);
+                }}
+              >
+                <Text style={setupStyles.aadhaarBtnText}>Verify Aadhaar →</Text>
+              </TouchableOpacity>
+              <Text style={setupStyles.aadhaarSkip} onPress={handleProfileSetupSubmit}>
+                Skip for now
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={[setupStyles.btn, (setupLoading || setupGeoStatus === 'idle') && setupStyles.btnDisabled]}
               onPress={handleProfileSetupSubmit}
-              disabled={setupLoading}
+              disabled={setupLoading || setupGeoStatus === 'idle'}
             >
               <Text style={setupStyles.btnText}>{setupLoading ? 'Saving…' : 'Continue →'}</Text>
             </TouchableOpacity>
-          </View>
+
+            <View style={{ height: 32 }} />
+          </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
@@ -544,6 +599,16 @@ const setupStyles = StyleSheet.create({
   cityChipSelected:  { borderColor: '#C8691A', backgroundColor: '#FFF3E8' },
   cityChipText:      { fontFamily: 'PlusJakartaSans-Regular', fontSize: 13, color: '#6B6560' },
   cityChipTextSelected: { color: '#C8691A', fontFamily: 'PlusJakartaSans-SemiBold' },
+  hint:              { fontFamily: 'PlusJakartaSans-Regular', fontSize: 12, color: '#9E9589', marginBottom: 10 },
+  geoBtn:            { borderWidth: 1.5, borderColor: '#C8691A', borderRadius: 10, padding: 14, alignItems: 'center', marginBottom: 20 },
+  geoBtnCaptured:    { backgroundColor: '#E8F5F3', borderColor: '#2E7D72' },
+  geoBtnText:        { fontFamily: 'PlusJakartaSans-SemiBold', fontSize: 14, color: '#C8691A' },
+  aadhaarBox:        { backgroundColor: '#FFF8F0', borderRadius: 12, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: '#F0D0B0' },
+  aadhaarTitle:      { fontFamily: 'PlusJakartaSans-Bold', fontSize: 14, color: '#1C1C2E', marginBottom: 6 },
+  aadhaarSub:        { fontFamily: 'PlusJakartaSans-Regular', fontSize: 13, color: '#6B6560', marginBottom: 12 },
+  aadhaarBtn:        { backgroundColor: '#C8691A', borderRadius: 8, paddingVertical: 10, alignItems: 'center', marginBottom: 8 },
+  aadhaarBtnText:    { fontFamily: 'PlusJakartaSans-SemiBold', fontSize: 13, color: '#FAF7F0' },
+  aadhaarSkip:       { fontFamily: 'PlusJakartaSans-Regular', fontSize: 12, color: '#9E9589', textAlign: 'center' },
   btn:               { backgroundColor: '#C8691A', borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
   btnDisabled:       { backgroundColor: '#E8E0D5' },
   btnText:           { fontFamily: 'PlusJakartaSans-Bold', fontSize: 16, color: '#FAF7F0' },
