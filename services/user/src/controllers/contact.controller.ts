@@ -64,10 +64,17 @@ export const createContactEvent = async (
     return;
   }
 
+  // Resolve User.id → ConsumerProfile.id (contact_events.consumer_id is FK to consumer_profiles.id)
+  const consumerProfile = await prisma.consumerProfile.findUnique({ where: { user_id: consumerId } });
+  if (!consumerProfile) {
+    res.status(404).json({ success: false, error: { code: 'CONSUMER_PROFILE_NOT_FOUND', message: 'Please complete your profile setup before contacting a provider.' } });
+    return;
+  }
+
   logger.info('contact_event.create.start');
 
   const event = await createContactEventService({
-    consumerId,
+    consumerId: consumerProfile.id,
     providerId:    provider_id,
     contactType:   contact_type as ContactType,
     message:       message?.trim(),
@@ -116,11 +123,18 @@ export const reportNoShow = async (
     return;
   }
 
+  // Resolve User.id → ConsumerProfile.id
+  const consumerProfile = await prisma.consumerProfile.findUnique({ where: { user_id: consumerId } });
+  if (!consumerProfile) {
+    res.status(404).json({ success: false, error: { code: 'CONSUMER_PROFILE_NOT_FOUND', message: 'Consumer profile not found.' } });
+    return;
+  }
+
   logger.info('contact_event.no_show.start');
 
   const result = await reportNoShowService({
     eventId,
-    consumer_id: consumerId,
+    consumer_id: consumerProfile.id,
     correlationId,
   });
 
