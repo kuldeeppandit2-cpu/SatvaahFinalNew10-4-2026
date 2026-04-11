@@ -79,8 +79,13 @@ export function ModeSelectionScreen(): React.ReactElement {
       keyboardShouldPersistTaps="handled"
     >
       {/* Wordmark */}
-      <Text style={styles.wordmark}>SatvAAh</Text>
-      <Text style={styles.headline}>Welcome to SatvAAh.</Text>
+      <View style={styles.brandRow}>
+        <Text style={styles.brandInk}>Satv</Text>
+        <View style={styles.brandAA}><Text style={styles.brandAAText}>AA</Text></View>
+        <Text style={styles.brandInk}>h</Text>
+      </View>
+      <Text style={styles.tagline}>Truth that travels</Text>
+      <Text style={styles.headline}>Welcome back.</Text>
       <Text style={styles.sub}>How would you like to continue today?</Text>
 
       {/* Consumer Card */}
@@ -94,8 +99,8 @@ export function ModeSelectionScreen(): React.ReactElement {
         activeOpacity={0.88}
       >
         <Text style={styles.cardEmoji}>🔍</Text>
-        <Text style={styles.cardHeadline}>I am looking for someone</Text>
-        <Text style={styles.cardSub}>Find verified providers near you.</Text>
+        <Text style={styles.cardHeadline}>Customer</Text>
+        <Text style={styles.cardSub}>Find &amp; connect with verified providers near you.</Text>
 
         {/* Decorative chips */}
         <View style={styles.chipRow}>
@@ -125,8 +130,8 @@ export function ModeSelectionScreen(): React.ReactElement {
         activeOpacity={0.88}
       >
         <Text style={styles.cardEmoji}>🛡️</Text>
-        <Text style={styles.cardHeadline}>I offer a service or product</Text>
-        <Text style={styles.cardSub}>Build your trust score. Manage leads.</Text>
+        <Text style={styles.cardHeadline}>Provider</Text>
+        <Text style={styles.cardSub}>List services, build your Trust Score, manage leads.</Text>
 
         {/* Decorative chips */}
         <View style={styles.chipRow}>
@@ -163,11 +168,35 @@ const styles = StyleSheet.create({
     paddingBottom: 48,
     alignItems: 'center',
   },
-  wordmark: {
-    fontFamily: 'PlusJakartaSans-ExtraBold',
-    fontSize: 24,
-    color: COLORS.saffron,
-    marginBottom: 32,
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  brandInk: {
+    fontSize: 40,
+    fontWeight: '800',
+    color: '#1C1C2E',
+  },
+  brandAA: {
+    backgroundColor: '#C8691A',
+    borderRadius: 7,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginHorizontal: 1,
+  },
+  brandAAText: {
+    fontSize: 34,
+    fontWeight: '800',
+    color: '#FAF7F0',
+  },
+  tagline: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontStyle: 'italic',
+    color: '#C8691A',
+    letterSpacing: 5,
+    marginBottom: 28,
   },
   headline: {
     fontFamily: 'PlusJakartaSans-Bold',

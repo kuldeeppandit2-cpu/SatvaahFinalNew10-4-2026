@@ -84,8 +84,12 @@ export function OtpScreen(): React.ReactElement {
         <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
           <Text style={s.backText}>← Back</Text>
         </TouchableOpacity>
-        <Text style={s.logo}>SatvAAh</Text>
-        <Text style={s.tagline}>VERIFY YOUR NUMBER</Text>
+        <View style={s.brandRow}>
+          <Text style={s.brandInk}>Satv</Text>
+          <View style={s.brandAA}><Text style={s.brandAAText}>AA</Text></View>
+          <Text style={s.brandInk}>h</Text>
+        </View>
+        <Text style={s.tagline}>Verify your number</Text>
       </View>
 
       <View style={s.card}>
@@ -138,8 +142,11 @@ const s = StyleSheet.create({
   header:      { flex: 1, justifyContent: 'center', alignItems: 'center' },
   backBtn:     { position: 'absolute', top: 60, left: 24 },
   backText:    { color: '#C8691A', fontSize: 16, fontWeight: '600', fontFamily: 'PlusJakartaSans-SemiBold' },
-  logo:        { fontSize: 44, fontWeight: '800', color: '#1C1C2E', fontFamily: 'PlusJakartaSans-ExtraBold' },
-  tagline:     { fontSize: 11, color: '#C8691A', letterSpacing: 3, fontWeight: '700', marginTop: 8, fontFamily: 'PlusJakartaSans-Bold' },
+  brandRow:    { flexDirection: 'row', alignItems: 'center' },
+  brandInk:    { fontSize: 44, fontWeight: '800', color: '#1C1C2E' },
+  brandAA:     { backgroundColor: '#C8691A', borderRadius: 7, paddingHorizontal: 6, paddingVertical: 2, marginHorizontal: 1 },
+  brandAAText: { fontSize: 38, fontWeight: '800', color: '#FAF7F0' },
+  tagline:     { fontSize: 11, fontWeight: '700', fontStyle: 'italic', color: '#C8691A', letterSpacing: 5, marginTop: 10 },
   card:        { backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingBottom: 48, borderTopWidth: 1, borderColor: '#E8E0D5' },
   title:       { fontSize: 22, fontWeight: '700', color: '#1C1C2E', marginBottom: 8, fontFamily: 'PlusJakartaSans-Bold' },
   sub:         { fontSize: 14, color: '#1C1C2E', marginBottom: 28, fontFamily: 'PlusJakartaSans-Regular' },

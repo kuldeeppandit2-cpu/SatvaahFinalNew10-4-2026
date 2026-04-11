@@ -231,7 +231,7 @@ export function OnboardingScreen(): React.ReactElement {
 
 // ── Brand styles ──────────────────────────────────────────────────────────────
 const b = StyleSheet.create({
-  wrap:    { alignItems: 'center', paddingVertical: 28 },
+  wrap:    { alignItems: 'center', paddingVertical: 20 },
   nameRow: { flexDirection: 'row', alignItems: 'center' },
   ink:     { fontSize: 44, fontWeight: '800', color: '#1C1C2E' },
   aaBox:   { backgroundColor: '#C8691A', borderRadius: 7, paddingHorizontal: 6, paddingVertical: 2, marginHorizontal: 1 },
@@ -249,7 +249,7 @@ const s = StyleSheet.create({
 
   scroller:    { flex: 1 },
   slide:       { paddingHorizontal: 24, paddingTop: 20, flex: 1 },
-  flex1:       { flex: 1 },
+  flex1:       { flex: 1, minHeight: 8, maxHeight: 40 },
 
   // Label pill — black box, white text, left-aligned
   labelBox:    { alignSelf: 'flex-start', backgroundColor: '#1C1C2E', borderRadius: 3, paddingHorizontal: 8, paddingVertical: 4, marginBottom: 16 },
