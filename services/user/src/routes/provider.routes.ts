@@ -350,4 +350,77 @@ router.patch(
   }),
 );
 
+// ─── Slot calendar routes (V050) ─────────────────────────────────────────────
+//
+// These routes implement the server side of SlotBookingScreen (Phase 19).
+// The screen was fully built but the endpoint returned [] because no table existed.
+// V050 migration created provider_availability_slots + provider_slot_exceptions tables.
+//
+// audit-ref: DB — provider_availability_slots (V050)
+// audit-ref: DB — provider_slot_exceptions    (V050)
+// audit-ref: DB5  contact_events.slot_date    (marks booked slots)
+
+import {
+  getProviderSlots,
+  getMySchedule,
+  putMySchedule,
+  upsertSlotException,
+} from '../controllers/slot.controller';
+
+const slotReadLimiter  = rateLimiter({ windowMs: 60_000, max: 60, keyPrefix: 'rl:slot-read'  });
+const slotWriteLimiter = rateLimiter({ windowMs: 60_000, max: 10, keyPrefix: 'rl:slot-write' });
+
+/**
+ * GET /api/v1/providers/:id/slots?date=YYYY-MM-DD
+ * Returns available slots for a provider on a specific date.
+ * Called by SlotBookingScreen. No auth required — consumer previews before contacting.
+ * date param is in Asia/Kolkata (IST).
+ */
+router.get(
+  '/:id/slots',
+  slotReadLimiter,
+  asyncHandler(getProviderSlots),
+);
+
+/**
+ * GET /api/v1/providers/me/schedule
+ * Returns authenticated provider's full recurring weekly schedule.
+ * Used by provider dashboard calendar view.
+ */
+router.get(
+  '/me/schedule',
+  requireAuth,
+  slotReadLimiter,
+  asyncHandler(getMySchedule),
+);
+
+/**
+ * PUT /api/v1/providers/me/schedule
+ * Replaces provider's entire recurring schedule atomically.
+ * Body: { slots: [{ day_of_week, start_time, end_time }] }
+ * day_of_week: 0=Sunday … 6=Saturday
+ * start_time / end_time: "HH:MM" in Asia/Kolkata (IST)
+ */
+router.put(
+  '/me/schedule',
+  requireAuth,
+  slotWriteLimiter,
+  asyncHandler(putMySchedule),
+);
+
+/**
+ * POST /api/v1/providers/me/schedule/exceptions
+ * Creates or replaces a slot exception for a specific date.
+ * Body: { exception_date, is_available, override_start_time?, override_end_time?, note? }
+ * is_available=false → blocked day (holiday)
+ * is_available=true  → extra hours; override_start/end_time required
+ * Idempotent (upsert).
+ */
+router.post(
+  '/me/schedule/exceptions',
+  requireAuth,
+  slotWriteLimiter,
+  asyncHandler(upsertSlotException),
+);
+
 export default router;

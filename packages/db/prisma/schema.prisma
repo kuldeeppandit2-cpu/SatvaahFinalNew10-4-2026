@@ -247,12 +247,20 @@ model ConsumerProfile {
 
   avatar_s3_key String? @db.VarChar(512)
 
+  // Location — V050 migration added these fields.
+  // geo_lat/geo_lng: consumer home coordinates. Previously stored in MMKV only (lost on reinstall).
+  // Required by BG3 discovery push for proximity matching.
+  geo_lat  Decimal? @db.Decimal(9, 6)
+  geo_lng  Decimal? @db.Decimal(9, 6)
+  area_id  String?  @db.Uuid
+
   created_at DateTime @default(now()) @db.Timestamptz(6)
   updated_at DateTime @updatedAt @db.Timestamptz(6)
 
   // Relations
   user                      User               @relation(fields: [user_id], references: [id], onDelete: Restrict)
   city                      City?              @relation(fields: [city_id], references: [id], onDelete: SetNull)
+  area                      Area?              @relation(fields: [area_id], references: [id], onDelete: SetNull)
   contact_events            ContactEvent[]     @relation("ConsumerContact")
   ratings                   Rating[]           @relation("ConsumerRatings")
   daily_rating_usages       DailyRatingUsage[]
@@ -262,6 +270,7 @@ model ConsumerProfile {
 
   @@index([user_id])
   @@index([city_id])
+  @@index([area_id])
   @@index([trust_score])
   @@map("consumer_profiles")
 }
@@ -324,6 +333,18 @@ model ProviderProfile {
   scrape_source    String?   @db.VarChar(100)
   claimed_at       DateTime? @db.Timestamptz(6)
 
+  // Address — V050 migration added these fields.
+  // address_line: human-readable office address. Previously only GPS point was stored.
+  // pincode: 6-digit Indian postal code. Was not stored anywhere before V050.
+  // service_radius_km: how far provider travels. home_visit_available=TRUE with no radius was incomplete.
+  // languages_spoken: BCP-47 codes array e.g. ["te","hi","en"]. Critical for multilingual Hyderabad.
+  // years_experience: top-level queryable column. Previously buried in attribute_schema JSONB only.
+  address_line      String? @db.VarChar(300)
+  pincode           String? @db.VarChar(10)
+  service_radius_km Int?
+  languages_spoken  Json    @default("[]")
+  years_experience  Int?
+
   // Active status
   is_active           Boolean   @default(true)
   deactivated_at      DateTime? @db.Timestamptz(6)
@@ -350,6 +371,8 @@ model ProviderProfile {
   tsaas_usage_logs       TsaasUsageLog[]
   saved_by_consumers     SavedProvider[]
   consumer_ratings_given ConsumerRating[]     @relation("ProviderGiving")
+  availability_slots     ProviderAvailabilitySlot[]
+  slot_exceptions        ProviderSlotException[]
 
   @@index([city_id])
   @@index([area_id])
@@ -688,6 +711,28 @@ model TaxonomyNode {
 
   verification_required Boolean @default(false)
   home_visit            Boolean @default(false)
+
+  // V048 migration added these 11 fields to the live DB.
+  // They were missing from schema.prisma until this update — causing schema drift.
+  // All fields are nullable so existing rows are unaffected.
+  pricing_model        String? @db.VarChar(100)
+  price_unit           String? @db.VarChar(50)
+  // Minimum verification level before provider appears in search
+  // Values: none | phone | aadhaar | credential | admin
+  verification_gate    String? @db.VarChar(20)
+  licence_body_text    String? @db.VarChar(200)
+  // Category-specific instruction shown during provider onboarding
+  provider_prompt      String? @db.VarChar(500)
+  // Values: home_visit | at_provider | both | not_applicable
+  geo_search_default   String? @db.VarChar(20)
+  // Values: local | city_wide | pan_india
+  provider_service_area String? @db.VarChar(20)
+  // Per-category slot duration override. NULL = use system_config slot_duration_minutes (30)
+  default_slot_minutes Int?
+  // Comma-separated alternative search terms for OpenSearch fuzzy matching
+  search_synonyms      String? @db.Text
+  icon_emoji           String? @db.VarChar(10)
+  hex_color            String? @db.VarChar(7)
 
   is_active  Boolean @default(true)
   sort_order Int     @default(0)
@@ -1421,6 +1466,17 @@ model ScrapeStaging {
   promoted_by      String?   @db.VarChar(100)
   staged_at        DateTime  @default(now()) @db.Timestamptz(6)
 
+  // V049 migration added these 7 fields to live DB.
+  // website_url and external_rating were already in schema.prisma.
+  // The remaining 5 were missing — schema drift fixed here.
+  website_url           String? @db.Text
+  photos                Json?
+  opening_hours         Json?
+  external_rating       Decimal? @db.Decimal(3, 2)
+  external_review_count Int?
+  social_links          Json?
+  certificates_found    Json?
+
   job               ScrapingJob         @relation(fields: [job_id], references: [id], onDelete: Cascade)
   outreach_schedule OutreachSchedule[]
 
@@ -1523,6 +1579,7 @@ model Area {
   // Relations
   city              City              @relation(fields: [city_id], references: [id], onDelete: Restrict)
   provider_profiles ProviderProfile[]
+  consumer_profiles ConsumerProfile[]
 
   @@unique([city_id, slug])
   @@index([city_id, is_active])
@@ -1557,3 +1614,57 @@ model Area {
 //   AFTER INSERT OR UPDATE ON trust_scores
 //   FOR EACH ROW EXECUTE FUNCTION sync_trust_score_to_profile();
 // =============================================================================
+
+// =============================================================================
+// MODEL — ProviderAvailabilitySlots  (V050)
+// Weekly recurring availability schedule per provider.
+// Multiple rows per day allowed (split shifts e.g. 9am-12pm + 2pm-6pm).
+// Available slots = this schedule MINUS provider_slot_exceptions
+//                                  MINUS booked contact_events.slot_date
+// =============================================================================
+model ProviderAvailabilitySlot {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider_id String  @db.Uuid
+
+  // 0=Sunday 1=Monday 2=Tuesday 3=Wednesday 4=Thursday 5=Friday 6=Saturday
+  day_of_week Int
+  start_time  String @db.VarChar(5) // HH:MM in Asia/Kolkata
+  end_time    String @db.VarChar(5) // HH:MM in Asia/Kolkata. Must be > start_time.
+
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  provider ProviderProfile @relation(fields: [provider_id], references: [id], onDelete: Cascade)
+
+  @@unique([provider_id, day_of_week, start_time])
+  @@index([provider_id, day_of_week, is_active])
+  @@map("provider_availability_slots")
+}
+
+// =============================================================================
+// MODEL — ProviderSlotException  (V050)
+// Specific date overrides. Two modes:
+//   is_available=false → provider is fully blocked that day (holiday etc.)
+//   is_available=true  → extra hours beyond normal recurring schedule
+// =============================================================================
+model ProviderSlotException {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider_id String  @db.Uuid
+
+  exception_date      DateTime @db.Date
+  is_available        Boolean  // false=blocked, true=extra hours
+  override_start_time String?  @db.VarChar(5) // HH:MM. Required if is_available=true.
+  override_end_time   String?  @db.VarChar(5) // HH:MM. Required if is_available=true.
+  note                String?  @db.VarChar(200)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relations
+  provider ProviderProfile @relation(fields: [provider_id], references: [id], onDelete: Cascade)
+
+  @@unique([provider_id, exception_date])
+  @@index([provider_id, exception_date])
+  @@map("provider_slot_exceptions")
+}
