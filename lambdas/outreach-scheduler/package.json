@@ -8,6 +8,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@aws-sdk/client-sqs": "^3.540.0",
     "@prisma/client": "^5.13.0",
     "axios": "^1.6.8",
     "uuid": "^9.0.0",
