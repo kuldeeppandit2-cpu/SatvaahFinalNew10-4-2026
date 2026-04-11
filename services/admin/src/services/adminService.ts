@@ -953,6 +953,180 @@ async function getNotificationLog(params: GetNotificationLogParams) {
 // MODULE 8 — SCRAPING STATUS
 // ===========================================================================
 
+// ===========================================================================
+// MODULE 8B — SCRAPING SOURCE MANAGEMENT
+// ===========================================================================
+
+// All 63 scraper source keys from the pipeline — canonical list.
+// If a key has no system_config entry it defaults to ENABLED.
+const ALL_SCRAPING_SOURCES = [
+  // Private platforms (13)
+  { key: 'sulekha',          label: 'Sulekha',           group: 'Private Platforms' },
+  { key: 'practo',           label: 'Practo',            group: 'Private Platforms' },
+  { key: 'zomato',           label: 'Zomato',            group: 'Private Platforms' },
+  { key: 'google_maps',      label: 'Google Maps',       group: 'Private Platforms' },
+  { key: 'justdial',         label: 'JustDial',          group: 'Private Platforms' },
+  { key: 'indiamart',        label: 'IndiaMART',         group: 'Private Platforms' },
+  { key: 'urban_company',    label: 'Urban Company',     group: 'Private Platforms' },
+  { key: 'tradeindia',       label: 'TradeIndia',        group: 'Private Platforms' },
+  { key: 'wedmegood',        label: 'WedMeGood',         group: 'Private Platforms' },
+  { key: 'lybrate',          label: 'Lybrate',           group: 'Private Platforms' },
+  { key: 'yellowpages_in',   label: 'Yellow Pages India',group: 'Private Platforms' },
+  { key: 'commonfloor',      label: 'CommonFloor',       group: 'Private Platforms' },
+  { key: 'healthgrades',     label: 'Healthgrades (1mg)',group: 'Private Platforms' },
+  // Government registries (15)
+  { key: 'fssai',            label: 'FSSAI',             group: 'Government Registries' },
+  { key: 'shops_estab',      label: 'Shops & Estab.',    group: 'Government Registries' },
+  { key: 'municipal',        label: 'Municipal',         group: 'Government Registries' },
+  { key: 'msme',             label: 'MSME / Udyam',      group: 'Government Registries' },
+  { key: 'gst',              label: 'GST Portal',        group: 'Government Registries' },
+  { key: 'mca',              label: 'MCA / ROC',         group: 'Government Registries' },
+  { key: 'nmc',              label: 'NMC (Doctors)',     group: 'Government Registries' },
+  { key: 'icai',             label: 'ICAI (CA)',         group: 'Government Registries' },
+  { key: 'bar_council',      label: 'Bar Council',       group: 'Government Registries' },
+  { key: 'ayush',            label: 'AYUSH Portal',      group: 'Government Registries' },
+  { key: 'rci',              label: 'RCI (Rehab)',        group: 'Government Registries' },
+  { key: 'irdai',            label: 'IRDAI (Insurance)', group: 'Government Registries' },
+  { key: 'sebi',             label: 'SEBI (Finance)',    group: 'Government Registries' },
+  { key: 'gem',              label: 'GeM Portal',        group: 'Government Registries' },
+  { key: 'skill_india',      label: 'Skill India',       group: 'Government Registries' },
+  // Professional associations (35)
+  { key: 'ima',              label: 'IMA',               group: 'Professional Associations' },
+  { key: 'ida',              label: 'IDA (Dental)',      group: 'Professional Associations' },
+  { key: 'aiocd',            label: 'AIOCD (Chemists)',  group: 'Professional Associations' },
+  { key: 'pharmacy_council', label: 'Pharmacy Council',  group: 'Professional Associations' },
+  { key: 'nabh',             label: 'NABH (Hospitals)',  group: 'Professional Associations' },
+  { key: 'fhrai',            label: 'FHRAI (Hotels)',    group: 'Professional Associations' },
+  { key: 'nrai',             label: 'NRAI (Restaurants)',group: 'Professional Associations' },
+  { key: 'spices_board',     label: 'Spices Board',      group: 'Professional Associations' },
+  { key: 'apeda',            label: 'APEDA (Agri)',      group: 'Professional Associations' },
+  { key: 'fada',             label: 'FADA (Auto)',       group: 'Professional Associations' },
+  { key: 'acma',             label: 'ACMA (Auto Parts)', group: 'Professional Associations' },
+  { key: 'aimtc',            label: 'AIMTC (Transport)', group: 'Professional Associations' },
+  { key: 'taai',             label: 'TAAI (Travel)',     group: 'Professional Associations' },
+  { key: 'credai',           label: 'CREDAI (Builders)', group: 'Professional Associations' },
+  { key: 'bai',              label: 'BAI (Construction)',group: 'Professional Associations' },
+  { key: 'icsi',             label: 'ICSI (Sec.)',       group: 'Professional Associations' },
+  { key: 'icmai',            label: 'ICMAI (CMA)',       group: 'Professional Associations' },
+  { key: 'amfi',             label: 'AMFI (MF)',         group: 'Professional Associations' },
+  { key: 'nasscom',          label: 'NASSCOM (IT)',      group: 'Professional Associations' },
+  { key: 'cait',             label: 'CAIT (Traders)',    group: 'Professional Associations' },
+  { key: 'rai',              label: 'RAI (Retail)',      group: 'Professional Associations' },
+  { key: 'jewellers_assoc',  label: 'Jewellers Assoc.',  group: 'Professional Associations' },
+  { key: 'aepc',             label: 'AEPC (Garments)',   group: 'Professional Associations' },
+  { key: 'eema',             label: 'EEMA (Events)',     group: 'Professional Associations' },
+  { key: 'wpo',              label: 'WPO (Wedding)',     group: 'Professional Associations' },
+  { key: 'capsi',            label: 'CAPSI (Security)',  group: 'Professional Associations' },
+  { key: 'yoga_federation',  label: 'Yoga Federation',   group: 'Professional Associations' },
+  { key: 'wellness_india',   label: 'Wellness India',    group: 'Professional Associations' },
+  { key: 'isif',             label: 'ISIF (Solar)',      group: 'Professional Associations' },
+  { key: 'fisme',            label: 'FISME (Mfg.)',      group: 'Professional Associations' },
+  { key: 'nsic',             label: 'NSIC (MSME)',       group: 'Professional Associations' },
+  { key: 'ficci',            label: 'FICCI',             group: 'Professional Associations' },
+  { key: 'cii',              label: 'CII',               group: 'Professional Associations' },
+  { key: 'assocham',         label: 'ASSOCHAM',          group: 'Professional Associations' },
+  { key: 'aicte',            label: 'AICTE (Education)', group: 'Professional Associations' },
+  { key: 'nsai',             label: 'NSAI (Agriculture)',group: 'Professional Associations' },
+];
+
+/**
+ * GET /api/v1/admin/scraping/sources
+ * Returns all 63 scraper sources with enabled/disabled status,
+ * last run time, and records scraped.
+ * Sources with no system_config entry are ENABLED by default.
+ */
+async function getScrapingSources() {
+  // Load all enabled/disabled flags from system_config in one query
+  const configRows = await prisma.systemConfig.findMany({
+    where: { key: { startsWith: 'scraping_source_enabled_' } },
+    select: { key: true, value: true },
+  });
+  const configMap: Record<string, string> = {};
+  for (const row of configRows) {
+    const src = row.key.replace('scraping_source_enabled_', '');
+    configMap[src] = row.value;
+  }
+
+  // Load last run stats per source from scraping_jobs
+  const jobStats = await prisma.$queryRaw<Array<{
+    source: string;
+    last_run: Date | null;
+    total_records: bigint;
+    job_count: bigint;
+  }>>`
+    SELECT
+      source,
+      MAX(completed_at)        AS last_run,
+      SUM(records_scraped)     AS total_records,
+      COUNT(*)                 AS job_count
+    FROM scraping_jobs
+    WHERE status = 'completed'
+    GROUP BY source
+  `;
+
+  const statsMap: Record<string, { last_run: string | null; total_records: number; job_count: number }> = {};
+  for (const row of jobStats) {
+    statsMap[row.source] = {
+      last_run:      row.last_run ? new Date(row.last_run).toISOString() : null,
+      total_records: Number(row.total_records),
+      job_count:     Number(row.job_count),
+    };
+  }
+
+  return ALL_SCRAPING_SOURCES.map(src => ({
+    key:           src.key,
+    label:         src.label,
+    group:         src.group,
+    enabled:       configMap[src.key] !== 'false', // default true if no key
+    last_run:      statsMap[src.key]?.last_run ?? null,
+    total_records: statsMap[src.key]?.total_records ?? 0,
+    job_count:     statsMap[src.key]?.job_count ?? 0,
+  }));
+}
+
+/**
+ * PATCH /api/v1/admin/scraping/sources/:source
+ * Toggle a scraping source enabled/disabled.
+ * Upserts a system_config key: scraping_source_enabled_<source> = 'true'|'false'
+ * The scraper reads these at startup via load_enabled_sources().
+ */
+async function toggleScrapingSource(params: {
+  sourceKey: string;
+  enabled: boolean;
+  adminId: string;
+}) {
+  const { sourceKey, enabled, adminId } = params;
+
+  // Validate source key is in the known list
+  const known = ALL_SCRAPING_SOURCES.find(s => s.key === sourceKey);
+  if (!known) {
+    throw new Error(`Unknown scraping source: ${sourceKey}`);
+  }
+
+  const configKey = `scraping_source_enabled_${sourceKey}`;
+  const value = enabled ? 'true' : 'false';
+
+  // Upsert — key may not exist yet (first time toggling)
+  await prisma.systemConfig.upsert({
+    where: { key: configKey },
+    update: { value, updated_by: adminId },
+    create: {
+      key:         configKey,
+      value,
+      description: `Enable/disable scraping from ${known.label}. true=enabled, false=disabled.`,
+      data_type:   'boolean',
+      updated_by:  adminId,
+    },
+  });
+
+  return {
+    key:     sourceKey,
+    label:   known.label,
+    enabled,
+    updated_at: new Date().toISOString(),
+  };
+}
+
 async function getScrapingStatus(limit: number) {
   const [jobs, summary] = await Promise.all([
     prisma.scrapingJob.findMany({
@@ -1216,6 +1390,8 @@ export const adminService = {
   setTrustConfig,
   getNotificationLog,
   getScrapingStatus,
+  getScrapingSources,
+  toggleScrapingSource,
   triggerOpenSearchResync,
   getProviderAnalytics,
 };

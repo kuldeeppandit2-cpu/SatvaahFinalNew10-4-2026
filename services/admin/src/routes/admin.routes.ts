@@ -565,6 +565,57 @@ router.get(
   }),
 );
 
+/**
+ * GET /api/v1/admin/scraping/sources
+ * Returns all 63 scraper sources with enabled/disabled status,
+ * last run time, and total records scraped.
+ * Sources absent from system_config are ENABLED by default.
+ */
+router.get(
+  '/admin/scraping/sources',
+  requireAdmin,
+  asyncHandler(async (_req: AdminRequest, res: Response) => {
+    const sources = await adminService.getScrapingSources();
+    return res.json({ success: true, data: sources });
+  }),
+);
+
+/**
+ * PATCH /api/v1/admin/scraping/sources/:source
+ * Enable or disable a scraping source.
+ * Body: { enabled: boolean }
+ * Writes scraping_source_enabled_<source> to system_config.
+ * Scraper reads this at startup via load_enabled_sources().
+ */
+router.patch(
+  '/admin/scraping/sources/:source',
+  requireAdmin,
+  asyncHandler(async (req: AdminRequest, res: Response) => {
+    const { source } = req.params;
+    const { enabled } = req.body;
+
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'enabled must be a boolean' },
+      });
+    }
+
+    const result = await adminService.toggleScrapingSource({
+      sourceKey: source,
+      enabled,
+      adminId:   req.admin!.id,
+    });
+
+    logger.info(
+      { adminId: req.admin!.id, source, enabled },
+      `Scraping source ${source} ${enabled ? 'enabled' : 'disabled'}`,
+    );
+
+    return res.json({ success: true, data: result });
+  }),
+);
+
 // ===========================================================================
 // MODULE 9 — OPENSEARCH RESYNC
 // ===========================================================================

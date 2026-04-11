@@ -88,7 +88,10 @@ export const adminApi = {
   resendNotif:      (id: string) => request<void>('POST', `/api/v1/admin/notifications/${id}/resend`),
 
   // Scraping — FIXED: was /scraping/jobs, now /scraping/status
-  getScrapingJobs: () => request<ScrapingStatus>('GET', '/api/v1/admin/scraping/status'),
+  getScrapingJobs:     () => request<ScrapingStatus>('GET', '/api/v1/admin/scraping/status'),
+  getScrapingSources:  () => request<ScrapingSource[]>('GET', '/api/v1/admin/scraping/sources'),
+  toggleScrapingSource:(key: string, enabled: boolean) =>
+    request<ScrapingSource>('PATCH', `/api/v1/admin/scraping/sources/${key}`, { enabled }),
 };
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -197,3 +200,4 @@ export interface NotifPage { logs: NotifRow[]; total: number; }
 export interface NotifRow { id: string; user_id: string; channel: string; event_type: string; sent_at: string; delivered_at: string | null; wa_fallback_sent: boolean; }
 export interface ScrapingStatus { jobs: ScrapingJob[]; summary: Array<{status: string; count: number}>; staging_unprocessed: number; }
 export interface ScrapingJob { id: string; jobType: string; status: string; total_records: number; processed: number; failed: number; created_at: string; }
+export interface ScrapingSource { key: string; label: string; group: string; enabled: boolean; last_run: string | null; total_records: number; job_count: number; }
