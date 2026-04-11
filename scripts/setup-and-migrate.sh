@@ -38,8 +38,15 @@ else
 fi
 
 # Load env vars so docker-compose stops warning
+# Safe approach: read key=value pairs, skip comments/blanks, handle quoted values
 set -a
-source .env
+while IFS= read -r line; do
+  # Skip comments and blank lines
+  [[ "$line" =~ ^[[:space:]]*# ]] && continue
+  [[ -z "${line// }" ]] && continue
+  # Only export lines that look like KEY=value
+  [[ "$line" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] && export "$line" 2>/dev/null || true
+done < .env
 set +a
 ok "Env vars loaded"
 
