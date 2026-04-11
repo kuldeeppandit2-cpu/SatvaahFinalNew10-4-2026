@@ -97,17 +97,17 @@ export async function applyReferral({
       [BONUS_LEADS_PER_REFERRAL, referrerId],
     );
 
-    // Lead credit logged via consumer_lead_usage.leads_bonus increment above
-
     // ── Mark new user as having used a referral ───────────────────────────
     // Note: users table has no referred_by_user_id column — referral_events tracks this relationship
     // No users UPDATE needed here
 
     // ── Insert referral record ────────────────────────────────────────────
+    // audit-ref: DB22 referral_events — reward_granted=true because leads were credited above.
+    // Was previously inserted as false and never updated — fixed here.
     await client.query(
       `INSERT INTO referral_events
          (id, referrer_id, referred_id, referral_code, converted_at, reward_type, reward_granted, created_at)
-       VALUES (gen_random_uuid(), $1, $2, $3, NOW(), 'bonus_leads', false, NOW())
+       VALUES (gen_random_uuid(), $1, $2, $3, NOW(), 'bonus_leads', true, NOW())
        ON CONFLICT (referred_id) DO NOTHING`,
       [referrerId, newUserId, referralCode],
     );

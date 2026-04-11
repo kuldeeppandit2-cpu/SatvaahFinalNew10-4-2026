@@ -96,8 +96,8 @@ export default function DeepLinkResolver(): null {
         if (referralCode) {
           await applyReferralCode(referralCode);
         }
-        // Navigate to home regardless of apply outcome
-        navigation.navigate('Home');
+        // audit-ref: navigation — HomeTab is the correct root screen name (not 'Home')
+        navigation.navigate('HomeTab' as any);
         return;
       }
 
