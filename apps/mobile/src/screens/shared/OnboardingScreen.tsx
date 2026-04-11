@@ -1,12 +1,7 @@
 /**
  * SatvAAh Onboarding — 4 screens
  * Brand: #FAF7F0 ivory · #1C1C2E deep ink · #C8691A saffron
- * Approved design — session 38-cont
- *
- * Layout principle:
- *   Content (small, tight) — top zone
- *   Brand (SatvAAh) — centre, dominant, surrounded by silence
- *   CTA (Next / Get Started) — bottom zone
+ * Font sizes matched to approved mockup at iPhone 15 Pro scale (393pt wide)
  */
 import React, { useRef, useState } from 'react';
 import {
@@ -21,17 +16,14 @@ type Nav = NativeStackNavigationProp<AuthStackParamList, 'Onboarding'>;
 const { width: W, height: H } = Dimensions.get('window');
 const SLIDE_H = H - 236;
 
-// Brand component — used identically on all 4 screens
 function Brand() {
   return (
     <View style={b.wrap}>
-      {/* SatvAAh — Satv + [AA box] + h */}
-      <View style={b.nameRow}>
+      <View style={b.row}>
         <Text style={b.ink}>Satv</Text>
         <View style={b.aaBox}><Text style={b.aaText}>AA</Text></View>
         <Text style={b.ink}>h</Text>
       </View>
-      {/* Tagline — single line, spaced to ~90% of brand width */}
       <Text style={b.tagline}>Truth that travels</Text>
     </View>
   );
@@ -52,10 +44,9 @@ export function OnboardingScreen(): React.ReactElement {
     <View style={s.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
 
-      {/* Progress bar */}
-      <View style={s.progressRow}>
+      <View style={s.prog}>
         {Array.from({ length: TOTAL }).map((_, i) => (
-          <View key={i} style={[s.seg, i <= active && s.segActive]} />
+          <View key={i} style={[s.seg, i <= active && s.segOn]} />
         ))}
       </View>
 
@@ -69,156 +60,81 @@ export function OnboardingScreen(): React.ReactElement {
         }
       >
 
-        {/* ── SLIDE 1 — THE PROBLEM ── */}
+        {/* S1 */}
         <View style={[s.slide, { width: W, height: SLIDE_H }]}>
-
-          {/* Label */}
-          <View style={s.labelBox}>
-            <Text style={s.labelText}>THE PROBLEM</Text>
-          </View>
-
-          {/* Question — left-aligned, small */}
-          <Text style={s.s1Question}>
+          <View style={s.tag}><Text style={s.tagTxt}>THE PROBLEM</Text></View>
+          <Text style={s.s1q}>
             Why pay 10–30% commission{'\n'}to platforms on every purchase?
           </Text>
-
-          <View style={s.flex1} />
-
-          {/* Introducing */}
-          <Text style={s.introducing}>Introducing …</Text>
-
-          {/* Brand — dominant centre */}
+          <View style={s.sp} />
+          <Text style={s.intro}>Introducing …</Text>
           <Brand />
-
-          <View style={s.flex1} />
-
-          {/* 0% punchline */}
-          <Text style={s.s1Zero}>0% Commission Guarantee</Text>
-
+          <View style={s.sp} />
+          <Text style={s.s1zero}>0% Commission Guarantee</Text>
         </View>
 
-        {/* ── SLIDE 2 — ONE APP ── */}
+        {/* S2 */}
         <View style={[s.slide, { width: W, height: SLIDE_H }]}>
-
-          <View style={s.labelBox}>
-            <Text style={s.labelText}>ONE APP. EVERYTHING.</Text>
-          </View>
-
-          <Text style={s.headline}>
-            Explore at <Text style={s.saffron}>0% commission</Text>
-          </Text>
+          <View style={s.tag}><Text style={s.tagTxt}>ONE APP. EVERYTHING.</Text></View>
+          <Text style={s.hl}>Explore at <Text style={s.sf}>0% commission</Text></Text>
           <View style={s.rule} />
-
-          {[
-            ['> 1000', 'Products'],
-            ['> 200',  'Services'],
-            ['> 100',  'Expertise'],
-            ['> 100',  'Establishments'],
-          ].map(([num, label], i) => (
+          {([['> 1000','Products'],['> 200','Services'],['> 100','Expertise'],['> 100','Establishments']] as [string,string][]).map(([n,l],i) => (
             <View key={i} style={s.statRow}>
-              <Text style={s.statNum}>{num}</Text>
-              <Text style={s.statLabel}>{label}</Text>
+              <Text style={s.statN}>{n}</Text>
+              <Text style={s.statL}>{l}</Text>
             </View>
           ))}
-
-          <View style={s.flex1} />
-
+          <View style={s.sp} />
           <Brand />
-
-          <View style={s.flex1} />
-
-          <Text style={s.footInk}>
-            For the first time in the world — on one app.
-          </Text>
-
+          <View style={s.sp} />
+          <Text style={s.foot}>For the first time in the world — on one app.</Text>
         </View>
 
-        {/* ── SLIDE 3 — TRUST ── */}
+        {/* S3 */}
         <View style={[s.slide, { width: W, height: SLIDE_H }]}>
-
-          <View style={s.labelBox}>
-            <Text style={s.labelText}>TRUST THAT TRAVELS</Text>
-          </View>
-
-          <Text style={s.headline}>
-            Find <Text style={s.saffron}>&gt; 12,000</Text> Providers near you
-          </Text>
+          <View style={s.tag}><Text style={s.tagTxt}>TRUST THAT TRAVELS</Text></View>
+          <Text style={s.hl}>Find <Text style={s.sf}>&gt; 12,000</Text> Providers near you</Text>
           <View style={s.rule} />
-
-          {['Verified', 'Trust Score', 'Satisfaction Rating', 'Scheduling Facility'].map((item, i) => (
-            <View key={i} style={s.bulletRow}>
-              <View style={s.dotSaffron} />
-              <Text style={s.bulletText}>{item}</Text>
+          {['Verified','Trust Score','Satisfaction Rating','Scheduling Facility'].map((item,i) => (
+            <View key={i} style={s.brow}>
+              <View style={s.dotSf} />
+              <Text style={s.btxt}>{item}</Text>
             </View>
           ))}
-
-          <View style={s.flex1} />
-
+          <View style={s.sp} />
           <Brand />
-
-          <View style={s.flex1} />
-
-          {/* Bottom two bullets in ink */}
-          <View style={s.bulletRow}>
-            <View style={s.dotInk} />
-            <Text style={s.bulletInk}>Connect Directly</Text>
-          </View>
-          <View style={s.bulletRow}>
-            <View style={s.dotInk} />
-            <Text style={s.bulletInk}>0% Commission</Text>
-          </View>
-
+          <View style={s.sp} />
+          <View style={s.brow}><View style={s.dotInk} /><Text style={s.bink}>Connect Directly</Text></View>
+          <View style={s.brow}><View style={s.dotInk} /><Text style={s.bink}>0% Commission</Text></View>
         </View>
 
-        {/* ── SLIDE 4 — TWO IDENTITIES ── */}
+        {/* S4 */}
         <View style={[s.slide, { width: W, height: SLIDE_H }]}>
-
-          <View style={s.labelBox}>
-            <Text style={s.labelText}>TWO IDENTITIES</Text>
+          <View style={s.tag}><Text style={s.tagTxt}>TWO IDENTITIES</Text></View>
+          <Text style={s.hl}>On one app{'\n'}Two Identities</Text>
+          <View style={s.sp} />
+          <View style={s.idBox}>
+            <Text style={s.idTitle}>Customer</Text>
+            <Text style={s.idSub}>Find &amp; connect with providers</Text>
           </View>
-
-          <Text style={s.headline}>On one app{'\n'}Two Identities</Text>
-
-          <View style={s.flex1} />
-
-          {/* Customer box */}
-          <View style={s.identityBox}>
-            <Text style={s.identityTitle}>Customer</Text>
-            <Text style={s.identitySub}>Find &amp; connect with providers</Text>
+          <View style={[s.idBox, s.idBoxSf]}>
+            <Text style={[s.idTitle, s.idTitleSf]}>Provider</Text>
+            <Text style={s.idSub}>List services, earn your Trust Score</Text>
           </View>
-
-          {/* Provider box */}
-          <View style={[s.identityBox, s.identityBoxSaffron]}>
-            <Text style={[s.identityTitle, s.identityTitleSaffron]}>Provider</Text>
-            <Text style={s.identitySub}>List services, earn your Trust Score</Text>
-          </View>
-
-          <View style={s.flex1} />
-
+          <View style={s.sp} />
           <Brand />
-
-          <View style={s.flex1} />
-
-          <Text style={s.footInk}>
-            Let the world know about you with your Trust Score.
-          </Text>
-
+          <View style={s.sp} />
+          <Text style={s.foot}>Let the world know about you with your Trust Score.</Text>
         </View>
 
       </ScrollView>
 
-      {/* Bottom CTA — always visible, ink Skip */}
       <View style={s.bottom}>
         <TouchableOpacity
-          style={s.btn}
-          activeOpacity={0.85}
-          onPress={() =>
-            active < TOTAL - 1 ? goTo(active + 1) : navigation.replace('Login')
-          }
+          style={s.btn} activeOpacity={0.85}
+          onPress={() => active < TOTAL - 1 ? goTo(active + 1) : navigation.replace('Login')}
         >
-          <Text style={s.btnText}>
-            {active === TOTAL - 1 ? 'Get Started →' : 'Next →'}
-          </Text>
+          <Text style={s.btnTxt}>{active === TOTAL - 1 ? 'Get Started →' : 'Next →'}</Text>
         </TouchableOpacity>
         {active < TOTAL - 1 && (
           <TouchableOpacity onPress={() => navigation.replace('Login')}>
@@ -230,70 +146,47 @@ export function OnboardingScreen(): React.ReactElement {
   );
 }
 
-// ── Brand styles ──────────────────────────────────────────────────────────────
 const b = StyleSheet.create({
-  wrap:    { alignItems: 'center', paddingVertical: 0 },
-  nameRow: { flexDirection: 'row', alignItems: 'center' },
-  ink:     { fontSize: 44, fontWeight: '800', color: '#1C1C2E' },
-  aaBox:   { backgroundColor: '#C8691A', borderRadius: 7, paddingHorizontal: 6, paddingVertical: 2, marginHorizontal: 1 },
-  aaText:  { fontSize: 38, fontWeight: '800', color: '#FAF7F0' },
-  tagline: { fontSize: 11, fontWeight: '700', fontStyle: 'italic', color: '#C8691A', letterSpacing: 5, marginTop: 10, textAlign: 'center' },
+  wrap:   { alignItems: 'center', paddingVertical: 24 },
+  row:    { flexDirection: 'row', alignItems: 'center' },
+  ink:    { fontSize: 52, fontWeight: '800', color: '#1C1C2E' },
+  aaBox:  { backgroundColor: '#C8691A', borderRadius: 9, paddingHorizontal: 8, paddingVertical: 2, marginHorizontal: 1 },
+  aaText: { fontSize: 46, fontWeight: '800', color: '#FAF7F0' },
+  tagline:{ fontSize: 13, fontWeight: '700', fontStyle: 'italic', color: '#C8691A', letterSpacing: 5, marginTop: 12, textAlign: 'center' },
 });
 
-// ── Screen styles ─────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root:        { flex: 1, backgroundColor: '#FAF7F0' },
-
-  progressRow: { flexDirection: 'row', gap: 5, paddingHorizontal: 24, paddingTop: 56, marginBottom: 4 },
-  seg:         { flex: 1, height: 2, borderRadius: 1, backgroundColor: '#E8E0D5' },
-  segActive:   { backgroundColor: '#C8691A' },
-
-  scroller:    { flex: 1 },
-  slide:       { paddingHorizontal: 24, paddingTop: 20, justifyContent: 'space-between', paddingBottom: 8 },
-  flex1:       { flex: 1 },
-
-  // Label pill — black box, white text, left-aligned
-  labelBox:    { alignSelf: 'flex-start', backgroundColor: '#1C1C2E', borderRadius: 3, paddingHorizontal: 8, paddingVertical: 4, marginBottom: 16 },
-  labelText:   { fontSize: 9, fontWeight: '700', color: '#FAF7F0', letterSpacing: 2.5 },
-
-  // Slide 1
-  s1Question:  { fontSize: 11, fontWeight: '700', color: '#1C1C2E', lineHeight: 18 },
-  introducing: { fontSize: 10, fontStyle: 'italic', color: '#6B6B7B', textAlign: 'center', marginBottom: 2 },
-  s1Zero:      { fontSize: 11, fontWeight: '700', color: '#1C1C2E', textAlign: 'center', marginBottom: 4 },
-
-  // Slides 2–4 shared
-  headline:    { fontSize: 13, fontWeight: '800', color: '#1C1C2E', lineHeight: 19, marginBottom: 8 },
-  saffron:     { color: '#C8691A' },
-  rule:        { width: 20, height: 1.5, backgroundColor: '#C8691A', marginBottom: 14 },
-
-  // Slide 2 stat rows
-  statRow:     { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 7 },
-  statNum:     { fontSize: 12, fontWeight: '800', color: '#C8691A', minWidth: 38 },
-  statLabel:   { fontSize: 11, fontWeight: '600', color: '#1C1C2E' },
-
-  // Slide 3 bullets
-  bulletRow:   { flexDirection: 'row', alignItems: 'center', marginBottom: 7 },
-  dotSaffron:  { width: 4, height: 4, borderRadius: 2, backgroundColor: '#C8691A', marginRight: 10 },
-  dotInk:      { width: 4, height: 4, borderRadius: 2, backgroundColor: '#1C1C2E', marginRight: 10 },
-  bulletText:  { fontSize: 11, fontWeight: '600', color: '#1C1C2E' },
-  bulletInk:   { fontSize: 11, fontWeight: '700', color: '#1C1C2E' },
-
-  // Slide 4 identity boxes
-  identityBox:          { borderWidth: 1.5, borderColor: '#1C1C2E', borderRadius: 10, padding: 12, marginBottom: 10 },
-  identityBoxSaffron:   { borderColor: '#C8691A' },
-  identityTitle:        { fontSize: 14, fontWeight: '700', color: '#1C1C2E', marginBottom: 3 },
-  identityTitleSaffron: { color: '#C8691A' },
-  identitySub:          { fontSize: 10, color: '#9a9a9a' },
-
-  // Footer text
-  footInk:     { fontSize: 10, fontWeight: '600', color: '#1C1C2E', textAlign: 'center', marginBottom: 4 },
-
-  // Bottom CTA
-  bottom:      { paddingHorizontal: 24, paddingBottom: 44, gap: 12 },
-  btn:         { backgroundColor: '#C8691A', borderRadius: 12, paddingVertical: 15, alignItems: 'center' },
-  btnText:     { fontSize: 15, fontWeight: '700', color: '#FAF7F0' },
-  skip:        { textAlign: 'center', color: '#1C1C2E', fontSize: 13, fontWeight: '500' },
+  root:     { flex: 1, backgroundColor: '#FAF7F0' },
+  prog:     { flexDirection: 'row', gap: 5, paddingHorizontal: 28, paddingTop: 56, marginBottom: 4 },
+  seg:      { flex: 1, height: 2, borderRadius: 1, backgroundColor: '#E8E0D5' },
+  segOn:    { backgroundColor: '#C8691A' },
+  scroller: { flex: 1 },
+  slide:    { paddingHorizontal: 28, paddingTop: 20, justifyContent: 'space-between', paddingBottom: 8 },
+  sp:       { flex: 1 },
+  tag:      { alignSelf: 'flex-start', backgroundColor: '#1C1C2E', borderRadius: 4, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 18 },
+  tagTxt:   { fontSize: 10, fontWeight: '700', color: '#FAF7F0', letterSpacing: 2 },
+  s1q:      { fontSize: 17, fontWeight: '700', color: '#1C1C2E', lineHeight: 26 },
+  intro:    { fontSize: 14, fontStyle: 'italic', color: '#6B6B7B', textAlign: 'center', marginBottom: 0 },
+  s1zero:   { fontSize: 17, fontWeight: '700', color: '#1C1C2E', textAlign: 'center', marginBottom: 0 },
+  hl:       { fontSize: 20, fontWeight: '800', color: '#1C1C2E', lineHeight: 28, marginBottom: 0 },
+  sf:       { color: '#C8691A' },
+  rule:     { width: 28, height: 2, backgroundColor: '#C8691A', marginTop: 12, marginBottom: 18 },
+  statRow:  { flexDirection: 'row', alignItems: 'baseline', gap: 12, marginBottom: 12 },
+  statN:    { fontSize: 17, fontWeight: '800', color: '#C8691A', minWidth: 48 },
+  statL:    { fontSize: 15, fontWeight: '600', color: '#1C1C2E' },
+  brow:     { flexDirection: 'row', alignItems: 'center', marginBottom: 11 },
+  dotSf:    { width: 5, height: 5, borderRadius: 3, backgroundColor: '#C8691A', marginRight: 12 },
+  dotInk:   { width: 5, height: 5, borderRadius: 3, backgroundColor: '#1C1C2E', marginRight: 12 },
+  btxt:     { fontSize: 15, fontWeight: '600', color: '#1C1C2E' },
+  bink:     { fontSize: 14, fontWeight: '700', color: '#1C1C2E' },
+  idBox:    { borderWidth: 2, borderColor: '#1C1C2E', borderRadius: 14, padding: 16, marginBottom: 12 },
+  idBoxSf:  { borderColor: '#C8691A' },
+  idTitle:  { fontSize: 17, fontWeight: '700', color: '#1C1C2E', marginBottom: 4 },
+  idTitleSf:{ color: '#C8691A' },
+  idSub:    { fontSize: 13, color: '#9a9a9a' },
+  foot:     { fontSize: 13, fontWeight: '600', color: '#1C1C2E', textAlign: 'center', marginBottom: 4 },
+  bottom:   { paddingHorizontal: 28, paddingBottom: 44, gap: 12 },
+  btn:      { backgroundColor: '#C8691A', borderRadius: 14, paddingVertical: 17, alignItems: 'center' },
+  btnTxt:   { fontSize: 16, fontWeight: '700', color: '#FAF7F0' },
+  skip:     { textAlign: 'center', color: '#1C1C2E', fontSize: 14, fontWeight: '500' },
 });
-
-
-
