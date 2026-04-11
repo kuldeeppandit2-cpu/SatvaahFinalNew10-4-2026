@@ -46,7 +46,7 @@ export function OtpScreen(): React.ReactElement {
     const digit = val.replace(/[^0-9]/g, '').slice(-1);
     const next = [...otp]; next[idx] = digit; setOtp(next);
     if (digit && idx < OTP_LENGTH - 1) inputs.current[idx + 1]?.focus();
-    if (next.every(d => d !== '') && digit) verify(next.join(''));
+    // Auto-verify removed — user must tap Verify button explicitly
   }, [otp]);
 
   function handleBackspace(idx: number) {
