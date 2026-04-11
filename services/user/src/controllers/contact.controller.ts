@@ -80,11 +80,9 @@ export const createContactEvent = async (
   // Fetch provider phone for call-type events (needed by ContactCallScreen)
   let provider_phone: string | null = null;
   if (contact_type === 'call') {
-    const prov = await prisma.providerProfile.findUnique({
-      where: { id: provider_id },
-      select: { phone: true },
-    });
-    provider_phone = prov?.phone ?? null;
+    // phone IS NULL for scraped providers — use raw query to avoid Prisma non-null type error
+    const rows = await prisma.$queryRaw`SELECT phone FROM provider_profiles WHERE id = ${provider_id}::uuid LIMIT 1`;
+    provider_phone = (rows as any[])[0]?.phone ?? null;
   }
   res.status(201).json({
     success: true,
