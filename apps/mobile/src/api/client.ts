@@ -16,7 +16,12 @@ import axios, {
 import '../__stubs__/get-random-values';  // must be before uuid
 import { v4 as uuidv4 } from 'react-native-uuid';
 
-import { useAuthStore } from '../stores/auth.store';
+// Lazy getter — breaks circular dependency: auth.store → client → auth.store
+// Using require() at call-time instead of top-level import fixes the cycle
+function getAuthStore() {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  return require('../stores/auth.store').useAuthStore;
+}
 
 // ─── Base URL ─────────────────────────────────────────────────────────────────
 // All 9 microservices behind a single API gateway / nginx in production.
@@ -61,7 +66,7 @@ function createApiClient(): AxiosInstance {
       config.headers['X-Correlation-ID'] = uuidv4() as string;
 
       // Attach RS256 JWT (Rule #15)
-      const token = useAuthStore.getState().accessToken;
+      const token = getAuthStore().getState().accessToken;
       if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
       }
@@ -101,7 +106,7 @@ function createApiClient(): AxiosInstance {
       isRefreshing = true;
 
       try {
-        const refreshToken = useAuthStore.getState().refreshToken;
+        const refreshToken = getAuthStore().getState().refreshToken;
         if (!refreshToken) {
           throw new Error('No refresh token available');
         }
@@ -121,7 +126,7 @@ function createApiClient(): AxiosInstance {
         const { access_token, refresh_token: newRefreshToken } = response.data.data;
 
         // Persist new tokens
-        useAuthStore.getState().refreshAccessToken(access_token, newRefreshToken);
+        getAuthStore().getState().refreshAccessToken(access_token, newRefreshToken);
 
         // Replay all queued requests with new token
         onRefreshed(access_token);
@@ -136,7 +141,7 @@ function createApiClient(): AxiosInstance {
         onRefreshFailed();
 
         // Refresh failed — force logout
-        useAuthStore.getState().logout();
+        getAuthStore().getState().logout();
         return Promise.reject(refreshError);
       }
     },
