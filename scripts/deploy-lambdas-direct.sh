@@ -115,26 +115,27 @@ deploy_one() {
   echo "  Copying zip..."
   docker cp "${zip}" "satvaaah-localstack:${czip}" 2>&1 | tail -1
 
-  # Try update first (idempotent)
-  if docker exec satvaaah-localstack awslocal lambda update-function-code \
-      --function-name "satvaaah-${name}" \
-      --zip-file "fileb://${czip}" \
-      --output text --query 'FunctionName' 2>/dev/null; then
+  # Update code if function exists, create if it does not
+  if docker exec satvaaah-localstack awslocal lambda get-function       --function-name "satvaaah-${name}"       --output text --query 'Configuration.FunctionName' 2>/dev/null | grep -q "satvaaah-${name}"; then
+    # Function exists — update code
+    docker exec satvaaah-localstack awslocal lambda update-function-code \
+        --function-name "satvaaah-${name}" \
+        --zip-file "fileb://${czip}" \
+        --output text --query 'FunctionName' 2>&1
     echo "OK: Updated satvaaah-${name}"
-    return 0
+  else
+    # Function does not exist — create it
+    docker exec satvaaah-localstack awslocal lambda create-function \
+      --function-name "satvaaah-${name}" \
+      --runtime nodejs18.x \
+      --role "${ROLE}" \
+      --handler dist/index.handler \
+      --zip-file "fileb://${czip}" \
+      --timeout 300 --memory-size 512 \
+      --output text --query 'FunctionName' 2>&1 \
+    && echo "OK: Created satvaaah-${name}" \
+    || { echo "ERROR: Failed to deploy satvaaah-${name}"; return 1; }
   fi
-
-  # Create new function (no --environment to avoid quoting issues)
-  docker exec satvaaah-localstack awslocal lambda create-function \
-    --function-name "satvaaah-${name}" \
-    --runtime nodejs18.x \
-    --role "${ROLE}" \
-    --handler dist/index.handler \
-    --zip-file "fileb://${czip}" \
-    --timeout 300 --memory-size 512 \
-    --output text --query 'FunctionName' 2>&1 \
-  && echo "OK: Created satvaaah-${name}" \
-  || { echo "ERROR: Failed to deploy satvaaah-${name}"; return 1; }
 }
 
 # ── Wire SQS trigger ──────────────────────────────────────────────────────────
