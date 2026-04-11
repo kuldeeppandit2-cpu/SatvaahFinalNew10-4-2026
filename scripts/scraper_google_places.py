@@ -221,13 +221,15 @@ def insert_provider(city_id, city_key, place, search_term, taxonomy_node_id, tab
     
     node_sql = f"'{taxonomy_node_id}'::uuid" if taxonomy_node_id else 'NULL'
     
+    # phone is NOT NULL in schema — use placeholder if no phone found
+    phone_val = phone_clean if phone_clean else '0000000000'
+    
     sql = f"""
 INSERT INTO provider_profiles (
     id, display_name, business_name, city_id, tab,
     is_active, is_scrape_record, is_claimed, is_phone_verified,
-    listing_type, scrape_source, search_term,
+    listing_type, scrape_source,
     address_line, phone, website_url,
-    external_rating, external_review_count,
     geo_point, taxonomy_node_id,
     created_at, updated_at
 ) VALUES (
@@ -239,12 +241,9 @@ INSERT INTO provider_profiles (
     true, true, false, false,
     'free',
     'google_maps',
-    {esc(search_term)},
     {esc(address)},
-    {esc(phone_clean)},
+    {esc(phone_val)},
     {esc(website) if website else 'NULL'},
-    {rating if rating else 'NULL'},
-    {review_count},
     {geo_sql},
     {node_sql},
     NOW(), NOW()
