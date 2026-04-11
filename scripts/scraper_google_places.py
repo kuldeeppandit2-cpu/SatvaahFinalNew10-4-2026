@@ -257,16 +257,14 @@ INSERT INTO provider_profiles (
 ON CONFLICT (scrape_source, scrape_external_id) DO NOTHING;
 """
     
-    ok = dbx(sql)
-    
-    # Insert trust_score row
-    if ok:
-        dbx(f"""
+    # Append trust_score insert to same SQL — avoids FK timing issues
+    ts_id = str(uuid.uuid4())
+    sql += f"""
 INSERT INTO trust_scores (id, provider_id, display_score, raw_score, trust_tier, signal_breakdown)
-VALUES ('{str(uuid.uuid4())}', '{pid}', 10, 10, 'unverified', '{{}}'::jsonb)
+VALUES ('{ts_id}', '{pid}', 10, 10, 'unverified', '{{}}'::jsonb)
 ON CONFLICT (provider_id) DO NOTHING;
-""")
-    
+"""
+    ok = dbx(sql)
     return ok
 
 # ── Main scrape ───────────────────────────────────────────────────────────────
