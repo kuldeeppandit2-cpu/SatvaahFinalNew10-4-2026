@@ -252,18 +252,22 @@ export const ProviderProfileEditScreen: React.FC = () => {
   const { profile, setProfile } = useProviderStore();
 
   const [form, setForm] = useState<ProfileFormData>({
-    displayName: profile?.displayName || '',
-    bio: profile?.bio || '',
-    phone_secondary: profile?.whatsappPhone || '',
-    website_url: profile?.websiteUrl || '',
-    linkedin_url: '' || '',
-    linkedinUrl: '',
-    years_experience: ''?.toString() || '',
-    establishment_name: profile?.businessName || '',
-    establishment_address: '' || '',
-    gst_number: '' || '',
-    operating_hours: '' || '',
-    team_size: ''?.toString() || '',
+    displayName:          profile?.displayName || '',
+    bio:                  profile?.bio || '',
+    phone_secondary:      profile?.whatsappPhone || '',
+    website_url:          profile?.websiteUrl || '',
+    linkedin_url:         '',
+    linkedinUrl:          '',
+    years_experience:     (profile as any)?.years_experience?.toString() || '',
+    // V050 fields — now in schema
+    address_line:         (profile as any)?.address_line || '',
+    pincode:              (profile as any)?.pincode || '',
+    service_radius_km:    (profile as any)?.service_radius_km?.toString() || '',
+    establishment_name:   profile?.businessName || '',
+    establishment_address: '',
+    gst_number:           '',
+    operating_hours:      '',
+    team_size:            '',
   });
 
   const [verifications, setVerifications] = useState<ProfileVerifications>({
@@ -471,10 +475,21 @@ export const ProviderProfileEditScreen: React.FC = () => {
     try {
       const payload: Record<string, unknown> = {
         displayName: form.displayName.trim(),
-        bio: form.bio.trim(),
-        websiteUrl: form.websiteUrl.trim() || null,
-        // linkedin_url: not in schema — omitted
-        // years_experience: not in ProviderProfile schema — omitted
+        bio:         form.bio.trim(),
+        websiteUrl:  form.websiteUrl.trim() || null,
+        // V050 fields — now in schema, send if provided
+        ...(form.years_experience.trim() && !isNaN(Number(form.years_experience))
+          ? { years_experience: Number(form.years_experience) }
+          : {}),
+        ...(form.address_line?.trim()
+          ? { address_line: form.address_line.trim() }
+          : {}),
+        ...(form.pincode?.trim()
+          ? { pincode: form.pincode.trim() }
+          : {}),
+        ...(form.service_radius_km?.trim() && !isNaN(Number(form.service_radius_km))
+          ? { service_radius_km: Number(form.service_radius_km) }
+          : {}),
       };
 
       if (form.whatsappPhone) {
@@ -483,10 +498,7 @@ export const ProviderProfileEditScreen: React.FC = () => {
 
       if (isEstablishment) {
         payload.businessName = form.businessName.trim();
-        // establishment_address: not in schema — omitted
-        // gst_number: not in schema — omitted
-        // operating_hours: not in schema — omitted
-        // team_size: not in schema — omitted
+        // gst_number, operating_hours, team_size — not in schema, omitted
       }
 
       await apiClient.patch('/api/v1/providers/me', payload, {

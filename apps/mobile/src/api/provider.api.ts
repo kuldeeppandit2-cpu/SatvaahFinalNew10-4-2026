@@ -69,14 +69,19 @@ export interface ExternalRating {
 }
 
 export interface RegisterProviderPayload {
-  listingType:    ListingType;
-  tab:            ProviderTab;
-  taxonomyNodeId: string;
-  displayName:    string;
-  cityId:         string;
-  areaName:       string;
-  areaLat?:       number;
-  areaLng?:       number;
+  listingType:      ListingType;
+  tab:              ProviderTab;
+  taxonomyNodeId:   string;
+  displayName:      string;
+  cityId:           string;
+  areaName:         string;
+  areaLat?:         number;
+  areaLng?:         number;
+  // V050 fields — collected during P5/P6 onboarding
+  addressLine?:     string;   // human-readable address e.g. 'Shop 4, Cyber Towers'
+  pincode?:         string;   // 6-digit pincode
+  serviceRadiusKm?: number;   // home visit radius in km
+  yearsExperience?: number;   // years in profession
 }
 
 export interface ProviderProfile {
@@ -484,4 +489,17 @@ export async function saveAvailabilitySchedule(
     status: AVAILABILITY_TO_SERVER[payload.status] ?? 'available',
   };
   await apiClient.put('/api/v1/providers/me/availability', serverPayload);
+}
+
+/**
+ * PUT /api/v1/providers/me/schedule
+ * Saves provider weekly slot schedule to provider_availability_slots table (V050).
+ * This is the new slot-booking system — separate from the simple availability toggle.
+ * Gold-tier providers use this; consumers book via SlotBookingScreen.
+ * Replaces saveAvailabilitySchedule for schedule mode in AvailabilityScreen (P16).
+ */
+export async function putMySchedule(
+  slots: Array<{ day_of_week: string; start_time: string; end_time: string; is_available?: boolean }>
+): Promise<void> {
+  await apiClient.put('/api/v1/providers/me/schedule', { slots });
 }

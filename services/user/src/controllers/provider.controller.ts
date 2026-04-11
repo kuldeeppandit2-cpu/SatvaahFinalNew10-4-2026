@@ -33,6 +33,11 @@ export async function registerProvider(req: Request, res: Response): Promise<voi
     areaName,
     areaLat,
     areaLng,
+    // V050 fields — optional at registration time
+    addressLine,
+    pincode,
+    serviceRadiusKm,
+    yearsExperience,
   } = req.body;
 
   if (!listingType || !tab || !taxonomyNodeId || !displayName || !cityId || !areaName) {
@@ -55,14 +60,19 @@ export async function registerProvider(req: Request, res: Response): Promise<voi
   }
 
   const profile = await providerService.register({
-    user_id: userId,
-    listingType: listingType as any,
+    user_id:          userId,
+    listingType:      listingType as any,
     tab,
     taxonomyNodeId,
     displayName,
     cityId,
-    area: areaName,
+    area:             areaName,
     correlationId,
+    // V050 optional fields
+    ...(addressLine     ? { address_line:      addressLine }                  : {}),
+    ...(pincode         ? { pincode }                                          : {}),
+    ...(serviceRadiusKm ? { service_radius_km: Number(serviceRadiusKm) }       : {}),
+    ...(yearsExperience ? { years_experience:  Number(yearsExperience) }       : {}),
   });
 
   logger.info('Provider registered');
@@ -113,6 +123,11 @@ export async function updateMyProviderProfile(req: Request, res: Response): Prom
     businessName:       'business_name',
     websiteUrl:         'website_url',
     whatsappPhone:      'whatsapp_phone',
+    // V050 fields — added by migration V050, now accepted via PATCH /providers/me
+    addressLine:        'address_line',
+    serviceRadiusKm:    'service_radius_km',
+    languagesSpoken:    'languages_spoken',
+    yearsExperience:    'years_experience',
   };
   const allowedFields: Record<string, unknown> = {};
   for (const [key, val] of Object.entries(rawFields)) {

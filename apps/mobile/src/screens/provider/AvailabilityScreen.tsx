@@ -36,6 +36,7 @@ import {
   getAvailabilitySchedule,
   saveAvailabilitySchedule,
   updateAvailability,
+  putMySchedule,
 } from '../../api/provider.api';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -407,15 +408,31 @@ export default function AvailabilityScreen() {
           dnd_enabled: dndEnabled,
         });
       } else {
-        // Convert Set<number> → number[]
-        const serialised: Record<string, number[]> = {};
+        // Convert WeekSchedule (Day → Set<slotIndex>) → PUT /me/schedule format
+        // Backend expects: { day_of_week: 0-6, start_time: 'HH:MM', end_time: 'HH:MM' }
+        // day_of_week: 0=Mon … 6=Sun  |  TIME_SLOTS[idx] gives start_time, [idx+1] gives end
+        const DAY_INDEX: Record<string, number> = {
+          Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6,
+        };
+        const SLOT_DURATION_MIN = 30; // matches slot.controller default
+        const slots: Array<{ day_of_week: number; start_time: string; end_time: string }> = [];
         for (const day of DAYS) {
-          serialised[day] = Array.from(schedule[day]).sort((a, b) => a - b);
+          const dayIdx = DAY_INDEX[day];
+          for (const slotIdx of Array.from(schedule[day]).sort((a, b) => a - b)) {
+            const startTime = TIME_SLOTS[slotIdx];
+            // Compute end time by adding SLOT_DURATION_MIN
+            const [h, m] = startTime.split(':').map(Number);
+            const endMins = h * 60 + m + SLOT_DURATION_MIN;
+            const endTime = `${String(Math.floor(endMins / 60)).padStart(2, '0')}:${String(endMins % 60).padStart(2, '0')}`;
+            slots.push({ day_of_week: dayIdx, start_time: startTime, end_time: endTime });
+          }
         }
-        await saveAvailabilitySchedule({
-          mode:        'schedule',
+        // Use new V050 slot endpoint (writes to provider_availability_slots table)
+        await putMySchedule(slots);
+        // Also update simple availability flag so WS broadcasts updated status
+        await updateAvailability({
           status:      simpleStatus,
-          schedule:    serialised,
+          mode:        'schedule',
           dnd_enabled: dndEnabled,
         });
       }

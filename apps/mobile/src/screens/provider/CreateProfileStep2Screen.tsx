@@ -56,7 +56,10 @@ export default function CreateProfileStep2Screen({
   const [selectedCity, setSelectedCity] = useState<City | null>(
     cities.find((c) => c.id === draft.cityId) ?? null
   );
-  const [areaInput, setAreaInput] = useState(draft.areaName);
+  const [areaInput,    setAreaInput]    = useState(draft.areaName);
+  // V050 fields — optional at registration, editable later in P11
+  const [addressInput, setAddressInput] = useState('');
+  const [pincodeInput, setPincodeInput] = useState('');
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -90,14 +93,18 @@ export default function CreateProfileStep2Screen({
     setSubmitting(true);
     try {
       const p = await providerApi.registerProvider({
-        listingType: draft.listingType,
-        tab:          draft.tab!,
+        listingType:    draft.listingType,
+        tab:            draft.tab!,
         taxonomyNodeId: draft.taxonomyNodeId,
-        displayName: displayName.trim(),
-        cityId: selectedCity!.id,
-        areaName: areaInput.trim(),
-        areaLat: draft.areaLat ?? undefined,
-        areaLng: draft.areaLng ?? undefined,
+        displayName:    displayName.trim(),
+        cityId:         selectedCity!.id,
+        areaName:       areaInput.trim(),
+        areaLat:        draft.areaLat ?? undefined,
+        areaLng:        draft.areaLng ?? undefined,
+        // V050 fields — addressLine and pincode collected in P5
+        // These can be empty at register time; provider fills them in P11 edit screen
+        addressLine:    addressInput.trim() || undefined,
+        pincode:        pincodeInput.trim() || undefined,
       });
       setProfile(p);
       setIdentity({
