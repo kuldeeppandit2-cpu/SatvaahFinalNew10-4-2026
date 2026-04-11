@@ -90,11 +90,16 @@ def dbq(sql):
     lines = [l for l in r.stdout.strip().split('\n') if l.strip()]
     return [l.split('\t') for l in lines]
 
-def dbx(sql):
+def dbx(sql, verbose=False):
     r = subprocess.run(
         ['docker','exec','-i','satvaaah-postgres','psql','-U','satvaaah_user','-d','satvaaah'],
         input=sql, capture_output=True, text=True, timeout=120)
-    return 'INSERT' in r.stdout or 'UPDATE' in r.stdout or 'COMMIT' in r.stdout
+    ok = 'INSERT' in r.stdout or 'UPDATE' in r.stdout or 'COMMIT' in r.stdout
+    if not ok and r.stderr.strip():
+        print(f'    DB ERROR: {r.stderr.strip()[:200]}')
+    if not ok and r.stdout.strip():
+        print(f'    DB OUT: {r.stdout.strip()[:200]}')
+    return ok
 
 def esc(s):
     if s is None: return 'NULL'
@@ -309,7 +314,9 @@ def scrape_city(api_key, city_key, city, city_id, search_terms, taxonomy_nodes, 
                 # Match taxonomy
                 tax_id, tab = match_taxonomy(place.get('name',''), term, taxonomy_nodes)
                 
-                ok = insert_provider(city_id, city_key, place, term, tax_id, tab)
+                if total == 0 and term_count == 0 and pages == 0:
+                        print(f'    DEBUG first result: {json.dumps(place)[:300]}')
+                    ok = insert_provider(city_id, city_key, place, term, tax_id, tab)
                 if ok:
                     total += 1
                     term_count += 1
