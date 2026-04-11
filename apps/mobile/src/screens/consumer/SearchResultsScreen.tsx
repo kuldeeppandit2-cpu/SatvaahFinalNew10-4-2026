@@ -266,6 +266,7 @@ const SearchResultsScreen: React.FC = () => {
   useEffect(() => {
     setPage(1);
     setResults([]);
+    setSearchComplete(false);  // reset so empty state never shows prematurely
     fetchResults(1);
   }, [query, tab, sort, filters]);
 
