@@ -764,13 +764,16 @@ router.get(
         narrationGeneratedAt:  narration ? new Date().toISOString() : null,
         narration_cached:      narration !== null,
         // summary block (AnalyticsScreen reads data.summary.*)
+        // profileViews and searchAppearances must be numbers — undefined/null crashes .toLocaleString()
         summary: {
-          contacts:          analytics?.contacts?.total ?? 0,
-          contactsDelta:     null,
-          searchAppearances: null,
-          conversion_rate:   analytics?.leads?.total > 0
-                               ? (analytics.leads.accepted / analytics.leads.total)
-                               : 0,
+          contacts:           analytics?.contacts?.total ?? 0,
+          contactsDelta:      null,
+          profileViews:       0,      // future: requires page-view tracking table
+          profileViewsDelta:  null,
+          searchAppearances:  0,      // future: requires search_appearances log
+          conversion_rate:    analytics?.leads?.total > 0
+                                ? (analytics.leads.accepted / analytics.leads.total)
+                                : 0,
         },
         // Time-series arrays (AnalyticsScreen renders charts)
         // Populated as empty — real series require a separate time-bucketed query
