@@ -233,7 +233,7 @@ def insert_provider(city_id, city_key, place, search_term, taxonomy_node_id, tab
 INSERT INTO provider_profiles (
     id, display_name, business_name, city_id, tab,
     is_active, is_scrape_record, is_claimed, is_phone_verified,
-    listing_type, scrape_source,
+    listing_type, scrape_source, scrape_external_id,
     address_line, phone, website_url,
     geo_point, taxonomy_node_id,
     created_at, updated_at
@@ -246,6 +246,7 @@ INSERT INTO provider_profiles (
     true, true, false, false,
     'individual_service',
     'google_maps',
+    {esc(place.get("place_id", "") or "")},
     {esc(address)},
     {esc(phone_val)},
     {esc(website) if website else 'NULL'},
@@ -253,7 +254,7 @@ INSERT INTO provider_profiles (
     {node_sql},
     NOW(), NOW()
 )
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (scrape_source, scrape_external_id) DO NOTHING;
 """
     
     ok = dbx(sql)
