@@ -33,7 +33,7 @@ echo "OK: LocalStack is up"
 # ── Ensure IAM role ───────────────────────────────────────────────────────────
 echo ""
 echo "STEP 2: Ensuring IAM role..."
-aws --endpoint-url="${ENDPOINT}" --region="${REGION}" iam create-role \
+docker exec satvaaah-localstack awslocal iam create-role \
   --role-name lambda-role \
   --assume-role-policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"lambda.amazonaws.com"},"Action":"sts:AssumeRole"}]}' \
   --output text --query 'Role.RoleName' 2>/dev/null && echo "OK: Created lambda-role" \
@@ -101,6 +101,7 @@ deploy_one() {
   local name="$1"
   local env_vars="$2"
   local zip="/tmp/lambda-${name}.zip"
+  local czip="/tmp/lambda-${name}.zip"
 
   echo ""
   echo "DEPLOYING: satvaaah-${name}"
@@ -110,27 +111,29 @@ deploy_one() {
     return 1
   fi
 
+  # Copy zip into LocalStack container (awslocal runs inside, cannot read host /tmp)
+  echo "  Copying zip into container..."
+  docker cp "${zip}" "satvaaah-localstack:${czip}" || { echo "ERROR: docker cp failed"; return 1; }
+
   # Try update first, then create
-  local result
-  result=$(aws --endpoint-url="${ENDPOINT}" --region="${REGION}" \
-    lambda update-function-code \
-    --function-name "satvaaah-${name}" \
-    --zip-file "fileb://${zip}" \
-    --output text --query 'FunctionName' 2>/dev/null) \
-  && echo "OK: Updated satvaaah-${name}" \
-  || result=$(aws --endpoint-url="${ENDPOINT}" --region="${REGION}" \
-    lambda create-function \
-    --function-name "satvaaah-${name}" \
-    --runtime nodejs18.x \
-    --role "${ROLE}" \
-    --handler dist/index.handler \
-    --zip-file "fileb://${zip}" \
-    --timeout 300 \
-    --memory-size 512 \
-    --environment "Variables=${env_vars}" \
-    --output text --query 'FunctionName' 2>&1) \
-  && echo "OK: Created satvaaah-${name}" \
-  || { echo "ERROR deploying satvaaah-${name}: ${result}"; return 1; }
+  if docker exec satvaaah-localstack awslocal lambda update-function-code \
+      --function-name "satvaaah-${name}" \
+      --zip-file "fileb://${czip}" \
+      --output text --query 'FunctionName' 2>/dev/null; then
+    echo "OK: Updated satvaaah-${name}"
+  else
+    docker exec satvaaah-localstack awslocal lambda create-function \
+      --function-name "satvaaah-${name}" \
+      --runtime nodejs18.x \
+      --role "${ROLE}" \
+      --handler dist/index.handler \
+      --zip-file "fileb://${czip}" \
+      --timeout 300 --memory-size 512 \
+      --environment "Variables=${env_vars}" \
+      --output text --query 'FunctionName' 2>&1 \
+    && echo "OK: Created satvaaah-${name}" \
+    || { echo "ERROR: Failed to deploy satvaaah-${name}"; return 1; }
+  fi
 }
 
 # ── Wire SQS trigger ──────────────────────────────────────────────────────────
@@ -140,7 +143,7 @@ wire_one() {
   local qarn="arn:aws:sqs:${REGION}:${ACCOUNT}:${qname}.fifo"
 
   echo "  Wiring SQS: ${qname} -> satvaaah-${fname}"
-  aws --endpoint-url="${ENDPOINT}" --region="${REGION}" \
+  docker exec satvaaah-localstack awslocal \
     lambda create-event-source-mapping \
     --function-name "satvaaah-${fname}" \
     --event-source-arn "${qarn}" \
@@ -205,7 +208,7 @@ echo " Phase 3: Verify"
 echo "=========================================="
 echo ""
 echo "Registered Lambdas:"
-aws --endpoint-url="${ENDPOINT}" --region="${REGION}" \
+docker exec satvaaah-localstack awslocal \
   lambda list-functions \
   --output text --query 'Functions[*].FunctionName' 2>/dev/null \
   | tr '\t' '\n' | sort
