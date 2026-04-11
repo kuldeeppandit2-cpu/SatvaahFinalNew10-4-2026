@@ -43,8 +43,8 @@ AUTH=$(curl -s -m 10 -X POST "$BASE:3001/api/v1/auth/firebase/verify" \
 
 chk "POST /auth/firebase/verify returns access_token" "access_token" "$AUTH"
 
-ACCESS=$(echo "$AUTH" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('access_token',''))" 2>/dev/null)
-USER_ID=$(echo "$AUTH" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('userId',d.get('user_id','')))" 2>/dev/null)
+ACCESS=$(echo "$AUTH" | python3 -c "import sys,json; d=json.load(sys.stdin); data=d.get('data',d); print(data.get('access_token',''))" 2>/dev/null)
+USER_ID=$(echo "$AUTH" | python3 -c "import sys,json; d=json.load(sys.stdin); data=d.get('data',d); print(data.get('userId',data.get('user_id','')))" 2>/dev/null)
 
 if [ -z "$ACCESS" ]; then
   echo -e "  ${RED}❌ No access_token — cannot continue Flow 1${NC}"
