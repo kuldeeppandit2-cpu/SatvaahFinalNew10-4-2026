@@ -315,8 +315,8 @@ def scrape_city(api_key, city_key, city, city_id, search_terms, taxonomy_nodes, 
                 tax_id, tab = match_taxonomy(place.get('name',''), term, taxonomy_nodes)
                 
                 if total == 0 and term_count == 0 and pages == 0:
-                        print(f'    DEBUG first result: {json.dumps(place)[:300]}')
-                    ok = insert_provider(city_id, city_key, place, term, tax_id, tab)
+                    print(f'    DEBUG first result: {json.dumps(place)[:300]}')
+                ok = insert_provider(city_id, city_key, place, term, tax_id, tab)
                 if ok:
                     total += 1
                     term_count += 1
