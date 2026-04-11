@@ -7,6 +7,7 @@
  */
 
 import { create } from 'zustand';
+import { apiClient } from '../api/client';
 import { MMKV } from '../__stubs__/mmkv';
 
 // Encrypted MMKV storage (device-level encryption)
@@ -126,6 +127,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setFcmToken: (token: string): void => {
     storage.set(KEYS.FCM_TOKEN, token);
     set({ fcmToken: token });
+    // Register FCM token with backend so notification service can push to this device.
+    // Fire-and-forget — if this fails the token will be retried on next app open.
+    // audit-ref: P7 — FCM token must reach users.fcm_token in DB for any push to work.
+    const accessToken = get().accessToken;
+    if (accessToken) {
+      apiClient.patch('/api/v1/users/me', { fcm_token: token }, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }).catch((err) => {
+        console.warn('[auth.store] FCM token registration failed:', err?.message);
+      });
+    }
   },
 
   setSubscriptionTier: (tier: SubscriptionTier): void => {
