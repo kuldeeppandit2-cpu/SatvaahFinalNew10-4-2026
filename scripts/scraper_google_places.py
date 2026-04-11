@@ -382,6 +382,12 @@ def main():
         filter_terms = [t.strip().lower() for t in args.terms.split(',')]
         l4_nodes = [n for n in l4_nodes if any(f in n.get('display_name','').lower() for f in filter_terms)]
     
+    # Debug: check first few nodes
+    if taxonomy_nodes:
+        sample = taxonomy_nodes[0]
+        print(f'    Sample node: tab={sample.get("tab")}, display={sample.get("display_name")[:30]}')
+    tabs = set(n.get('tab') for n in taxonomy_nodes)
+    print(f'    All tabs in DB: {tabs}')
     print(f'    {len(l4_nodes)} L4 nodes to search')
 
     cities_to_run = [c.strip() for c in args.cities.split(',') if c.strip() in CITIES]
