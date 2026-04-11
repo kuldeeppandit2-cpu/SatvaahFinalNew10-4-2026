@@ -285,7 +285,9 @@ export async function getConsumerTrust(
 
   // Signal 3 + 4: now that consumerProfile is resolved, use consumerProfile.id
   // ratings.consumer_id and contact_events.consumer_id are consumer_profiles.id (NOT users.id)
-  const [ratingCount, completedEventCount] = await Promise.all([
+  // Note: ratingCount and completedEventCount were placeholder 0s in the parallel fetch above.
+  // Re-assign here with real values using the now-resolved consumerProfile.id.
+  const [ratingCountReal, completedEventCountReal] = await Promise.all([
     prisma.rating.count({
       where: { consumer_id: consumerProfile.id, moderation_status: 'approved' },
     }),
@@ -293,6 +295,9 @@ export async function getConsumerTrust(
       where: { consumer_id: consumerProfile.id, status: 'accepted' },
     }),
   ]);
+  // Use the real values for signal computation below
+  const ratingCountFinal = ratingCountReal;
+  const completedEventCountFinal = completedEventCountReal;
 
   // Signal 5: abuse flags — query separately to enable subquery
   const consumerRatingIds = await prisma.rating
@@ -354,10 +359,10 @@ export async function getConsumerTrust(
   const sig2 = Boolean(consumerProfile.display_name && consumerProfile.city_id);
 
   // 3. Has submitted ≥N approved ratings (engaged community member)
-  const sig3 = ratingCount >= minRatingsForSignal;
+  const sig3 = ratingCountFinal >= minRatingsForSignal;
 
   // 4. Has ≥N accepted contact events (real-world interactions)
-  const sig4 = completedEventCount >= minEventsForSignal;
+  const sig4 = completedEventCountFinal >= minEventsForSignal;
 
   // 5. No unresolved abuse flags on their ratings in the last N days
   const sig5 = abuseFlagCount === 0;
@@ -390,7 +395,7 @@ export async function getConsumerTrust(
       achieved: sig3,
       pts: sig3 ? sigRatingsGiven : 0,
       max_pts: sigRatingsGiven,
-      description: `Submitted at least ${minRatingsForSignal} approved ratings. Yours: ${ratingCount}.`,
+      description: `Submitted at least ${minRatingsForSignal} approved ratings. Yours: ${ratingCountFinal}.`,
     },
     {
       signal: 'completed_interactions',
@@ -398,7 +403,7 @@ export async function getConsumerTrust(
       achieved: sig4,
       pts: sig4 ? sigCompletedInteractions : 0,
       max_pts: sigCompletedInteractions,
-      description: `At least ${minEventsForSignal} accepted contact event(s). Yours: ${completedEventCount}.`,
+      description: `At least ${minEventsForSignal} accepted contact event(s). Yours: ${completedEventCountFinal}.`,
     },
     {
       signal: 'no_abuse_flags',
