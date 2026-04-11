@@ -217,7 +217,7 @@ export default function CreateProfileStep1Screen({ route, navigation }: Props) {
           <FlatList
             data={categories}
             keyExtractor={(item) => item.id}
-            numColumns={2}
+            numColumns={3}  {/* 3-column grid — identical to consumer CategoryBrowseScreen */}
             columnWrapperStyle={styles.catRow}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.catList}
@@ -308,6 +308,9 @@ export default function CreateProfileStep1Screen({ route, navigation }: Props) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
+// ─── CategoryTile — IDENTICAL to consumer CategoryBrowseScreen tile ─────────────
+// Same hex_color fill, same white rounded box, same emoji size, same font, same
+// 3-column grid. One-to-one visual parity so provider mode feels like consumer mode.
 function CategoryChip({
   node,
   selected,
@@ -317,30 +320,26 @@ function CategoryChip({
   selected: boolean;
   onPress: () => void;
 }) {
-  // Use category hex_color from taxonomy (matches consumer HomeScreen tiles)
-  // Fall back to saffron if color not yet loaded
   const tileColor = node.color ?? '#C8691A';
-  const icon      = node.icon ?? '📦';
+  const icon      = node.icon  ?? '📦';
 
   return (
     <TouchableOpacity
       style={[
         styles.catChip,
-        { backgroundColor: selected ? tileColor : '#FFFFFF',
-          borderColor:      selected ? tileColor : '#E0D6C8' },
+        { backgroundColor: tileColor },
+        selected && styles.catChipSelected,
       ]}
       onPress={onPress}
-      activeOpacity={0.75}
+      activeOpacity={0.8}
     >
-      {/* Icon circle — coloured background like consumer grid */}
-      <View style={[styles.catChipIconBox, { backgroundColor: tileColor + '22' }]}>
+      {/* White inner box — exact match to consumer CategoryBrowseScreen */}
+      <View style={styles.catChipIconBox}>
         <Text style={styles.catChipIcon}>{icon}</Text>
       </View>
-      <Text style={[styles.catChipText, selected && { color: tileColor }]}>
-        {node.name}
-      </Text>
+      <Text style={styles.catChipText} numberOfLines={2}>{node.name}</Text>
       {node.verificationRequired && (
-        <Text style={[styles.verifiedBadge, { color: tileColor }]}>✓ Verified</Text>
+        <Text style={styles.verifiedBadge}>✓ Verified</Text>
       )}
     </TouchableOpacity>
   );
@@ -460,48 +459,47 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   catRow: {
-    gap: 10,
-    marginBottom: 10,
+    gap: 0,           // consumer uses marginHorizontal:3 on tiles, not gap on row
+    marginBottom: 0,
   },
+  // ── CategoryChip = consumer CategoryTile — pixel-perfect match ──────────────
   catChip: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#E0D6C8',
-    padding: 14,
     alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 88,
-    gap: 6,
+    padding: 10,
+    marginBottom: 10,
+    marginHorizontal: 3,
+    borderRadius: 14,        // matches consumer tile borderRadius
   },
   catChipIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
+    width: 52,               // matches consumer tileWhiteBox
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
   },
   catChipIcon: {
-    fontSize: 20,
+    fontSize: 28,            // matches consumer tileIcon
   },
   catChipSelected: {
-    borderColor: '#C8691A',
-    backgroundColor: '#FEF3E8',
+    opacity: 0.85,           // subtle selection feedback without changing layout
   },
   catChipText: {
-    fontFamily: 'PlusJakartaSans-SemiBold',
-    fontSize: 13,
-    color: '#1C1C2E',
+    fontSize: 11,            // matches consumer tileLabel
+    fontFamily: 'PlusJakartaSans-Medium',
+    color: '#FFFFFF',        // white on coloured tile — same as consumer
     textAlign: 'center',
   },
   catChipTextSelected: {
-    color: '#C8691A',
+    color: '#FFFFFF',
   },
   verifiedBadge: {
+    marginTop: 2,
+    fontSize: 9,
     fontFamily: 'PlusJakartaSans-Regular',
-    fontSize: 10,
-    color: '#2E7D72',
+    color: 'rgba(255,255,255,0.85)',
+    textAlign: 'center',
   },
   emptyText: {
     fontFamily: 'PlusJakartaSans-Regular',
