@@ -56,6 +56,9 @@ import {
 import { useAuthStore } from '../../stores/auth.store';
 import { useLocationStore } from '../../stores/location.store';
 import { ENV } from '../../config/env';
+import { MMKV } from '../../__stubs__/mmkv';
+
+const searchMissStorage = new MMKV({ id: 'satvaaah-search-misses' });
 
 // ─── Navigation ────────────────────────────────────────────────────────────────
 
@@ -205,6 +208,8 @@ const SearchResultsScreen: React.FC = () => {
   const [filters, setFilters]           = useState<FilterParams>(
     routeFilters ?? { sort: 'trust_score' },
   );
+  // searchComplete: true after fetch finishes — prevents premature empty state flash
+  const [searchComplete, setSearchComplete] = useState(false);
   // Track availability changes: provider_id → is_available
   const [availMap, setAvailMap]         = useState<Record<string, boolean>>({});
   const wsConnected                     = useRef(false);
@@ -234,11 +239,25 @@ const SearchResultsScreen: React.FC = () => {
         setResults((prev) =>
           pageNum === 1 ? res.data : [...prev, ...res.data],
         );
+        // Store search miss in MMKV if no results found — for future notification
+        if (pageNum === 1 && res.data.length === 0) {
+          const missKey = `miss:${taxonomyNodeId}`;
+          const existing = searchMissStorage.getString(missKey);
+          if (!existing) {
+            searchMissStorage.set(missKey, JSON.stringify({
+              taxonomyNodeId,
+              query,
+              tab,
+              searched_at: new Date().toISOString(),
+            }));
+          }
+        }
       } catch (e: any) {
         setError('Could not load results. Pull down to retry.');
       } finally {
         setLoading(false);
         setLoadingMore(false);
+        if (pageNum === 1) setSearchComplete(true);
       }
     },
     [query, tab, sort, filters, location],
@@ -477,12 +496,15 @@ const SearchResultsScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListEmptyComponent={
-          !loading ? (
+          searchComplete && !loading ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyIcon}>🔍</Text>
-              <Text style={styles.emptyTitle}>No providers found</Text>
+              <Text style={styles.emptyTitle}>No providers found yet</Text>
               <Text style={styles.emptyBody}>
-                Try adjusting your filters or search a different category.
+                We searched up to 150km around you. No providers are registered in this category yet.
+              </Text>
+              <Text style={styles.emptyNotify}>
+                We'll notify you as soon as a provider registers nearby.
               </Text>
             </View>
           ) : null
@@ -807,6 +829,15 @@ const styles = StyleSheet.create({
     color: '#1C1C2E',
     textAlign: 'center',
     lineHeight: 20,
+    marginBottom: 12,
+  },
+  emptyNotify: {
+    fontSize: 13,
+    fontFamily: 'PlusJakartaSans-SemiBold',
+    color: '#C8691A',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginTop: 4,
   },
 });
 
