@@ -120,6 +120,7 @@ interface ProviderProfile {
   city:                string;
   area:                string;
   distance_km:         number | null;
+  is_claimed:          boolean;         // true = provider has app + claimed profile; false = scraped only
 }
 
 type ProfileNav = NativeStackNavigationProp<ConsumerStackParamList, 'ProviderProfile'>;
@@ -401,12 +402,15 @@ export function ProviderProfileScreen(): React.ReactElement {
             <Text style={styles.actionBtnText}>📞 Call</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: SAFFRON }]}
-            onPress={() => handleContact('message')}
-          >
-            <Text style={styles.actionBtnText}>💬 Message</Text>
-          </TouchableOpacity>
+          {/* Message — only for verified providers who have claimed their profile + downloaded app */}
+          {profile.is_claimed && (
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: SAFFRON }]}
+              onPress={() => handleContact('message')}
+            >
+              <Text style={styles.actionBtnText}>💬 Message</Text>
+            </TouchableOpacity>
+          )}
 
           {/* Book Slot — Gold tier + has_calendar only */}
           {isGold && profile.has_calendar && (
