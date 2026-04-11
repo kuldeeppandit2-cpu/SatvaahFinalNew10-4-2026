@@ -38,16 +38,13 @@ x-node-service-base: &node-service-base
     NODE_ENV: ${NODE_ENV:-development}
     LOG_LEVEL: ${LOG_LEVEL:-debug}
   depends_on:
-    postgres:
-      condition: service_healthy
     satvaaah-redis:
       condition: service_healthy
-    migrate:
-      condition: service_completed_successfully
     installer:
       condition: service_completed_successfully
-  # mongodb and opensearch removed from base — only scraping/search need them.
-  # Services that need them declare the dependency explicitly.
+  # postgres: migrate conditions removed — postgres is managed by the original
+  # SatvaahFinal project. All migrations are pre-applied and tracked.
+  # Services connect directly via DATABASE_URL=postgresql://...@postgres:5432/...
 
 x-node-healthcheck: &node-healthcheck
   interval: 30s
