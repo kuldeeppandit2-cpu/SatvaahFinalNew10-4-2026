@@ -451,7 +451,21 @@ router.put(
       'system_config key updated',
     );
 
-    return res.json({ success: true, data: config });
+    // audit-ref: A4 — system_config cache behaviour
+    // Services that cache config keys in memory will pick up this change:
+    //   leadCounterService: contact_lead_cost — 60s in-memory cache (auto-expires)
+    //   trust Lambda (BG1): reads from DB on every invocation — no cache
+    //   search service: reads from DB on each request — no cache
+    // Keys that take effect IMMEDIATELY (no cache): all search, trust, scraping keys
+    // Keys with 60s delay: contact_lead_cost only
+    // No SIGHUP or restart needed.
+    return res.json({
+      success: true,
+      data: config,
+      _cache_note: key === 'contact_lead_cost'
+        ? 'change takes effect within 60 seconds (leadCounterService TTL)'
+        : 'change takes effect immediately',
+    });
   }),
 );
 

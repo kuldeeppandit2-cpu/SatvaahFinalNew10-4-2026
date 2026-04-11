@@ -200,13 +200,18 @@ router.post(
   '/internal/notify/whatsapp',
   requireInternalKey,
   asyncHandler(async (req: Request, res: Response) => {
-    const { user_id, template_name, data } = req.body ?? {};
-    if (!user_id || !template_name) {
-      res.status(400).json({ error: 'user_id and template_name are required' }); return;
+    const { user_id, phone, template_name, data } = req.body ?? {};
+    if ((!user_id && !phone) || !template_name) {
+      res.status(400).json({ error: 'user_id or phone, and template_name are required' }); return;
     }
-    // WhatsApp sends via whatsappService — Rule #17 check happens inside
     const { whatsappService } = await import('../services/whatsappService');
-    await whatsappService.sendTemplate({ user_id: user_id, templateName: template_name, data: data ?? {} });
+    if (phone) {
+      // Scraped provider path — no user account, send directly to phone
+      // audit-ref: EX5 — scraped provider (user_id=null) new_contact_request via WhatsApp
+      await whatsappService.sendTemplate({ phone, templateName: template_name, params: data?.params ?? [], correlationId: data?.correlation_id });
+    } else {
+      await whatsappService.sendTemplate({ user_id: user_id, templateName: template_name, data: data ?? {} });
+    }
     res.status(202).json({ success: true });
   }),
 );

@@ -13,7 +13,7 @@ import { prisma } from '@satvaaah/db';
 import { loadSystemConfig } from '@satvaaah/config';
 import { logger } from '@satvaaah/logger';
 import { AppError } from '@satvaaah/errors';
-import { sendFcmNotification } from '../lib/notificationClient';
+import { sendFcmNotification, sendWhatsAppToPhone } from '../lib/notificationClient';
 import { sqsPublish } from './sqsHelper';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -63,6 +63,8 @@ export async function createContactEventService(
     select: {
       id: true,
       user_id: true,
+      phone: true,              // needed for scraped provider WhatsApp outreach (EX5)
+      wa_opted_out: true,       // respect opt-out even for scraped providers
       user: { select: { fcm_token: true } },
     },
   });
@@ -221,22 +223,44 @@ export async function createContactEventService(
   }
 
   // Notify provider of new lead (fire-and-forget)
-  sendFcmNotification({
-    userId:    provider.user_id,
-    eventType: 'new_contact_request',
-    payload: {
-      contact_event_id: contactEvent.id,
-      contact_type:     contactType,
-    },
-    correlationId,
-  }).catch((err) => {
-    logger.warn('contact_event.provider_fcm.failed', {
+  if (provider.user_id) {
+    // Claimed provider with a user account — send FCM push
+    sendFcmNotification({
+      userId:    provider.user_id,
+      eventType: 'new_contact_request',
+      payload: {
+        contact_event_id: contactEvent.id,
+        contact_type:     contactType,
+      },
       correlationId,
-      eventId:     contactEvent.id,
-      provider_id: providerId,
-      error: (err as Error).message,
+    }).catch((err) => {
+      logger.warn('contact_event.provider_fcm.failed', {
+        correlationId,
+        eventId:     contactEvent.id,
+        provider_id: providerId,
+        error: (err as Error).message,
+      });
     });
-  });
+  } else if (provider.phone && !provider.wa_opted_out) {
+    // Scraped provider — no user account, no FCM token
+    // audit-ref: EX5 — WhatsApp outreach to scraped provider phone
+    // Template: new_contact_request (template #4 in APPROVED_WA_TEMPLATES)
+    // Params: [contact_type_label] — e.g. 'call', 'message', 'appointment'
+    const contactTypeLabel = contactType === 'slot_booking' ? 'appointment' : contactType;
+    sendWhatsAppToPhone({
+      phone:          `+91${provider.phone}`,  // provider.phone is 10-digit mobile
+      templateName:   'new_contact_request',
+      templateParams: [contactTypeLabel],
+      correlationId,
+    }).catch((err) => {
+      logger.warn('contact_event.scraped_provider_wa.failed', {
+        correlationId,
+        eventId:     contactEvent.id,
+        provider_id: providerId,
+        error: (err as Error).message,
+      });
+    });
+  }
 
   return contactEvent;
 }

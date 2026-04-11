@@ -12,7 +12,16 @@ import { MMKV } from '../__stubs__/mmkv';
 // Encrypted MMKV storage (device-level encryption)
 const storage = new MMKV({
   id: 'satvaaah-auth',
-  encryptionKey: 'satvaaah-mmkv-key-v1', // In production: derive from device secure storage
+  // audit-ref: MM1 — MMKV encryption key
+  // DEV: hardcoded key is acceptable for development and testing.
+  // PRODUCTION FIX REQUIRED before launch:
+  //   Replace with: import * as SecureStore from 'expo-secure-store';
+  //   const key = await SecureStore.getItemAsync('mmkv_encryption_key')
+  //     ?? crypto.randomUUID(); // generate once, store back
+  //   await SecureStore.setItemAsync('mmkv_encryption_key', key);
+  // This binds the key to the device's secure enclave (iOS) or Keystore (Android).
+  // A hardcoded key means ALL devices share the same key — not per-device encryption.
+  encryptionKey: 'satvaaah-mmkv-key-v1', // TODO(PROD): replace with expo-secure-store derived key
 });
 
 const KEYS = {
