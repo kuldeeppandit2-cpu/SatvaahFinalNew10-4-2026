@@ -1,18 +1,6 @@
 /**
- * SatvAAh Onboarding — 4 screens
- * iPhone 15 Pro 393×852pt
- * 
- * Structure (outside ScrollView):
- *   - Progress bar        ~70pt
- *   - ScrollView slides   flex:1
- *   - Footer text         ~24pt
- *   - Next button         ~56pt
- *   - Skip                ~30pt
- *   - paddingBottom       44pt
- * 
- * Each slide (inside ScrollView):
- *   - TOP zone (40% of slide): label + content
- *   - BRAND zone (60% of slide): centred brand
+ * SatvAAh Onboarding — 3 screens only (before Login)
+ * Screen 4 (Two Identities) is ModeSelectionScreen — shown AFTER OTP
  */
 import React, { useRef, useState } from 'react';
 import {
@@ -25,9 +13,6 @@ import type { AuthStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<AuthStackParamList, 'Onboarding'>;
 const { width: W, height: H } = Dimensions.get('window');
-
-// Slide height = full screen minus all chrome outside scrollview
-// progress(70) + footer(24) + button(56) + skip(30) + padBottom(44) + statusBar(50)
 const SLIDE_H = H - 274;
 const TOP_H   = SLIDE_H * 0.44;
 const BRAND_H = SLIDE_H * 0.56;
@@ -49,13 +34,12 @@ export function OnboardingScreen(): React.ReactElement {
   const navigation = useNavigation<Nav>();
   const [active, setActive] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
-  const TOTAL = 4;
+  const TOTAL = 3;
 
   const FOOTERS = [
     '0% Commission Guarantee',
     'For the first time in the world — on one app.',
-    '',  // S3 has two bullet items instead
-    'Let the world know about you with your Trust Score.',
+    '',
   ];
 
   function goTo(i: number) {
@@ -67,14 +51,12 @@ export function OnboardingScreen(): React.ReactElement {
     <View style={s.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
 
-      {/* Progress */}
       <View style={s.prog}>
         {Array.from({ length: TOTAL }).map((_, i) => (
           <View key={i} style={[s.seg, i <= active && s.segOn]} />
         ))}
       </View>
 
-      {/* Slides */}
       <ScrollView
         ref={scrollRef}
         horizontal pagingEnabled
@@ -85,7 +67,7 @@ export function OnboardingScreen(): React.ReactElement {
         }
       >
 
-        {/* S1 */}
+        {/* S1 — THE PROBLEM */}
         <View style={{ width: W, height: SLIDE_H }}>
           <View style={[s.top, { height: TOP_H }]}>
             <View style={s.tag}><Text style={s.tagTxt}>THE PROBLEM</Text></View>
@@ -97,7 +79,7 @@ export function OnboardingScreen(): React.ReactElement {
           </View>
         </View>
 
-        {/* S2 */}
+        {/* S2 — ONE APP */}
         <View style={{ width: W, height: SLIDE_H }}>
           <View style={[s.top, { height: TOP_H }]}>
             <View style={s.tag}><Text style={s.tagTxt}>ONE APP. EVERYTHING.</Text></View>
@@ -115,7 +97,7 @@ export function OnboardingScreen(): React.ReactElement {
           </View>
         </View>
 
-        {/* S3 */}
+        {/* S3 — TRUST */}
         <View style={{ width: W, height: SLIDE_H }}>
           <View style={[s.top, { height: TOP_H }]}>
             <View style={s.tag}><Text style={s.tagTxt}>TRUST THAT TRAVELS</Text></View>
@@ -132,29 +114,9 @@ export function OnboardingScreen(): React.ReactElement {
           </View>
         </View>
 
-        {/* S4 */}
-        <View style={{ width: W, height: SLIDE_H }}>
-          <View style={[s.top, { height: TOP_H }]}>
-            <View style={s.tag}><Text style={s.tagTxt}>TWO IDENTITIES</Text></View>
-            <Text style={s.hl}>{'On one app\nTwo Identities'}</Text>
-            <View style={{ height: 14 }} />
-            <View style={s.idBox}>
-              <Text style={s.idTitle}>Customer</Text>
-              <Text style={s.idSub}>Find &amp; connect with providers</Text>
-            </View>
-            <View style={[s.idBox, s.idBoxSf]}>
-              <Text style={[s.idTitle, s.idTitleSf]}>Provider</Text>
-              <Text style={s.idSub}>List services, earn your Trust Score</Text>
-            </View>
-          </View>
-          <View style={[s.brandZone, { height: BRAND_H }]}>
-            <Brand />
-          </View>
-        </View>
-
       </ScrollView>
 
-      {/* Footer — outside scroll, above button, never overlaps */}
+      {/* Footer */}
       <View style={s.footerWrap}>
         {active === 2 ? (
           <View>
@@ -166,7 +128,7 @@ export function OnboardingScreen(): React.ReactElement {
         )}
       </View>
 
-      {/* CTA — fixed at bottom, never overlaps anything */}
+      {/* CTA */}
       <View style={s.bottom}>
         <TouchableOpacity
           style={s.btn} activeOpacity={0.85}
@@ -195,10 +157,10 @@ const b = StyleSheet.create({
 
 const s = StyleSheet.create({
   root:       { flex: 1, backgroundColor: '#FAF7F0' },
-  prog:       { flexDirection: 'row', gap: 5, paddingHorizontal: 28, paddingTop: 56, paddingBottom: 0, height: 70 },
+  prog:       { flexDirection: 'row', gap: 5, paddingHorizontal: 28, paddingTop: 56, height: 70 },
   seg:        { flex: 1, height: 2, borderRadius: 1, backgroundColor: '#E8E0D5' },
   segOn:      { backgroundColor: '#C8691A' },
-  scroller:   { flex: 0 },  // no flex — height controlled by SLIDE_H
+  scroller:   { flex: 0 },
   top:        { paddingHorizontal: 28, paddingTop: 4, justifyContent: 'flex-start' },
   brandZone:  { paddingHorizontal: 28, justifyContent: 'center', alignItems: 'center' },
   tag:        { alignSelf: 'flex-start', backgroundColor: '#1C1C2E', borderRadius: 4, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 16 },
@@ -216,11 +178,6 @@ const s = StyleSheet.create({
   dotInk:     { width: 5, height: 5, borderRadius: 3, backgroundColor: '#1C1C2E', marginRight: 12 },
   btxt:       { fontSize: 15, fontWeight: '600', color: '#1C1C2E' },
   bink:       { fontSize: 14, fontWeight: '700', color: '#1C1C2E' },
-  idBox:      { borderWidth: 2, borderColor: '#1C1C2E', borderRadius: 14, padding: 16, marginBottom: 10, width: '100%' },
-  idBoxSf:    { borderColor: '#C8691A' },
-  idTitle:    { fontSize: 17, fontWeight: '700', color: '#1C1C2E', marginBottom: 4 },
-  idTitleSf:  { color: '#C8691A' },
-  idSub:      { fontSize: 13, color: '#9a9a9a' },
   footerWrap: { paddingHorizontal: 28, height: 52, justifyContent: 'center' },
   footTxt:    { fontSize: 13, fontWeight: '600', color: '#1C1C2E', textAlign: 'center' },
   bottom:     { paddingHorizontal: 28, paddingBottom: 44, gap: 12 },
