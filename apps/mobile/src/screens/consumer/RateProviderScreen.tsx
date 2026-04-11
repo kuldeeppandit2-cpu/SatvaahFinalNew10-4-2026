@@ -181,7 +181,7 @@ export default function RateProviderScreen({ route, navigation }: Props) {
         const presignRes = await apiClient.post<{
           success: true;
           data: { upload_url: string; s3_key: string };
-        }>('/ratings/photo-upload-url', {
+        }>('/api/v1/ratings/photo-upload-url', {
           content_type: 'image/jpeg',
           context: 'rating',
         });

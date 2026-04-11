@@ -42,6 +42,9 @@ export interface TaxonomyNode {
   attribute_schema: Record<string, unknown> | null;
   ratingDimensions: Record<string, unknown> | null;
   search_intent_expiry_days: number | null;
+  // Visual — from taxonomy_nodes.icon_emoji + hex_color (V048)
+  icon: string | null;
+  color: string | null;
 }
 
 export interface ScrapedProfile {
@@ -199,6 +202,8 @@ export const providerApi = {
         name: g.l1, l1: g.l1, l2: null, l3: null, l4: null,
         tab, parentId: null, homeVisit: false, verificationRequired: false,
         attribute_schema: null, ratingDimensions: null, search_intent_expiry_days: null,
+        icon:  g.icon  ?? null,   // emoji from taxonomy_nodes.icon_emoji (L1_ICONS map)
+        color: g.color ?? null,   // hex from taxonomy_nodes.hex_color
       }));
     }
     return d as TaxonomyNode[];

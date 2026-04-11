@@ -317,17 +317,30 @@ function CategoryChip({
   selected: boolean;
   onPress: () => void;
 }) {
+  // Use category hex_color from taxonomy (matches consumer HomeScreen tiles)
+  // Fall back to saffron if color not yet loaded
+  const tileColor = node.color ?? '#C8691A';
+  const icon      = node.icon ?? '📦';
+
   return (
     <TouchableOpacity
-      style={[styles.catChip, selected && styles.catChipSelected]}
+      style={[
+        styles.catChip,
+        { backgroundColor: selected ? tileColor : '#FFFFFF',
+          borderColor:      selected ? tileColor : '#E0D6C8' },
+      ]}
       onPress={onPress}
       activeOpacity={0.75}
     >
-      <Text style={[styles.catChipText, selected && styles.catChipTextSelected]}>
+      {/* Icon circle — coloured background like consumer grid */}
+      <View style={[styles.catChipIconBox, { backgroundColor: tileColor + '22' }]}>
+        <Text style={styles.catChipIcon}>{icon}</Text>
+      </View>
+      <Text style={[styles.catChipText, selected && { color: tileColor }]}>
         {node.name}
       </Text>
-      {node.verification_required && (
-        <Text style={styles.verifiedBadge}>✓ Verified</Text>
+      {node.verificationRequired && (
+        <Text style={[styles.verifiedBadge, { color: tileColor }]}>✓ Verified</Text>
       )}
     </TouchableOpacity>
   );
@@ -459,8 +472,18 @@ const styles = StyleSheet.create({
     padding: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 72,
-    gap: 4,
+    minHeight: 88,
+    gap: 6,
+  },
+  catChipIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catChipIcon: {
+    fontSize: 20,
   },
   catChipSelected: {
     borderColor: '#C8691A',

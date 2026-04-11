@@ -148,7 +148,7 @@ export default function OpenRatingScreen({ route, navigation }: Props) {
         const presignRes = await apiClient.post<{
           success: true;
           data: { upload_url: string; s3_key: string };
-        }>('/ratings/photo-upload-url', { content_type: 'image/jpeg', context: 'rating' });
+        }>('/api/v1/ratings/photo-upload-url', { content_type: 'image/jpeg', context: 'rating' });
         const { upload_url, s3_key } = presignRes.data.data;
         const blob = await fetch(photo.uri).then((r) => r.blob());
         await fetch(upload_url, { method: 'PUT', body: blob, headers: { 'Content-Type': 'image/jpeg' } });
