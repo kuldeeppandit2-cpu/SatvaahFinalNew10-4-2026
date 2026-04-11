@@ -372,9 +372,10 @@ def main():
     # Load L4 taxonomy nodes for search
     print('\n[3] Loading L4 taxonomy nodes for search terms...')
     # Filter to services, expertise, establishments only (products not Google Places searchable)
+    # All nodes in services/expertise/establishments are leaf nodes
+    # display_name is the precise search term for Google Places
     l4_nodes = [n for n in taxonomy_nodes 
-                if n.get('tab') in ('services', 'expertise', 'establishments')
-                and n.get('l4') and n.get('l4') != '']
+                if n.get('tab') in ('services', 'expertise', 'establishments')]
     
     # If --terms is specified, filter to matching display names
     if args.terms != 'all':
