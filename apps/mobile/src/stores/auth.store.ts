@@ -7,7 +7,7 @@
  */
 
 import { create } from 'zustand';
-import { apiClient } from '../api/client';
+import axios from 'axios';
 import { MMKV } from '../__stubs__/mmkv';
 
 // Encrypted MMKV storage (device-level encryption)
@@ -132,7 +132,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // audit-ref: P7 — FCM token must reach users.fcm_token in DB for any push to work.
     const accessToken = get().accessToken;
     if (accessToken) {
-      apiClient.patch('/api/v1/users/me', { fcm_token: token }, {
+      const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://192.168.1.9:3000';
+      axios.patch(`${BASE_URL}/api/v1/users/me`, { fcm_token: token }, {
         headers: { Authorization: `Bearer ${accessToken}` },
       }).catch((err) => {
         console.warn('[auth.store] FCM token registration failed:', err?.message);
