@@ -53,7 +53,12 @@ export async function createContactEventService(
   const provider = await prisma.providerProfile.findFirst({
     where: {
       id: providerId,
-      user: { deleted_at: null },
+      // Allow scraped providers where user_id is NULL (not yet claimed).
+      // Only exclude providers whose linked user account is soft-deleted.
+      OR: [
+        { user_id: null },
+        { user: { deleted_at: null } },
+      ],
     },
     select: {
       id: true,
@@ -61,7 +66,6 @@ export async function createContactEventService(
       user: { select: { fcm_token: true } },
     },
   });
-
   if (!provider) {
     throw new AppError('PROVIDER_NOT_FOUND', 'Provider not found', 404);
   }
