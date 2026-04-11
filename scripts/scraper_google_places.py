@@ -244,7 +244,7 @@ INSERT INTO provider_profiles (
     '{city_id}',
     '{tab_val}',
     true, true, false, false,
-    'free',
+    'individual_service',
     'google_maps',
     {esc(address)},
     {esc(phone_val)},
