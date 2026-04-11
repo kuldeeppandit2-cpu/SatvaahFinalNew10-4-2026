@@ -18,8 +18,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<AuthStackParamList, 'Onboarding'>;
-const { width: W, height: SLIDE_H } = Dimensions.get('window');
-// Slide height = full screen minus progress bar zone (80) + CTA zone (112) + status bar (44)
+const { width: W, height: H } = Dimensions.get('window');
 const SLIDE_H = H - 236;
 
 // Brand component — used identically on all 4 screens
