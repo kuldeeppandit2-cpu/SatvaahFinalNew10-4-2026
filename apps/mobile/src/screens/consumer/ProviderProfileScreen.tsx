@@ -37,6 +37,7 @@ import type { TrustScore }                                    from '../../api/tr
 import { getSavedProviders, saveProvider, unsaveProvider }    from '../../api/contact.api';
 import { TrustBreakdownModal }                                from './TrustBreakdownModal';
 import { useAuthStore }                                       from '../../stores/auth.store';
+import { useConsumerStore }                                   from '../../stores/consumer.store';
 import type { ConsumerStackParamList }                        from '../../navigation/types';
 
 // ─── Brand colours ────────────────────────────────────────────────────────────
@@ -141,6 +142,75 @@ export function ProviderProfileScreen(): React.ReactElement {
   const [showBreakdown,  setShowBreakdown] = useState(false);
   const [contactLeadCost] = useState(0);  // paise — 0 at launch (admin-configurable)
 
+  // ── Consumer profile setup modal ─────────────────────────────────────────
+  const hasCompletedProfileSetup = useConsumerStore((s) => s.hasCompletedProfileSetup);
+  const markProfileSetupComplete = useConsumerStore((s) => s.markProfileSetupComplete);
+  const [showSetupModal, setShowSetupModal] = useState(false);
+  const [pendingContactType, setPendingContactType] = useState<'call' | 'message' | 'slot_booking' | null>(null);
+  const [setupName, setSetupName] = useState('');
+  const [setupCities, setSetupCities] = useState<{ id: string; name: string }[]>([]);
+  const [setupCityId, setSetupCityId] = useState('');
+  const [setupLoading, setSetupLoading] = useState(false);
+
+  // Fetch cities for setup modal on mount
+  useEffect(() => {
+    apiClient.get('/api/v1/cities?active=true')
+      .then((res) => {
+        const cities = res.data?.data ?? [];
+        setSetupCities(cities);
+        if (cities.length > 0) setSetupCityId(cities[0].id);
+      })
+      .catch(() => {});
+  }, []);
+
+  async function handleProfileSetupSubmit(): Promise<void> {
+    if (!setupName.trim() || !setupCityId) {
+      Alert.alert('Required', 'Please enter your name and select your city.');
+      return;
+    }
+    setSetupLoading(true);
+    try {
+      await apiClient.post('/api/v1/consumers/profile', {
+        display_name: setupName.trim(),
+        city_id: setupCityId,
+      });
+      markProfileSetupComplete();
+      setShowSetupModal(false);
+      // Now proceed with the original contact action
+      if (pendingContactType) proceedToContact(pendingContactType);
+    } catch {
+      Alert.alert('Error', 'Could not save your profile. Please try again.');
+    } finally {
+      setSetupLoading(false);
+    }
+  }
+
+  function proceedToContact(type: 'call' | 'message' | 'slot_booking'): void {
+    if (!profile) return;
+    if (type === 'call') {
+      navigation.navigate('ContactCall', {
+        providerId,
+        providerName:  profile.displayName,
+        providerPhone: profile.phone,
+        providerScore: trust?.displayScore,
+        providerTier:  trust ? trustTierLabel(trust.trustTier) : undefined,
+      });
+    } else if (type === 'message') {
+      navigation.navigate('ContactMessage', {
+        providerId,
+        providerName:  profile.displayName,
+        providerScore: trust?.displayScore,
+        providerTier:  trust ? trustTierLabel(trust.trustTier) : undefined,
+      });
+    } else {
+      if (!isGold || !profile.has_calendar) return;
+      navigation.navigate('SlotBookingScreen', {
+        providerId,
+        providerName: profile.displayName,
+      });
+    }
+  }
+
   const showLeadCost = contactLeadCost > 0; // hidden entirely when 0
 
   // ── Load all three sections with Promise.allSettled ──────────────────────
@@ -193,30 +263,13 @@ export function ProviderProfileScreen(): React.ReactElement {
   // ── Contact actions ───────────────────────────────────────────────────────
   function handleContact(type: 'call' | 'message' | 'slot_booking'): void {
     if (!profile) return;
-    if (type === 'call') {
-      navigation.navigate('ContactCall', {
-        providerId,
-        providerName:  profile.displayName,
-        providerPhone: profile.phone,          // always passed — phone is always visible
-        providerScore: trust?.displayScore,
-        providerTier:  trust ? trustTierLabel(trust.trustTier) : undefined,
-      });
-    } else if (type === 'message') {
-      navigation.navigate('ContactMessage', {
-        providerId,
-        providerName:  profile.displayName,
-        providerScore: trust?.displayScore,
-        providerTier:  trust ? trustTierLabel(trust.trustTier) : undefined,
-        // contactEventId omitted — ContactMessageScreen creates the event
-      });
-    } else {
-      // Slot booking — Gold tier + has_calendar (gated here AND on backend)
-      if (!isGold || !profile.has_calendar) return;
-      navigation.navigate('SlotBookingScreen', {
-        providerId,
-        providerName: profile.displayName,
-      });
+    // Gate: consumer must complete profile setup before first contact
+    if (!hasCompletedProfileSetup) {
+      setPendingContactType(type);
+      setShowSetupModal(true);
+      return;
     }
+    proceedToContact(type);
   }
 
   if (!profile || !trust) {
@@ -432,9 +485,69 @@ export function ProviderProfileScreen(): React.ReactElement {
           onClose={() => setShowBreakdown(false)}
         />
       )}
+
+      {/* ── Consumer Profile Setup Modal — shown once before first contact ── */}
+      <Modal visible={showSetupModal} transparent animationType="slide" onRequestClose={() => setShowSetupModal(false)}>
+        <KeyboardAvoidingView style={setupStyles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={setupStyles.card}>
+            <Text style={setupStyles.title}>Before you connect</Text>
+            <Text style={setupStyles.sub}>Tell providers who you are so they can help you better.</Text>
+
+            <Text style={setupStyles.label}>Your name</Text>
+            <TextInput
+              style={setupStyles.input}
+              placeholder="e.g. Rahul Sharma"
+              value={setupName}
+              onChangeText={setSetupName}
+              autoFocus
+            />
+
+            <Text style={setupStyles.label}>Your city</Text>
+            <View style={setupStyles.cityRow}>
+              {setupCities.map((city) => (
+                <TouchableOpacity
+                  key={city.id}
+                  style={[setupStyles.cityChip, setupCityId === city.id && setupStyles.cityChipSelected]}
+                  onPress={() => setSetupCityId(city.id)}
+                >
+                  <Text style={[setupStyles.cityChipText, setupCityId === city.id && setupStyles.cityChipTextSelected]}>
+                    {city.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              style={[setupStyles.btn, setupLoading && setupStyles.btnDisabled]}
+              onPress={handleProfileSetupSubmit}
+              disabled={setupLoading}
+            >
+              <Text style={setupStyles.btnText}>{setupLoading ? 'Saving…' : 'Continue →'}</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
+
+// ─── Setup Modal Styles ───────────────────────────────────────────────────────
+const setupStyles = StyleSheet.create({
+  overlay:           { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  card:              { backgroundColor: '#FAF7F0', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 28, paddingBottom: 44 },
+  title:             { fontFamily: 'PlusJakartaSans-Bold', fontSize: 20, color: '#1C1C2E', marginBottom: 6 },
+  sub:               { fontFamily: 'PlusJakartaSans-Regular', fontSize: 14, color: '#6B6560', marginBottom: 24 },
+  label:             { fontFamily: 'PlusJakartaSans-SemiBold', fontSize: 13, color: '#1C1C2E', marginBottom: 8 },
+  input:             { borderWidth: 1.5, borderColor: '#E8E0D5', borderRadius: 10, padding: 14, fontSize: 15, fontFamily: 'PlusJakartaSans-Regular', color: '#1C1C2E', marginBottom: 20, backgroundColor: '#fff' },
+  cityRow:           { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 28 },
+  cityChip:          { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: '#E8E0D5', backgroundColor: '#fff' },
+  cityChipSelected:  { borderColor: '#C8691A', backgroundColor: '#FFF3E8' },
+  cityChipText:      { fontFamily: 'PlusJakartaSans-Regular', fontSize: 13, color: '#6B6560' },
+  cityChipTextSelected: { color: '#C8691A', fontFamily: 'PlusJakartaSans-SemiBold' },
+  btn:               { backgroundColor: '#C8691A', borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
+  btnDisabled:       { backgroundColor: '#E8E0D5' },
+  btnText:           { fontFamily: 'PlusJakartaSans-Bold', fontSize: 16, color: '#FAF7F0' },
+});
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({

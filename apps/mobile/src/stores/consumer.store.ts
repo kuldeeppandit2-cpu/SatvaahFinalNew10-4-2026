@@ -8,6 +8,7 @@ import { MMKV } from '../__stubs__/mmkv';
 
 const storage = new MMKV({ id: 'satvaaah-consumer' });
 const RECENT_SEARCHES_KEY = 'consumer.recentSearches';
+const PROFILE_SETUP_KEY = 'consumer.profileSetupComplete';
 const MAX_RECENT = 5;
 
 export interface SavedProvider {
@@ -51,6 +52,10 @@ export interface ConsumerState {
   // Consumer trust score (starts at 75 per system_config consumer_trust_start)
   consumerTrustScore: number;
 
+  // Profile setup flag — persisted, shown once only
+  hasCompletedProfileSetup: boolean;
+  markProfileSetupComplete: () => void;
+
   // Actions
   setSavedProviders: (providers: SavedProvider[]) => void;
   addSavedProvider: (provider: SavedProvider) => void;
@@ -73,10 +78,16 @@ export const useConsumerStore = create<ConsumerState>((set, get) => {
   return {
     savedProviders: [],
     recentSearches: initialRecentSearches,
+    hasCompletedProfileSetup: storage.getBoolean(PROFILE_SETUP_KEY) ?? false,
     leadBalance: 0,
     leadsAllocated: 0,
     activeContactEvents: [],
     consumerTrustScore: 75, // system_config: consumer_trust_start=75
+
+    markProfileSetupComplete: (): void => {
+      storage.set(PROFILE_SETUP_KEY, true);
+      set({ hasCompletedProfileSetup: true });
+    },
 
     setSavedProviders: (providers): void => set({ savedProviders: providers }),
 
