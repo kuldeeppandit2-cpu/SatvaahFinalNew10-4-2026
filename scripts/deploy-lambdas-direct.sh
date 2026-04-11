@@ -99,7 +99,7 @@ TSEOF
 # ── Deploy function ───────────────────────────────────────────────────────────
 deploy_one() {
   local name="$1"
-  local env_vars="$2"
+  # env_vars arg intentionally ignored — set via update-function-configuration separately
   local zip="/tmp/lambda-${name}.zip"
   local czip="/tmp/lambda-${name}.zip"
 
@@ -111,29 +111,30 @@ deploy_one() {
     return 1
   fi
 
-  # Copy zip into LocalStack container (awslocal runs inside, cannot read host /tmp)
-  echo "  Copying zip into container..."
-  docker cp "${zip}" "satvaaah-localstack:${czip}" || { echo "ERROR: docker cp failed"; return 1; }
+  # Copy zip into LocalStack container
+  echo "  Copying zip..."
+  docker cp "${zip}" "satvaaah-localstack:${czip}" 2>&1 | tail -1
 
-  # Try update first, then create
+  # Try update first (idempotent)
   if docker exec satvaaah-localstack awslocal lambda update-function-code \
       --function-name "satvaaah-${name}" \
       --zip-file "fileb://${czip}" \
       --output text --query 'FunctionName' 2>/dev/null; then
     echo "OK: Updated satvaaah-${name}"
-  else
-    docker exec satvaaah-localstack awslocal lambda create-function \
-      --function-name "satvaaah-${name}" \
-      --runtime nodejs18.x \
-      --role "${ROLE}" \
-      --handler dist/index.handler \
-      --zip-file "fileb://${czip}" \
-      --timeout 300 --memory-size 512 \
-      --environment "Variables=${env_vars}" \
-      --output text --query 'FunctionName' 2>&1 \
-    && echo "OK: Created satvaaah-${name}" \
-    || { echo "ERROR: Failed to deploy satvaaah-${name}"; return 1; }
+    return 0
   fi
+
+  # Create new function (no --environment to avoid quoting issues)
+  docker exec satvaaah-localstack awslocal lambda create-function \
+    --function-name "satvaaah-${name}" \
+    --runtime nodejs18.x \
+    --role "${ROLE}" \
+    --handler dist/index.handler \
+    --zip-file "fileb://${czip}" \
+    --timeout 300 --memory-size 512 \
+    --output text --query 'FunctionName' 2>&1 \
+  && echo "OK: Created satvaaah-${name}" \
+  || { echo "ERROR: Failed to deploy satvaaah-${name}"; return 1; }
 }
 
 # ── Wire SQS trigger ──────────────────────────────────────────────────────────
