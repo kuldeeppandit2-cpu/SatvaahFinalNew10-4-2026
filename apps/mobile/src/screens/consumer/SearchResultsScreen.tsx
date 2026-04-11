@@ -275,9 +275,6 @@ const SearchResultsScreen: React.FC = () => {
   // Reconnection: exponential backoff 1s→30s, infinite retries
 
   useEffect(() => {
-    // No results — skip WebSocket entirely, nothing to update availability for
-    if (searchComplete && results.length === 0) return;
-
     const socket = io(`${ENV.WS_BASE_URL}/availability`, {
       transports: ['websocket'],
       reconnection: true,
@@ -302,6 +299,7 @@ const SearchResultsScreen: React.FC = () => {
       getAvailabilityChanges(since)
         .then((changes) => {
           if (changes.length === 0) return;
+          if (results.length === 0) return; // no cards to update
           const patch: Record<string, boolean> = {};
           changes.forEach((c) => { patch[c.providerId] = c.is_available; });
           setAvailMap((prev) => ({ ...prev, ...patch }));
@@ -320,6 +318,7 @@ const SearchResultsScreen: React.FC = () => {
       mode: string;
       updatedAt: string;
     }) => {
+      if (results.length === 0) return; // no cards to update
       setAvailMap((prev) => ({
         ...prev,
         [payload.provider_id]: payload.isAvailable,
@@ -335,7 +334,7 @@ const SearchResultsScreen: React.FC = () => {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [searchComplete, results.length]);
+  }, []);
 
   // ── Filter screen result listener ─────────────────────────────────────────
   // SearchFilterScreen navigates back with new filters via route.params
