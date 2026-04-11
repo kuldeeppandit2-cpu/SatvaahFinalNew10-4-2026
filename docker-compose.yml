@@ -700,7 +700,7 @@ services:
 
 networks:
   satvaaah-net:
-    driver: bridge
+    external: true
     name: satvaaah-net
 
 
@@ -709,8 +709,10 @@ volumes:
     name: satvaaah_node_modules
   localstack_data:
   postgres_data:
+    external: true
     name: satvaaah_postgres_data
   redis_data:
+    external: true
     name: satvaaah_redis_data
   mongodb_data:
     name: satvaaah_mongodb_data
