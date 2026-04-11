@@ -377,16 +377,7 @@ def main():
     l4_nodes = [n for n in taxonomy_nodes 
                 if n.get('tab') in ('services', 'expertise', 'establishments')]
     
-    # If --terms is specified, filter by keyword across all taxonomy fields
-    if args.terms != 'all':
-        filter_terms = [t.strip().lower() for t in args.terms.split(',')]
-        def node_matches(n):
-            searchable = ' '.join(filter(None, [
-                n.get('l1',''), n.get('l2',''), n.get('l3',''),
-                n.get('l4',''), n.get('display_name','')
-            ])).lower()
-            return any(f in searchable for f in filter_terms)
-        l4_nodes = [n for n in l4_nodes if node_matches(n)]
+    # --terms ignored in L4 mode: all 418 L4 nodes used
     
     # Debug: check first few nodes
     if taxonomy_nodes:
