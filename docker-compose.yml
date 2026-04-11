@@ -42,14 +42,12 @@ x-node-service-base: &node-service-base
       condition: service_healthy
     satvaaah-redis:
       condition: service_healthy
-    mongodb:
-      condition: service_healthy
-    opensearch:
-      condition: service_healthy
     migrate:
       condition: service_completed_successfully
     installer:
       condition: service_completed_successfully
+  # mongodb and opensearch removed from base — only scraping/search need them.
+  # Services that need them declare the dependency explicitly.
 
 x-node-healthcheck: &node-healthcheck
   interval: 30s
