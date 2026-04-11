@@ -129,7 +129,8 @@ services:
     image: mongo:7.0
     container_name: satvaaah-mongodb
     hostname: mongodb
-    restart: unless-stopped
+    restart: "no"
+    profiles: ["mongodb"]
     networks:
       - satvaaah-net
     environment:
@@ -247,7 +248,7 @@ services:
       SERVICE_DIR: services/auth
       PORT: ${AUTH_SERVICE_PORT:-3001}
       SERVICE_NAME: auth
-      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY}
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-satvaaah-internal-dev-key}
       DATABASE_URL: ${DATABASE_URL}
       PRISMA_QUERY_ENGINE_LIBRARY: /workspace/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/libquery_engine-linux-musl-arm64-openssl-3.0.x.so.node
       REDIS_URL: ${REDIS_URL}
@@ -305,7 +306,7 @@ services:
       SERVICE_DIR: services/user
       PORT: ${USER_SERVICE_PORT:-3002}
       SERVICE_NAME: user
-      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY}
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-satvaaah-internal-dev-key}
       DATABASE_URL: ${DATABASE_URL}
       PRISMA_QUERY_ENGINE_LIBRARY: /workspace/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/libquery_engine-linux-musl-arm64-openssl-3.0.x.so.node
       REDIS_URL: ${REDIS_URL}
@@ -319,7 +320,7 @@ services:
       S3_BUCKET_PROFILE_PHOTOS: ${S3_BUCKET_PROFILE_PHOTOS}
       S3_PRESIGNED_URL_EXPIRY: ${S3_PRESIGNED_URL_EXPIRY:-3600}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-      SQS_TRUST_SCORE_UPDATES_URL: ${SQS_TRUST_SCORE_UPDATES_URL}
+      SQS_TRUST_SCORE_UPDATES_URL: ${SQS_TRUST_SCORE_UPDATES_URL:-http://localstack:4566/000000000000/satvaaah-trust-score-updates.fifo}
       TRUST_TIER_BASIC_THRESHOLD: ${TRUST_TIER_BASIC_THRESHOLD:-20}
       TRUST_TIER_TRUSTED_THRESHOLD: ${TRUST_TIER_TRUSTED_THRESHOLD:-60}
       TRUST_TIER_HIGHLY_TRUSTED_THRESHOLD: ${TRUST_TIER_HIGHLY_TRUSTED_THRESHOLD:-80}
@@ -381,7 +382,7 @@ services:
       SERVICE_DIR: services/trust
       PORT: ${TRUST_SERVICE_PORT:-3004}
       SERVICE_NAME: trust
-      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY}
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-satvaaah-internal-dev-key}
       DATABASE_URL: ${DATABASE_URL}
       PRISMA_QUERY_ENGINE_LIBRARY: /workspace/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/libquery_engine-linux-musl-arm64-openssl-3.0.x.so.node
       REDIS_URL: ${REDIS_URL}
@@ -391,7 +392,7 @@ services:
       AWS_REGION: ${AWS_REGION}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      SQS_TRUST_SCORE_UPDATES_URL: ${SQS_TRUST_SCORE_UPDATES_URL}
+      SQS_TRUST_SCORE_UPDATES_URL: ${SQS_TRUST_SCORE_UPDATES_URL:-http://localstack:4566/000000000000/satvaaah-trust-score-updates.fifo}
       LAMBDA_TRUST_SCORE_ARN: ${LAMBDA_TRUST_SCORE_ARN}
       LAMBDA_DIGILOCKER_VERIFY_ARN: ${LAMBDA_DIGILOCKER_VERIFY_ARN}
       DIGILOCKER_CLIENT_ID: ${DIGILOCKER_CLIENT_ID}
@@ -423,7 +424,7 @@ services:
       SERVICE_DIR: services/rating
       PORT: ${RATING_SERVICE_PORT:-3005}
       SERVICE_NAME: rating
-      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY}
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-satvaaah-internal-dev-key}
       DATABASE_URL: ${DATABASE_URL}
       PRISMA_QUERY_ENGINE_LIBRARY: /workspace/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/libquery_engine-linux-musl-arm64-openssl-3.0.x.so.node
       REDIS_URL: ${REDIS_URL}
@@ -436,7 +437,7 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       SQS_RATING_QUEUE_URL: ${SQS_RATING_QUEUE_URL}
       LAMBDA_RATING_AGGREGATOR_ARN: ${LAMBDA_RATING_AGGREGATOR_ARN}
-      SQS_TRUST_SCORE_UPDATES_URL: ${SQS_TRUST_SCORE_UPDATES_URL}
+      SQS_TRUST_SCORE_UPDATES_URL: ${SQS_TRUST_SCORE_UPDATES_URL:-http://localstack:4566/000000000000/satvaaah-trust-score-updates.fifo}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       CORS_ORIGINS: ${CORS_ORIGINS}
     healthcheck:
@@ -460,7 +461,7 @@ services:
       SERVICE_DIR: services/notification
       PORT: ${NOTIFICATION_SERVICE_PORT:-3006}
       SERVICE_NAME: notification
-      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY}
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-satvaaah-internal-dev-key}
       DATABASE_URL: ${DATABASE_URL}
       PRISMA_QUERY_ENGINE_LIBRARY: /workspace/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/libquery_engine-linux-musl-arm64-openssl-3.0.x.so.node
       REDIS_URL: ${REDIS_URL}
@@ -482,8 +483,8 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       SQS_NOTIFICATION_QUEUE_URL: ${SQS_NOTIFICATION_QUEUE_URL:-http://satvaaah-localstack:4566/000000000000/satvaaah-notification.fifo}
       GUPSHUP_API_URL: ${GUPSHUP_API_URL:-https://api.gupshup.io/sm/api/v1}
-      GUPSHUP_SOURCE_PHONE: ${GUPSHUP_SOURCE_PHONE}
-      FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON}
+      GUPSHUP_SOURCE_PHONE: ${GUPSHUP_SOURCE_PHONE:-919000000000}
+      FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON:-{}}
       LAMBDA_NOTIFICATION_SCHEDULER_ARN: ${LAMBDA_NOTIFICATION_SCHEDULER_ARN}
       LAMBDA_WHATSAPP_SENDER_ARN: ${LAMBDA_WHATSAPP_SENDER_ARN}
       # Firebase Cloud Messaging (push notifications)
@@ -514,7 +515,7 @@ services:
       SERVICE_NAME: payment
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-*}
       NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL:-http://notification:3006}
-      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY}
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-satvaaah-internal-dev-key}
       DATABASE_URL: ${DATABASE_URL}
       PRISMA_QUERY_ENGINE_LIBRARY: /workspace/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/libquery_engine-linux-musl-arm64-openssl-3.0.x.so.node
       REDIS_URL: ${REDIS_URL}
@@ -533,7 +534,7 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       SQS_PAYMENT_EVENTS_QUEUE_URL: ${SQS_PAYMENT_EVENTS_QUEUE_URL:-http://satvaaah-localstack:4566/000000000000/satvaaah-payment-events.fifo}
       LAMBDA_PAYMENT_RECONCILER_ARN: ${LAMBDA_PAYMENT_RECONCILER_ARN}
-      SQS_TRUST_SCORE_UPDATES_URL: ${SQS_TRUST_SCORE_UPDATES_URL}
+      SQS_TRUST_SCORE_UPDATES_URL: ${SQS_TRUST_SCORE_UPDATES_URL:-http://localstack:4566/000000000000/satvaaah-trust-score-updates.fifo}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       HMAC_SECRET: ${HMAC_SECRET}
       CORS_ORIGINS: ${CORS_ORIGINS}
@@ -563,7 +564,7 @@ services:
       OPENSEARCH_USERNAME: ${OPENSEARCH_USERNAME:-admin}
       OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-admin}
       NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL:-http://notification:3006}
-      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY}
+      INTERNAL_SERVICE_KEY: ${INTERNAL_SERVICE_KEY:-satvaaah-internal-dev-key}
       DATABASE_URL: ${DATABASE_URL}
       PRISMA_QUERY_ENGINE_LIBRARY: /workspace/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/libquery_engine-linux-musl-arm64-openssl-3.0.x.so.node
       REDIS_URL: ${REDIS_URL}
@@ -580,7 +581,7 @@ services:
       S3_BUCKET_NAME: ${S3_BUCKET_NAME}
       # All SQS queues (admin can purge/inspect)
       SQS_NOTIFICATION_QUEUE_URL: ${SQS_NOTIFICATION_QUEUE_URL:-http://satvaaah-localstack:4566/000000000000/satvaaah-notification.fifo}
-      SQS_TRUST_SCORE_UPDATES_URL: ${SQS_TRUST_SCORE_UPDATES_URL}
+      SQS_TRUST_SCORE_UPDATES_URL: ${SQS_TRUST_SCORE_UPDATES_URL:-http://localstack:4566/000000000000/satvaaah-trust-score-updates.fifo}
       SQS_RATING_QUEUE_URL: ${SQS_RATING_QUEUE_URL}
       SQS_PAYMENT_EVENTS_QUEUE_URL: ${SQS_PAYMENT_EVENTS_QUEUE_URL:-http://satvaaah-localstack:4566/000000000000/satvaaah-payment-events.fifo}
       SQS_SCRAPING_QUEUE_URL: ${SQS_SCRAPING_QUEUE_URL}
