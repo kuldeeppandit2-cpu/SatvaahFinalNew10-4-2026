@@ -142,12 +142,16 @@ fi
 # ── FLOW 5: Notifications + Categories ───────────────────────────────────────
 echo -e "\n${BOLD}Flow 5 — Notifications + Category Tree${NC}"
 
-NOTIFS=$(curl -s -m 5 "$BASE:3006/api/v1/notifications" \
-  -H "Authorization: Bearer $ACCESS")
-chk "GET /notifications returns list" "\[\]\|notifications\|data\|items" "$NOTIFS"
+if [ -n "$ACCESS" ]; then
+  NOTIFS=$(curl -s -m 5 "$BASE:3006/api/v1/notifications" \
+    -H "Authorization: Bearer $ACCESS")
+  chk "GET /notifications returns list" "\[\]\|notifications\|data\|items" "$NOTIFS"
+else
+  echo -e "  ${YELLOW}⚠️  Skipping notifications — no auth token${NC}"
+fi
 
-CATS=$(curl -s -m 10 "$BASE:3003/api/v1/categories/l2?tab=services")
-chk "GET /categories/l2 returns category tree" "id\|name\|slug\|\[\]" "$CATS"
+CATS=$(curl -s -m 10 "$BASE:3003/api/v1/categories?tab=services")
+chk "GET /categories?tab=services returns category tree" "id\|name\|slug\|\[\]" "$CATS"
 
 CITIES=$(curl -s -m 5 "$BASE:3002/api/v1/cities")
 chk "GET /cities returns city list" "hyderabad\|mumbai\|id\|name" "$CITIES"

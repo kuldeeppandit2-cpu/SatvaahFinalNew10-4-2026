@@ -259,7 +259,6 @@ export const authService = {
     userAgent: string;
     correlationId: string | undefined;
   }): Promise<TokenPairResult> {
-    ensureFirebaseInitialised();
     const { firebaseIdToken, consent_given, ip, userAgent, correlationId } = params;
 
     // --- Consent gate (Critical Rule #21) ---
@@ -267,7 +266,9 @@ export const authService = {
       throw new ConsentRequiredError('User consent is required to proceed (DPDP Act 2023)');
     }
 
-    // --- DEV BYPASS: Mock token for Expo Go/simulator. REMOVE BEFORE PRODUCTION ---
+    // --- DEV BYPASS: Mock token for Expo Go/simulator — checked BEFORE Firebase init ---
+    // Firebase init requires real credentials. Dev bypass must run first so local
+    // testing works without FIREBASE_SERVICE_ACCOUNT_JSON set in .env
     if (firebaseIdToken === 'MOCK_FIREBASE_TOKEN_FOR_TESTING') {
       const testPhone = '+919000000001';
       let devUser: UserRow;
