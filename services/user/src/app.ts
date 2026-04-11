@@ -8,10 +8,6 @@
 
 import express, { Application } from 'express';
 import http from 'http';
-import { Server as SocketIOServer } from 'socket.io';
-import { createAdapter } from '@socket.io/redis-adapter';
-import { createClient } from 'redis';
-
 import { correlationId, rateLimiter, errorHandler, notFoundHandler, requireAuth } from '@satvaaah/middleware';
 import { logger }        from '@satvaaah/logger';
 
@@ -59,118 +55,13 @@ app.use(errorHandler);
 // ── HTTP server ─────────────────────────────────────────────────────────────
 const httpServer = http.createServer(app);
 
-// ── Socket.IO ───────────────────────────────────────────────────────────────
-//
-// 3 namespaces (from MASTER_CONTEXT):
-//   /availability  — public (no auth)
-//   /trust         — JWT required, provider joins room provider:{id}
-//   /messages      — JWT required, both parties join conversation:{event_id}
-//
-// Redis adapter required for horizontal scaling.
-async function attachSocketIO(): Promise<void> {
-  const pubClient = createClient({ url: process.env.REDIS_URL });
-  const subClient = pubClient.duplicate();
-
-  try {
-    await Promise.all([pubClient.connect(), subClient.connect()]);
-  } catch (err) {
-    logger.error('Socket.IO Redis adapter connection failed — running without adapter', { err });
-    // Fail gracefully; single-instance WS still functional
-  }
-
-  const io = new SocketIOServer(httpServer, {
-    cors: { origin: process.env.WS_CORS_ORIGIN || process.env.APP_CORS_ORIGIN || '*' },
-    // connectionStateRecovery replays missed events within 2-minute window
-    connectionStateRecovery: { maxDisconnectionDuration: 2 * 60 * 1000, skipMiddlewares: false },
-  });
-
-  if (pubClient.isReady && subClient.isReady) {
-    io.adapter(createAdapter(pubClient, subClient));
-    logger.info('Socket.IO Redis adapter attached');
-  }
-
-  // ── /availability namespace (public) ─────────────────────────────────────
-  const availabilityNs = io.of('/availability');
-  availabilityNs.on('connection', (socket) => {
-    const cityId = socket.handshake.query.city_id as string | undefined;
-    if (cityId) {
-      socket.join(`city:${cityId}`);
-    }
-    logger.debug('Socket /availability connected', {
-      socketId: socket.id,
-      cityId,
-    });
-  });
-
-  // ── /trust namespace (JWT required) ──────────────────────────────────────
-  const trustNs = io.of('/trust');
-  trustNs.use(socketAuthMiddleware);
-  trustNs.on('connection', (socket) => {
-    const providerId = (socket as any).providerId as string | undefined;
-    if (providerId) {
-      socket.join(`provider:${providerId}`);
-    }
-    socket.on('disconnect', () =>
-      logger.debug('Socket /trust disconnected', { socketId: socket.id })
-    );
-  });
-
-  // ── /messages namespace (JWT required) ───────────────────────────────────
-  const messagesNs = io.of('/messages');
-  messagesNs.use(socketAuthMiddleware);
-  messagesNs.on('connection', (socket) => {
-    const eventId = socket.handshake.query.event_id as string | undefined;
-    if (eventId) {
-      socket.join(`conversation:${eventId}`);
-    }
-    socket.on('disconnect', () =>
-      logger.debug('Socket /messages disconnected', { socketId: socket.id })
-    );
-  });
-
-  // Attach io to app so controllers can emit events
-  (app as any).io = io;
-  logger.info('Socket.IO namespaces registered: /availability, /trust, /messages');
-}
-
-/**
- * Socket.IO auth middleware — verifies RS256 JWT from handshake auth.token
- * Mirrors requireAuth but adapted for Socket.IO Next callbacks.
- */
-async function socketAuthMiddleware(socket: any, next: (err?: Error) => void): Promise<void> {
-  const token = socket.handshake.auth?.token as string | undefined;
-  if (!token) return next(new Error('UNAUTHORIZED'));
-
-  try {
-    const jwt = await import('jsonwebtoken');
-    const publicKey = process.env.JWT_PUBLIC_KEY?.replace(/\\n/g, '\n') ?? '';
-    const payload = jwt.verify(token, publicKey, { algorithms: ['RS256'] }) as any;
-    socket.userId = payload.sub;
-    // Look up provider profile id so /trust namespace can join the correct room
-    try {
-      const providerProfile = await prisma.providerProfile.findFirst({
-        where: { user_id: payload.sub },
-        select: { id: true },
-      });
-      if (providerProfile) {
-        socket.providerId = providerProfile.id;
-      }
-    } catch {
-      // Non-fatal — provider room join will simply be skipped
-    }
-    // provider_id is NOT in JWT — look up from DB if needed
-    next();
-  } catch {
-    next(new Error('UNAUTHORIZED'));
-  }
-}
-
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 import { loadSystemConfig, registerSighupReload } from '@satvaaah/config';
 import { prisma } from '@satvaaah/db';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { Client as PgClient } from 'pg';
 import { v4 as uuidv4 } from 'uuid';
+import { initWebSocket } from './websocket/server';
 
 /**
  * PostgreSQL CDC bridge — LISTENs on 'opensearch_cdc' pg_notify channel
@@ -233,7 +124,7 @@ async function startCdcBridge(): Promise<void> {
   }
   registerSighupReload(prisma);
 
-  await attachSocketIO();
+  await initWebSocket(httpServer);
 
   // Start OpenSearch CDC bridge (non-blocking)
   startCdcBridge().catch((err) => {
