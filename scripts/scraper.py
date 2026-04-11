@@ -1551,12 +1551,9 @@ VALUES('{pid}','{esc(name)}','{esc(bname)}','{nid}',
     '{source}','{esc(ext_id)}',ST_SetSRID(ST_MakePoint({lng},{lat}),4326))
 ON CONFLICT(scrape_source,scrape_external_id) DO NOTHING;""")
 
-        sql.append(f"""
-INSERT INTO trust_scores(provider_id,display_score,raw_score,
-    verification_score,customer_voice_score,trust_tier,rating_count,signal_breakdown)
-VALUES('{pid}',{vscore},{vscore},{vscore},0,'{tier}'::"TrustTier",
-    {int(r.get('external_review_count') or 0)},'{esc(signal)}'::jsonb)
-ON CONFLICT(provider_id) DO NOTHING;""")
+        # trust_scores intentionally NOT inserted here.
+        # DB trigger V018 writes trust_scores automatically on provider_profile insert.
+        # Rule: trust_score is written ONLY by DB trigger V018 - NEVER write from app code
 
         inserted+=1
 
