@@ -62,6 +62,7 @@ ensure_lambda_role() {
 build_lambda() {
   local name="$1"
   local dir="lambdas/${name}"
+  local zip_path="/tmp/lambda-${name}.zip"
 
   step "Building ${name}..."
 
@@ -70,21 +71,55 @@ build_lambda() {
     return 1
   fi
 
-  # Install deps
-  (cd "${dir}" && npm install --quiet 2>/dev/null) && ok "npm install done"
+  # Use Docker node:18 to install deps and compile TypeScript
+  # This avoids needing local node_modules or tsc installed on host
+  docker run --rm \
+    -v "$(pwd)/${dir}:/app" \
+    -v "$(pwd)/tsconfig.base.json:/tsconfig.base.json:ro" \
+    -w /app \
+    node:18-alpine \
+    sh -c "
+      # Create tsconfig if missing
+      if [ ! -f tsconfig.json ]; then
+        cat > tsconfig.json << 'TSEOF'
+{
+  \"compilerOptions\": {
+    \"target\": \"ES2020\",
+    \"module\": \"CommonJS\",
+    \"lib\": [\"ES2020\"],
+    \"outDir\": \"./dist\",
+    \"rootDir\": \"./\",
+    \"strict\": false,
+    \"esModuleInterop\": true,
+    \"skipLibCheck\": true,
+    \"resolveJsonModule\": true
+  },
+  \"include\": [\"index.ts\"],
+  \"exclude\": [\"dist\", \"node_modules\"]
+}
+TSEOF
+      fi
+      # Install deps
+      npm install --quiet 2>/dev/null
+      # Compile
+      npx tsc 2>/dev/null || npx tsc --skipLibCheck 2>/dev/null || {
+        echo 'tsc failed, trying direct transpile...'
+        npx tsc --noEmit false --skipLibCheck --strict false index.ts --outDir dist 2>/dev/null || true
+      }
+      echo 'Build done'
+    " && ok "Built: ${name}" || { err "Docker build failed for ${name}"; return 1; }
 
-  # Compile TypeScript
-  if [ -f "${dir}/tsconfig.json" ]; then
-    (cd "${dir}" && npx tsc --noEmit false --outDir dist 2>/dev/null || npx tsc 2>/dev/null) \
-      && ok "TypeScript compiled" \
-      || { warn "tsc failed — trying ts-node bundle fallback"; }
+  # Check dist was created
+  if [ ! -d "${dir}/dist" ] || [ -z "$(ls -A ${dir}/dist 2>/dev/null)" ]; then
+    err "No dist/ output for ${name} — TypeScript compilation failed"
+    return 1
   fi
 
-  # Create zip — includes dist/ and node_modules/
-  local zip_path="/tmp/lambda-${name}.zip"
+  # Create zip with dist + node_modules
   rm -f "${zip_path}"
-  (cd "${dir}" && zip -r "${zip_path}" dist/ node_modules/ package.json -x "*.test.*" "*.spec.*" 2>/dev/null)
-  ok "Zip created: ${zip_path} ($(du -sh "${zip_path}" | cut -f1))"
+  (cd "${dir}" && zip -r "${zip_path}" dist/ node_modules/ package.json \
+    -x "*.test.*" "*.spec.*" "node_modules/.cache/*" 2>/dev/null)
+  ok "Zip: ${zip_path} ($(du -sh "${zip_path}" | cut -f1))"
   echo "${zip_path}"
 }
 
