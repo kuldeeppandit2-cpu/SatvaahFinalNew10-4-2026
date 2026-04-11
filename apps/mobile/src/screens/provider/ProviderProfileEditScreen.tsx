@@ -283,6 +283,29 @@ export const ProviderProfileEditScreen: React.FC = () => {
   const [hasChanges, setHasChanges] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof ProfileFormData, string>>>({});
 
+  // ── Taxonomy fields (from attribute_schema — category-specific) ────────────
+  interface TaxonomyField { key: string; label: string; required: boolean; type?: string; }
+  const [taxonomyFields, setTaxonomyFields] = useState<TaxonomyField[]>([]);
+  const [taxonomyValues, setTaxonomyValues] = useState<Record<string, string>>({});
+  const [categoryLabel, setCategoryLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiClient.get('/api/v1/providers/me/taxonomy-fields')
+      .then((res) => {
+        const data = res.data?.data;
+        if (!data) return;
+        const fields: TaxonomyField[] = data.attribute_schema?.fields ?? [];
+        setTaxonomyFields(fields);
+        // Seed empty values for each field
+        const init: Record<string, string> = {};
+        fields.forEach((f: TaxonomyField) => { init[f.key] = ''; });
+        setTaxonomyValues(init);
+        if (data.category_label) setCategoryLabel(data.category_label);
+      })
+      .catch(() => {}); // non-blocking — generic fields still shown
+  }, []);
+
+
   const isEstablishment = profile?.listingType === 'establishment';
 
   const setField = (key: keyof ProfileFormData) => (value: string) => {
@@ -719,6 +742,30 @@ export const ProviderProfileEditScreen: React.FC = () => {
                 keyboardType="numeric"
                 hint="Number of staff/team members"
               />
+            </>
+          )}
+
+          {/* Category-specific fields from taxonomy attribute_schema */}
+          {taxonomyFields.length > 0 && (
+            <>
+              <SectionHeader
+                title={categoryLabel ? `${categoryLabel} details` : 'Category details'}
+                subtitle="Fields specific to your service category. These help consumers understand your offering."
+              />
+              {taxonomyFields.map((field) => (
+                <Field
+                  key={field.key}
+                  label={`${field.label}${field.required ? ' *' : ''}`}
+                  value={taxonomyValues[field.key] ?? ''}
+                  onChangeText={(v) => {
+                    setTaxonomyValues((prev) => ({ ...prev, [field.key]: v }));
+                    setHasChanges(true);
+                  }}
+                  placeholder={`Enter ${field.label.toLowerCase()}`}
+                  keyboardType={field.type === 'number' ? 'numeric' : 'default'}
+                  autoCapitalize={field.type === 'number' ? 'none' : 'sentences'}
+                />
+              ))}
             </>
           )}
 
