@@ -270,19 +270,27 @@ ON CONFLICT (provider_id) DO NOTHING;
     return ok
 
 # ── Main scrape ───────────────────────────────────────────────────────────────
-def scrape_city(api_key, city_key, city, city_id, search_terms, taxonomy_nodes, limit_per_term, get_details):
+def scrape_city(api_key, city_key, city, city_id, taxonomy_l4_nodes, limit_per_term, get_details):
+    """Scrape using L4 taxonomy nodes as search terms.
+    Each node becomes a precise Google Places query e.g. 'AC Servicing & Deep Cleaning in Hyderabad'.
+    Providers are tagged to their exact taxonomy_node_id — no mapping needed.
+    """
     total = 0
     api_calls = 0
     
-    for term in search_terms:
+    for node in taxonomy_l4_nodes:
+        term = node['display_name']
+        tax_id = node['id']
+        tab = node['tab']
+        
         query = f"{term} in {city['name']}"
         page_token = None
         term_count = 0
         pages = 0
         
-        while term_count < limit_per_term and pages < 3:  # Max 3 pages (60 results) per term
+        while term_count < limit_per_term and pages < 2:
             if page_token:
-                time.sleep(2)  # Required delay between page token requests
+                time.sleep(2)
             
             data = places_text_search(api_key, query, city['lat'], city['lng'], page_token)
             api_calls += 1
@@ -305,18 +313,12 @@ def scrape_city(api_key, city_key, city, city_id, search_terms, taxonomy_nodes, 
                 if term_count >= limit_per_term:
                     break
                 
-                # Optionally get phone details (costs extra API call)
                 if get_details and place.get('place_id'):
                     details = get_place_details(api_key, place['place_id'])
                     api_calls += 1
                     place.update(details)
                     time.sleep(0.1)
                 
-                # Match taxonomy
-                tax_id, tab = match_taxonomy(place.get('name',''), term, taxonomy_nodes)
-                
-                if total == 0 and term_count == 0 and pages == 0:
-                    print(f'    DEBUG first result: {json.dumps(place)[:300]}')
                 ok = insert_provider(city_id, city_key, place, term, tax_id, tab)
                 if ok:
                     total += 1
@@ -326,10 +328,10 @@ def scrape_city(api_key, city_key, city, city_id, search_terms, taxonomy_nodes, 
             if not page_token:
                 break
             pages += 1
-            time.sleep(2)  # Required between pages
+            time.sleep(2)
         
         if term_count > 0:
-            print(f'    {term}: {term_count} inserted')
+            print(f'    [{tab}] {term}: {term_count}')
     
     return total, api_calls
 
@@ -367,16 +369,28 @@ def main():
     taxonomy_nodes = load_taxonomy()
     print(f'  {len(taxonomy_nodes)} taxonomy nodes loaded')
 
-    # Select cities and terms
-    cities_to_run = [c.strip() for c in args.cities.split(',') if c.strip() in CITIES]
-    terms_to_run = SEARCH_TERMS if args.terms == 'all' else [t.strip() for t in args.terms.split(',')]
+    # Load L4 taxonomy nodes for search
+    print('\n[3] Loading L4 taxonomy nodes for search terms...')
+    # Filter to services, expertise, establishments only (products not Google Places searchable)
+    l4_nodes = [n for n in taxonomy_nodes 
+                if n.get('tab') in ('services', 'expertise', 'establishments')
+                and n.get('l4') and n.get('l4') != '']
+    
+    # If --terms is specified, filter to matching display names
+    if args.terms != 'all':
+        filter_terms = [t.strip().lower() for t in args.terms.split(',')]
+        l4_nodes = [n for n in l4_nodes if any(f in n.get('display_name','').lower() for f in filter_terms)]
+    
+    print(f'    {len(l4_nodes)} L4 nodes to search')
 
-    print(f'\n[3] Scraping {len(terms_to_run)} terms × {len(cities_to_run)} cities')
-    print(f'    Limit: {args.limit} results per term per city')
+    cities_to_run = [c.strip() for c in args.cities.split(',') if c.strip() in CITIES]
+
+    print(f'    {len(l4_nodes)} terms × {len(cities_to_run)} cities × {args.limit} results')
+    print(f'    Max providers: ~{len(l4_nodes)*len(cities_to_run)*args.limit:,}')
+    estimated_calls = len(l4_nodes) * len(cities_to_run)
+    estimated_cost = estimated_calls * 0.032
+    print(f'    Est. API calls: ~{estimated_calls} (${estimated_cost:.2f})')
     print(f'    Phone details: {"yes (costs extra quota)" if args.details else "no (faster, no phone numbers)"}')
-    estimated_calls = len(terms_to_run) * len(cities_to_run)
-    estimated_cost = estimated_calls * 0.032  # $0.032 per Text Search call
-    print(f'    Est. API calls: ~{estimated_calls} (${estimated_cost:.2f} — well within $200 free tier)')
     print()
 
     total_inserted = 0
@@ -393,8 +407,8 @@ def main():
         print(f'\n  ▶ {city["name"].upper()}')
         inserted, calls = scrape_city(
             args.key, city_key, city, city_id,
-            terms_to_run, taxonomy_nodes,
-            min(args.limit, 60), args.details
+            l4_nodes,
+            min(args.limit, 20), args.details
         )
         total_inserted += inserted
         total_api_calls += calls
