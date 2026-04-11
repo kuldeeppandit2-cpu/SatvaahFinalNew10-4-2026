@@ -1,296 +1,166 @@
 /**
- * SatvAAh Mode Selection Screen
- * Two equal cards: Consumer | Provider
- * POST /api/v1/auth/firebase/verify — consent_given: true ALWAYS (Rule #21)
- * Mode persisted to MMKV via auth store
+ * SatvAAh Mode Selection — shown after OTP
+ * Matches approved onboarding slide 4 design exactly
  */
-
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, ScrollView, TextInput,
+  ActivityIndicator, Alert, StatusBar, Dimensions,
 } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import type { AuthScreenProps } from '../../navigation/types';
-
 import { verifyFirebaseToken } from '../../api/auth.api';
 import { useAuthStore } from '../../stores/auth.store';
 import { COLORS } from '../../constants/colors';
 
 type ModeRouteProps = AuthScreenProps<'ModeSelection'>['route'];
+const { height: H } = Dimensions.get('window');
+
+function Brand() {
+  return (
+    <View style={b.wrap}>
+      <View style={b.row}>
+        <Text style={b.ink}>Satv</Text>
+        <View style={b.box}><Text style={b.aaText}>AA</Text></View>
+        <Text style={b.ink}>h</Text>
+      </View>
+      <Text style={b.tagline}>Truth that travels</Text>
+    </View>
+  );
+}
 
 export function ModeSelectionScreen(): React.ReactElement {
   const route = useRoute<ModeRouteProps>();
   const { firebaseIdToken, phone } = route.params;
-
-  const [selectedMode, setSelectedMode] = useState<'consumer' | 'provider' | null>(null);
+  const [selected, setSelected] = useState<'consumer' | 'provider' | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
   const setTokens = useAuthStore((s) => s.setTokens);
-  const setUser = useAuthStore((s) => s.setUser);
-  const setMode = useAuthStore((s) => s.setMode);
+  const setUser   = useAuthStore((s) => s.setUser);
+  const setMode   = useAuthStore((s) => s.setMode);
 
-  async function handleModeSelect(mode: 'consumer' | 'provider'): Promise<void> {
+  async function handleSelect(mode: 'consumer' | 'provider') {
     if (isLoading) return;
-    setSelectedMode(mode);
+    setSelected(mode);
     setIsLoading(true);
-
     try {
-      // Rule #21: consent_given ALWAYS true — DPDP Act 2023
-      // This atomically creates the user + writes consent_record on first-time sign-in
       const result = await verifyFirebaseToken({
-        firebaseIdToken,
-        phone,
-        mode,
-        consent_given: true, // Non-negotiable. Never false.
+        firebaseIdToken, phone, mode, consent_given: true,
       });
-
-      // Persist to MMKV via Zustand store
       setTokens(result.access_token, result.refresh_token);
       setUser(result.userId, phone);
       setMode(mode);
-
-      // RootNavigator re-renders automatically from Zustand state change
-    } catch (error: unknown) { console.error("SATVAAAH_ERROR:", JSON.stringify(error), (error as any)?.message, (error as any)?.code);
-      const apiError = error as { response?: { data?: { error?: { code?: string; message?: string } } } };
-      const code = apiError?.response?.data?.error?.code;
-
-      if (code === 'CONSENT_REQUIRED') {
-        Alert.alert(
-          'Consent Required',
-          'You must agree to data processing to use SatvAAh.',
-        );
-      } else {
-        Alert.alert(
-          'Something went wrong',
-          'Could not complete sign in. Please try again.',
-        );
-      }
-      setSelectedMode(null);
+    } catch (error: unknown) {
+      const code = (error as any)?.response?.data?.error?.code;
+      Alert.alert(
+        'Something went wrong',
+        code === 'CONSENT_REQUIRED'
+          ? 'You must agree to data processing to use SatvAAh.'
+          : 'Could not complete sign in. Please try again.',
+      );
+      setSelected(null);
     } finally {
       setIsLoading(false);
     }
   }
 
+  const SLIDE_H = H - 274;
+  const TOP_H   = SLIDE_H * 0.44;
+  const BRAND_H = SLIDE_H * 0.56;
+
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
-      {/* Wordmark */}
-      <View style={styles.brandRow}>
-        <Text style={styles.brandInk}>Satv</Text>
-        <View style={styles.brandAA}><Text style={styles.brandAAText}>AA</Text></View>
-        <Text style={styles.brandInk}>h</Text>
+    <View style={s.root}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
+
+      {/* Top zone — label + headline + maid/lawyer + cards */}
+      <View style={[s.top, { minHeight: TOP_H }]}>
+        <View style={s.tag}><Text style={s.tagTxt}>TWO IDENTITIES</Text></View>
+
+        <Text style={s.hl}>{'On one app\nTwo Identities'}</Text>
+
+        <Text style={s.maidLawyer}>
+          You can be a lawyer looking for a maid —{'\n'}or a maid looking for a lawyer.
+        </Text>
+
+        {/* Customer */}
+        <TouchableOpacity
+          style={[s.card, selected === 'consumer' && s.cardActive]}
+          onPress={() => handleSelect('consumer')}
+          disabled={isLoading}
+          activeOpacity={0.85}
+        >
+          <View style={s.cardInner}>
+            <View>
+              <Text style={[s.cardTitle, selected === 'consumer' && s.cardTitleActive]}>
+                Customer
+              </Text>
+              <Text style={s.cardSub}>Find &amp; connect with providers</Text>
+            </View>
+            {isLoading && selected === 'consumer' && (
+              <ActivityIndicator color={selected === 'consumer' ? '#FAF7F0' : COLORS.saffron} />
+            )}
+          </View>
+        </TouchableOpacity>
+
+        {/* Provider */}
+        <TouchableOpacity
+          style={[s.card, s.cardSaffron, selected === 'provider' && s.cardSaffronActive]}
+          onPress={() => handleSelect('provider')}
+          disabled={isLoading}
+          activeOpacity={0.85}
+        >
+          <View style={s.cardInner}>
+            <View>
+              <Text style={[s.cardTitleSaffron, selected === 'provider' && s.cardTitleActive]}>
+                Provider
+              </Text>
+              <Text style={s.cardSub}>List services, earn your Trust Score</Text>
+            </View>
+            {isLoading && selected === 'provider' && (
+              <ActivityIndicator color={selected === 'provider' ? '#FAF7F0' : COLORS.saffron} />
+            )}
+          </View>
+        </TouchableOpacity>
       </View>
-      <Text style={styles.tagline}>Truth that travels</Text>
-      <Text style={styles.headline}>Welcome back.</Text>
-      <Text style={styles.sub}>How would you like to continue today?</Text>
-      <Text style={styles.maidLawyer}>You can be a lawyer looking for a maid — or a maid looking for a lawyer.</Text>
 
-      {/* Consumer Card */}
-      <TouchableOpacity
-        style={[
-          styles.card,
-          selectedMode === 'consumer' && styles.cardSelectedConsumer,
-        ]}
-        onPress={() => handleModeSelect('consumer')}
-        disabled={isLoading}
-        activeOpacity={0.88}
-      >
-        <Text style={styles.cardEmoji}>🔍</Text>
-        <Text style={styles.cardHeadline}>Customer</Text>
-        <Text style={styles.cardSub}>Find &amp; connect with verified providers near you.</Text>
+      {/* Brand zone — centred */}
+      <View style={[s.brandZone, { height: BRAND_H }]}>
+        <Brand />
+      </View>
 
-        {/* Decorative chips */}
-        <View style={styles.chipRow}>
-          {['Score ≥ 70', '< 2km', 'Available now'].map((chip) => (
-            <View key={chip} style={styles.chip}>
-              <Text style={styles.chipText}>{chip}</Text>
-            </View>
-          ))}
-        </View>
-
-        {isLoading && selectedMode === 'consumer' && (
-          <ActivityIndicator
-            style={styles.cardLoader}
-            color={COLORS.saffron}
-          />
-        )}
-      </TouchableOpacity>
-
-      {/* Provider Card */}
-      <TouchableOpacity
-        style={[
-          styles.card,
-          selectedMode === 'provider' && styles.cardSelectedProvider,
-        ]}
-        onPress={() => handleModeSelect('provider')}
-        disabled={isLoading}
-        activeOpacity={0.88}
-      >
-        <Text style={styles.cardEmoji}>🛡️</Text>
-        <Text style={styles.cardHeadline}>Provider</Text>
-        <Text style={styles.cardSub}>List services, build your Trust Score, manage leads.</Text>
-
-        {/* Decorative chips */}
-        <View style={styles.chipRow}>
-          {['Aadhaar ✓', 'Geo-tag ✓', 'Credential ✓'].map((chip) => (
-            <View key={chip} style={[styles.chip, styles.chipProvider]}>
-              <Text style={[styles.chipText, styles.chipTextProvider]}>{chip}</Text>
-            </View>
-          ))}
-        </View>
-
-        {isLoading && selectedMode === 'provider' && (
-          <ActivityIndicator
-            style={styles.cardLoader}
-            color={COLORS.verdigris}
-          />
-        )}
-      </TouchableOpacity>
-
-      <Text style={styles.footer}>
-        You can switch modes anytime from Settings.
-      </Text>
-    </ScrollView>
+      {/* Footer */}
+      <View style={s.footerWrap}>
+        <Text style={s.footTxt}>Let the world know about you with your Trust Score.</Text>
+      </View>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.ivory,
-  },
-  content: {
-    paddingHorizontal: 24,
-    paddingTop: 72,
-    paddingBottom: 48,
-    alignItems: 'center',
-  },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  brandInk: {
-    fontSize: 40,
-    fontWeight: '800',
-    color: '#1C1C2E',
-  },
-  brandAA: {
-    backgroundColor: '#C8691A',
-    borderRadius: 7,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginHorizontal: 1,
-  },
-  brandAAText: {
-    fontSize: 34,
-    fontWeight: '800',
-    color: '#FAF7F0',
-  },
-  tagline: {
-    fontSize: 11,
-    fontWeight: '700',
-    fontStyle: 'italic',
-    color: '#C8691A',
-    letterSpacing: 5,
-    marginBottom: 28,
-  },
-  headline: {
-    fontFamily: 'PlusJakartaSans-Bold',
-    fontSize: 22,
-    color: COLORS.deepInk,
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  sub: {
-    fontFamily: 'PlusJakartaSans-Regular',
-    fontSize: 13,
-    color: COLORS.textPrimary,
-    marginBottom: 32,
-    textAlign: 'center',
-  },
-  card: {
-    width: '100%',
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: COLORS.border,
-    // Shadow
-    shadowColor: '#1C1C2E',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  cardSelectedConsumer: {
-    borderColor: COLORS.saffron,
-    shadowOpacity: 0.12,
-  },
-  cardSelectedProvider: {
-    borderColor: COLORS.verdigris,
-    shadowOpacity: 0.12,
-  },
-  cardEmoji: {
-    fontSize: 36,
-    marginBottom: 12,
-  },
-  cardHeadline: {
-    fontFamily: 'PlusJakartaSans-Bold',
-    fontSize: 17,
-    color: COLORS.deepInk,
-    marginBottom: 4,
-  },
-  cardSub: {
-    fontFamily: 'PlusJakartaSans-Regular',
-    fontSize: 13,
-    color: COLORS.textPrimary,
-    marginBottom: 16,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    backgroundColor: '#FFF3E8',
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  chipProvider: {
-    backgroundColor: '#E8F5F3',
-  },
-  chipText: {
-    fontFamily: 'PlusJakartaSans-Medium',
-    fontSize: 12,
-    color: COLORS.saffron,
-  },
-  chipTextProvider: {
-    color: COLORS.verdigris,
-  },
-  cardLoader: {
-    marginTop: 12,
-  },
-  maidLawyer: {
-    fontFamily: 'PlusJakartaSans-Regular',
-    fontSize: 13,
-    color: '#1C1C2E',
-    textAlign: 'center',
-    marginBottom: 28,
-    lineHeight: 20,
-    paddingHorizontal: 8,
-  },
-  footer: {
-    fontFamily: 'PlusJakartaSans-Regular',
-    fontSize: 12,
-    color: COLORS.textPrimary,
-    textAlign: 'center',
-    marginTop: 8,
-  },
+const b = StyleSheet.create({
+  wrap:    { alignItems: 'center' },
+  row:     { flexDirection: 'row', alignItems: 'center' },
+  ink:     { fontSize: 52, fontWeight: '800', color: '#1C1C2E' },
+  box:     { backgroundColor: '#C8691A', borderRadius: 9, paddingHorizontal: 8, paddingVertical: 2, marginHorizontal: 1 },
+  aaText:  { fontSize: 46, fontWeight: '800', color: '#FAF7F0' },
+  tagline: { fontSize: 13, fontWeight: '700', fontStyle: 'italic', color: '#C8691A', letterSpacing: 5, marginTop: 12, textAlign: 'center' },
+});
+
+const s = StyleSheet.create({
+  root:          { flex: 1, backgroundColor: '#FAF7F0' },
+  top:           { paddingHorizontal: 28, paddingTop: 68, justifyContent: 'flex-start' },
+  tag:           { alignSelf: 'flex-start', backgroundColor: '#1C1C2E', borderRadius: 4, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 16 },
+  tagTxt:        { fontSize: 10, fontWeight: '700', color: '#FAF7F0', letterSpacing: 2 },
+  hl:            { fontSize: 20, fontWeight: '800', color: '#1C1C2E', lineHeight: 28, marginBottom: 12 },
+  maidLawyer:    { fontSize: 14, color: '#6B6B7B', lineHeight: 22, marginBottom: 24 },
+  card:          { borderWidth: 2, borderColor: '#1C1C2E', borderRadius: 14, padding: 18, marginBottom: 12 },
+  cardActive:    { backgroundColor: '#1C1C2E' },
+  cardSaffron:   { borderColor: '#C8691A' },
+  cardSaffronActive: { backgroundColor: '#C8691A' },
+  cardInner:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cardTitle:     { fontSize: 17, fontWeight: '700', color: '#1C1C2E', marginBottom: 4 },
+  cardTitleSaffron: { fontSize: 17, fontWeight: '700', color: '#C8691A', marginBottom: 4 },
+  cardTitleActive:  { color: '#FAF7F0' },
+  cardSub:       { fontSize: 13, color: '#9a9a9a' },
+  brandZone:     { paddingHorizontal: 28, justifyContent: 'center', alignItems: 'center' },
+  footerWrap:    { paddingHorizontal: 28, paddingBottom: 44, alignItems: 'center' },
+  footTxt:       { fontSize: 13, fontWeight: '600', color: '#1C1C2E', textAlign: 'center' },
 });
