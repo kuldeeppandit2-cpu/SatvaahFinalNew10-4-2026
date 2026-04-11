@@ -275,6 +275,9 @@ const SearchResultsScreen: React.FC = () => {
   // Reconnection: exponential backoff 1s→30s, infinite retries
 
   useEffect(() => {
+    // No results — skip WebSocket entirely, nothing to update availability for
+    if (searchComplete && results.length === 0) return;
+
     const socket = io(`${ENV.WS_BASE_URL}/availability`, {
       transports: ['websocket'],
       reconnection: true,
@@ -332,7 +335,7 @@ const SearchResultsScreen: React.FC = () => {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, []);
+  }, [searchComplete, results.length]);
 
   // ── Filter screen result listener ─────────────────────────────────────────
   // SearchFilterScreen navigates back with new filters via route.params
