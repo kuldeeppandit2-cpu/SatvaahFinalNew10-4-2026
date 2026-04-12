@@ -98,14 +98,16 @@ export default function ClaimProfileScreen({ route, navigation }: Props) {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
+      {/* Back button — outside ScrollView so it stays fixed */}
+      <View style={styles.backRow}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top:10, bottom:10, left:10, right:10 }}>
+          <Ionicons name="chevron-back" size={24} color={'#1C1C2E'} />
+        </TouchableOpacity>
+      </View>
       <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
-        {/* Back button */}
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top:10, bottom:10, left:10, right:10 }}>
-          <Ionicons name="chevron-back" size={24} color={'#1C1C2E'} />
-        </TouchableOpacity>
 
         {/* Header */}
         <View style={styles.header}>
