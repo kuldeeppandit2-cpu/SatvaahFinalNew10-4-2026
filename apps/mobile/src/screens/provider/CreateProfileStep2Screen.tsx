@@ -464,7 +464,8 @@ const styles = StyleSheet.create({
   },
   container: {
     paddingHorizontal: 20,
-    paddingBottom: 48,
+    paddingBottom: 48,,
+    flexGrow: 1,
   },
   stepRow: {
     flexDirection: 'row',

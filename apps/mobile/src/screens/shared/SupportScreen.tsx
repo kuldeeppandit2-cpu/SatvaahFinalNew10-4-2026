@@ -97,7 +97,9 @@ export function SupportScreen() {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.ivory },
-  scroll: { padding: 16, paddingBottom: 48 },
+  scroll: { padding: 16, paddingBottom: 48,
+    flexGrow: 1,
+  },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: COLORS.deepInk, marginBottom: 10, marginTop: 8 },
   faqCard: { backgroundColor: COLORS.white, borderRadius: 10, padding: 14, marginBottom: 8, borderWidth: 0.5, borderColor: COLORS.border },
   faqHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

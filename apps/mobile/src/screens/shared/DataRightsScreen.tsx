@@ -71,7 +71,9 @@ export function DataRightsScreen() {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.ivory },
-  scroll: { padding: 16, paddingBottom: 48 },
+  scroll: { padding: 16, paddingBottom: 48,
+    flexGrow: 1,
+  },
   intro: { fontSize: 14, color: COLORS.muted, lineHeight: 21, marginBottom: 16 },
   card: {
     backgroundColor: COLORS.white,

@@ -3,7 +3,7 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ActivityIndicator, Linking, Alert, ScrollView, StatusBar,
+  ActivityIndicator, Linking, Alert, StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -66,9 +66,10 @@ export function ContactCallScreen(): React.ReactElement {
       <StatusBar barStyle="dark-content" backgroundColor={IVORY} />
       <ScreenHeader title="Call Provider" onBack={() => navigation.goBack()} />
 
-      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+      {/* ── Middle: fills available space, content vertically centred ── */}
+      <View style={s.body}>
 
-        {/* Provider avatar + name */}
+        {/* Avatar + name */}
         <View style={s.heroBlock}>
           <View style={[s.avatar, { borderColor: tierColor }]}>
             <Text style={s.avatarInitial}>{initial}</Text>
@@ -79,34 +80,36 @@ export function ContactCallScreen(): React.ReactElement {
           )}
         </View>
 
+        {/* Phone number */}
+        <View style={s.phoneCard}>
+          {phone ? (
+            <>
+              <Text style={s.phoneLabel}>Phone number</Text>
+              <Text selectable style={s.phoneNumber}>{phone}</Text>
+              <Text style={s.phoneNote}>
+                {providerName} will see your contact details when you call.
+              </Text>
+            </>
+          ) : (
+            <Text style={s.phoneNote}>
+              Phone number will be shown after you initiate the call.
+            </Text>
+          )}
+        </View>
+
         {/* Trust signals */}
         <View style={s.signalCard}>
           <View style={s.signalRow}>
             <Ionicons name="flash" size={16} color={VERDIGRIS} />
-            <Text style={s.signalText}>Responds quickly · Verified provider</Text>
+            <Text style={s.signalText}>Verified provider · Responds quickly</Text>
           </View>
-          {signals.map((sig, i) => (
+          {signals.slice(0, 2).map((sig, i) => (
             <View key={i} style={s.signalRow}>
               <Ionicons name="checkmark-circle" size={16} color={VERDIGRIS} />
               <Text style={s.signalText}>{sig}</Text>
             </View>
           ))}
         </View>
-
-        {/* Phone number */}
-        {phone ? (
-          <View style={s.phoneCard}>
-            <Text style={s.phoneLabel}>Phone number</Text>
-            <Text selectable style={s.phoneNumber}>{phone}</Text>
-            <Text style={s.phoneNote}>
-              {providerName} will see your contact details when they accept.
-            </Text>
-          </View>
-        ) : (
-          <View style={s.phoneCard}>
-            <Text style={s.phoneNote}>Phone number will be available after you initiate the call.</Text>
-          </View>
-        )}
 
         {/* Lead warning */}
         {leadCost > 0 && leadsRemaining <= 2 && (
@@ -118,7 +121,10 @@ export function ContactCallScreen(): React.ReactElement {
           </View>
         )}
 
-        {/* CTA */}
+      </View>
+
+      {/* ── Bottom: CTA always at bottom ── */}
+      <View style={s.footer}>
         <TouchableOpacity
           style={[s.callBtn, loading && s.callBtnDisabled]}
           onPress={handleCall}
@@ -137,48 +143,54 @@ export function ContactCallScreen(): React.ReactElement {
         <TouchableOpacity style={s.cancelBtn} onPress={() => navigation.goBack()}>
           <Text style={s.cancelText}>Cancel</Text>
         </TouchableOpacity>
+      </View>
 
-      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
   safe:           { flex: 1, backgroundColor: IVORY },
-  scroll:         { paddingHorizontal: 24, paddingBottom: 40 },
 
-  heroBlock:      { alignItems: 'center', paddingVertical: 32 },
-  avatar:         { width: 88, height: 88, borderRadius: 44, borderWidth: 3,
-                    backgroundColor: WARM_SAND, alignItems: 'center', justifyContent: 'center',
-                    marginBottom: 16 },
-  avatarInitial:  { fontSize: 36, fontWeight: '700', color: DEEP_INK },
-  providerName:   { fontSize: 22, fontWeight: '700', color: DEEP_INK, marginBottom: 4 },
-  tierLabel:      { fontSize: 13, fontWeight: '500', marginTop: 2 },
+  // body fills all space between header and footer
+  body:           { flex: 1, paddingHorizontal: 24, paddingTop: 8,
+                    justifyContent: 'space-evenly' },
 
-  signalCard:     { backgroundColor: VERDIGRIS, borderRadius: 14, padding: 16,
-                    marginBottom: 16, gap: 8 },
-  signalRow:      { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  signalText:     { fontSize: 14, color: '#fff', fontWeight: '500', flex: 1 },
+  heroBlock:      { alignItems: 'center', paddingVertical: 8 },
+  avatar:         { width: 96, height: 96, borderRadius: 48, borderWidth: 3,
+                    backgroundColor: WARM_SAND, alignItems: 'center',
+                    justifyContent: 'center', marginBottom: 16 },
+  avatarInitial:  { fontSize: 40, fontWeight: '700', color: DEEP_INK },
+  providerName:   { fontSize: 24, fontWeight: '700', color: DEEP_INK,
+                    marginBottom: 4, textAlign: 'center' },
+  tierLabel:      { fontSize: 14, fontWeight: '500', textAlign: 'center' },
 
-  phoneCard:      { backgroundColor: '#fff', borderRadius: 14, padding: 20,
-                    alignItems: 'center', marginBottom: 16,
-                    borderWidth: 1, borderColor: '#E8E0D5' },
-  phoneLabel:     { fontSize: 12, color: MUTED, marginBottom: 6 },
-  phoneNumber:    { fontSize: 26, fontWeight: '800', color: DEEP_INK, letterSpacing: 1.5,
-                    marginBottom: 8 },
-  phoneNote:      { fontSize: 12, color: MUTED, textAlign: 'center', lineHeight: 18 },
+  phoneCard:      { backgroundColor: '#fff', borderRadius: 16, padding: 20,
+                    alignItems: 'center', borderWidth: 1, borderColor: '#E8E0D5' },
+  phoneLabel:     { fontSize: 12, color: MUTED, marginBottom: 8,
+                    textTransform: 'uppercase', letterSpacing: 0.5 },
+  phoneNumber:    { fontSize: 28, fontWeight: '800', color: DEEP_INK,
+                    letterSpacing: 2, marginBottom: 10 },
+  phoneNote:      { fontSize: 13, color: MUTED, textAlign: 'center', lineHeight: 19 },
+
+  signalCard:     { backgroundColor: VERDIGRIS + '15', borderRadius: 14,
+                    padding: 16, gap: 10, borderWidth: 1,
+                    borderColor: VERDIGRIS + '30' },
+  signalRow:      { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  signalText:     { fontSize: 14, color: DEEP_INK, fontWeight: '500', flex: 1 },
 
   warningCard:    { flexDirection: 'row', alignItems: 'center', gap: 8,
-                    backgroundColor: '#FFF4F4', borderRadius: 10, padding: 12,
-                    marginBottom: 16 },
+                    backgroundColor: '#FFF4F4', borderRadius: 12, padding: 14,
+                    borderWidth: 1, borderColor: '#F5C6C6' },
   warningText:    { fontSize: 13, color: TERRACOTTA, fontWeight: '500', flex: 1 },
 
+  // footer pinned to bottom
+  footer:         { paddingHorizontal: 24, paddingBottom: 8, gap: 4 },
   callBtn:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-                    gap: 10, backgroundColor: VERDIGRIS, borderRadius: 14,
-                    height: 56, marginBottom: 12 },
+                    gap: 10, backgroundColor: VERDIGRIS, borderRadius: 16,
+                    height: 58 },
   callBtnDisabled:{ opacity: 0.6 },
-  callBtnText:    { fontSize: 17, fontWeight: '700', color: IVORY },
-
-  cancelBtn:      { alignItems: 'center', paddingVertical: 12 },
+  callBtnText:    { fontSize: 18, fontWeight: '700', color: IVORY },
+  cancelBtn:      { alignItems: 'center', paddingVertical: 14 },
   cancelText:     { fontSize: 15, color: MUTED, fontWeight: '500' },
 });

@@ -18,6 +18,7 @@ const DEEP_INK  = '#1C1C2E';
 const IVORY     = '#FAF7F0';
 const WARM_SAND = '#F0E4CC';
 const MUTED     = '#9E9589';
+const VERDIGRIS = '#2E7D72';
 
 const MAX_CHARS = 500;
 const QUICK_PROMPTS = [
@@ -69,7 +70,6 @@ export function ContactMessageScreen(): React.ReactElement {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
       >
         <ScrollView
           contentContainerStyle={s.scroll}
@@ -152,42 +152,42 @@ export function ContactMessageScreen(): React.ReactElement {
 
 const s = StyleSheet.create({
   safe:             { flex: 1, backgroundColor: IVORY },
-  scroll:           { paddingHorizontal: 24, paddingBottom: 40 },
+  scroll:           { paddingHorizontal: 24, paddingVertical: 20, flexGrow: 1 },
 
-  heroBlock:        { flexDirection: 'row', alignItems: 'center', gap: 14,
-                      paddingVertical: 20 },
-  avatar:           { width: 56, height: 56, borderRadius: 28, borderWidth: 2.5,
+  heroBlock:        { flexDirection: 'row', alignItems: 'center', gap: 16,
+                      paddingVertical: 16, marginBottom: 8 },
+  avatar:           { width: 64, height: 64, borderRadius: 32, borderWidth: 3,
                       backgroundColor: WARM_SAND, alignItems: 'center',
                       justifyContent: 'center', flexShrink: 0 },
-  avatarInitial:    { fontSize: 22, fontWeight: '700', color: DEEP_INK },
+  avatarInitial:    { fontSize: 26, fontWeight: '700', color: DEEP_INK },
   providerMeta:     { flex: 1 },
-  providerName:     { fontSize: 18, fontWeight: '700', color: DEEP_INK },
-  tierLabel:        { fontSize: 13, fontWeight: '500', marginTop: 2 },
+  providerName:     { fontSize: 20, fontWeight: '700', color: DEEP_INK },
+  tierLabel:        { fontSize: 13, fontWeight: '500', marginTop: 3 },
 
   sectionLabel:     { fontSize: 12, fontWeight: '600', color: MUTED,
                       textTransform: 'uppercase', letterSpacing: 0.5,
-                      marginBottom: 8, marginTop: 4 },
+                      marginBottom: 10, marginTop: 4 },
 
-  chipsRow:         { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
-  chip:             { borderWidth: 1, borderColor: '#DDD5C8', borderRadius: 20,
-                      paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#fff' },
+  chipsRow:         { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
+  chip:             { borderWidth: 1.5, borderColor: '#DDD5C8', borderRadius: 20,
+                      paddingHorizontal: 14, paddingVertical: 9, backgroundColor: '#fff' },
   chipActive:       { borderColor: SAFFRON, backgroundColor: '#FFF3E8' },
   chipText:         { fontSize: 13, color: MUTED },
   chipTextActive:   { color: SAFFRON, fontWeight: '600' },
 
-  inputWrapper:     { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1,
-                      borderColor: '#DDD5C8', padding: 14, marginBottom: 20,
-                      minHeight: 130 },
-  input:            { fontSize: 15, color: DEEP_INK, minHeight: 100 },
+  inputWrapper:     { backgroundColor: '#fff', borderRadius: 16, borderWidth: 1.5,
+                      borderColor: '#DDD5C8', padding: 16, marginBottom: 24,
+                      minHeight: 140 },
+  input:            { fontSize: 15, color: DEEP_INK, minHeight: 110, lineHeight: 22 },
   charCounter:      { fontSize: 11, color: MUTED, textAlign: 'right', marginTop: 8 },
   charCounterWarn:  { color: '#C0392B' },
 
   sendBtn:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-                      gap: 8, backgroundColor: SAFFRON, borderRadius: 14,
-                      height: 56, marginBottom: 12 },
+                      gap: 10, backgroundColor: SAFFRON, borderRadius: 16,
+                      height: 58, marginBottom: 12 },
   sendBtnDisabled:  { opacity: 0.4 },
   sendBtnText:      { fontSize: 17, fontWeight: '700', color: IVORY },
 
-  cancelBtn:        { alignItems: 'center', paddingVertical: 12 },
+  cancelBtn:        { alignItems: 'center', paddingVertical: 14 },
   cancelText:       { fontSize: 15, color: MUTED, fontWeight: '500' },
 });

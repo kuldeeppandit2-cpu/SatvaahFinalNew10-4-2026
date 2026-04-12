@@ -120,7 +120,9 @@ export function ProviderSettingsScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.ivory },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  scroll: { padding: 16, paddingBottom: 48 },
+  scroll: { padding: 16, paddingBottom: 48,
+    flexGrow: 1,
+  },
   section: { fontSize: 11, fontWeight: '600', color: COLORS.muted, letterSpacing: 0.5, marginBottom: 8, marginTop: 8 },
   card: { backgroundColor: COLORS.white, borderRadius: 12, borderWidth: 0.5, borderColor: COLORS.border, overflow: 'hidden', marginBottom: 16 },
   row: { flexDirection: 'row', alignItems: 'center', padding: 14 },

@@ -563,7 +563,9 @@ function SettingsRow({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: IVORY },
-  scrollContent: { paddingBottom: 48 },
+  scrollContent: { paddingBottom: 48,
+    flexGrow: 1,
+  },
   loader: { flex: 1, backgroundColor: IVORY, justifyContent: 'center', alignItems: 'center' },
   errorText: { color: GREY, fontSize: 15 },
 

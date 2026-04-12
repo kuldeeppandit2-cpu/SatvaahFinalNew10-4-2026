@@ -728,7 +728,9 @@ const styles = StyleSheet.create({
   retryText: { fontSize: 13, fontFamily: 'PlusJakartaSans-SemiBold', color: '#C8691A', marginLeft: 8 },
 
   // List
-  listContent: { paddingBottom: 100 },
+  listContent: { paddingBottom: 100,
+    flexGrow: 1,
+  },
   separator: { height: 1, backgroundColor: '#EDE6D8', marginLeft: 80 },
   endText: { textAlign: 'center', fontSize: 12, fontFamily: 'PlusJakartaSans-Regular', color: '#9B8E7C', padding: 16 },
 

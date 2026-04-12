@@ -607,7 +607,9 @@ const setupStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   safeArea:        { flex: 1, backgroundColor: IVORY },
   container:       { flex: 1 },
-  scrollContent:   { paddingBottom: 16 },
+  scrollContent:   { paddingBottom: 16,
+    flexGrow: 1,
+  },
   // Unverified banner (item 14)
   unverifiedBanner: {
     flexDirection: 'row',

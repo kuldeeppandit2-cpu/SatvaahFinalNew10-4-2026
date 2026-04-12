@@ -228,7 +228,9 @@ const styles = StyleSheet.create({
     color: COLORS.deepInk,
   },
   scroll:       { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 60 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 60,
+    flexGrow: 1,
+  },
   sectionHeader: {
     fontSize: 11,
     fontFamily: 'PlusJakartaSans-SemiBold',

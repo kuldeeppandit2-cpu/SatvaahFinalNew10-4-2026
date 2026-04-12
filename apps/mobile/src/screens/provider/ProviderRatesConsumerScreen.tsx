@@ -655,7 +655,8 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: SPACING.lg,
     paddingTop: SPACING.lg,
-    paddingBottom: 120, // room for sticky submit btn
+    paddingBottom: 120, // room for sticky submit btn,
+    flexGrow: 1,
   },
 
   // Header card

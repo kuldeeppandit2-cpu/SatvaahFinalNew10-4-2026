@@ -781,7 +781,8 @@ const styles = StyleSheet.create({
   // List
   listContent: {
     paddingHorizontal: 16,
-    paddingBottom:     100,
+    paddingBottom:     100,,
+    flexGrow: 1,
   },
 
   // Lead Card
