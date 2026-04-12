@@ -8,7 +8,8 @@ import {
  View, Text, TouchableOpacity, StyleSheet,
  ActivityIndicator, Alert, StatusBar, Dimensions,
 } from 'react-native';
-import { useRoute } from '@react-navigation/native';
+import { useRoute, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AuthScreenProps } from '../../navigation/types';
 import { verifyFirebaseToken } from '../../api/auth.api';
 import { useAuthStore } from '../../stores/auth.store';
@@ -18,6 +19,9 @@ import { COLORS } from '../../constants/colors';
 import * as Location from 'expo-location';
 
 type ModeRouteProps = AuthScreenProps<'ModeSelection'>['route'];
+type RootNav = NativeStackNavigationProp<{
+  WelcomeBack: undefined; ConsumerApp: undefined; ProviderApp: undefined;
+}>;
 const { height: H } = Dimensions.get('window');
 
 function Brand() {
@@ -34,7 +38,8 @@ function Brand() {
 }
 
 export function ModeSelectionScreen(): React.ReactElement {
-  const route = useRoute<ModeRouteProps>();
+  const route      = useRoute<ModeRouteProps>();
+  const rootNav    = useNavigation<RootNav>();
   const { firebaseIdToken, phone } = route.params;
   const [selected, setSelected] = useState<'consumer' | 'provider' | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -84,6 +89,8 @@ export function ModeSelectionScreen(): React.ReactElement {
       setUser(result.userId, phone);
       setMode(mode);
       if (result.display_name) setDisplayName(result.display_name);
+      // First-time users go straight to their app, not WelcomeBack
+      rootNav.reset({ index: 0, routes: [{ name: mode === 'consumer' ? 'ConsumerApp' : 'ProviderApp' }] });
       // Capture GPS after successful auth — consumer only
       if (mode === 'consumer') {
         captureGpsSilently();
