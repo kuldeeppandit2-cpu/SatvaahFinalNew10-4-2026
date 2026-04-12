@@ -71,6 +71,7 @@ type ConsumerStackParamList = {
     tab: Tab;
   };
   ProviderProfile: { providerId: string };
+  ConsumerTrust: undefined;
   CategoryBrowse: {
     tab: Tab;
     level: 'l2' | 'l3' | 'l4';
@@ -222,6 +223,8 @@ interface ConsumerProfile {
   leadsRemaining: number;
   leadsAllocated: number;
   contactCount: number;
+  trustScore?: number;
+  trustTier?: string;
 }
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -292,13 +295,17 @@ const HomeScreen: React.FC = () => {
     ]);
   }, [activeTab, fetchConsumerProfile, fetchTrustedCircle, fetchTabData]);
 
+  // Single effect: mount + tab changes. isMounted ref prevents double-fire on mount.
+  const isMountedRef = useRef(false);
   useEffect(() => {
-    bootstrap();
-  }, []);
-
-  // Re-fetch categories/brands when tab changes
-  useEffect(() => {
-    fetchTabData(activeTab);
+    if (!isMountedRef.current) {
+      // First mount — run full bootstrap (profile + circle + tab data)
+      isMountedRef.current = true;
+      bootstrap();
+    } else {
+      // Tab changed — only re-fetch tab data
+      fetchTabData(activeTab);
+    }
   }, [activeTab]);
 
   const onRefresh = useCallback(async () => {
@@ -332,6 +339,8 @@ const HomeScreen: React.FC = () => {
 
   const showTrustedCircle =
     (consumerProfile?.contactCount ?? 0) >= 3 && trustedCircle.length > 0;
+  const showTrustedCirclePlaceholder =
+    (consumerProfile?.contactCount ?? 0) < 3;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -340,12 +349,25 @@ const HomeScreen: React.FC = () => {
       {/* ── Header ── */}
       <View style={styles.header}>
         <Text style={styles.logo}>SatvAAh</Text>
-        {consumerProfile && (
-          <LeadPill
-            remaining={consumerProfile.leadsRemaining}
-            allocated={consumerProfile.leadsAllocated}
-          />
-        )}
+        <View style={styles.headerRight}>
+          {/* Consumer trust badge — item 17 */}
+          {consumerProfile && (
+            <TouchableOpacity
+              style={styles.trustBadge}
+              onPress={() => navigation.navigate('ConsumerTrust')}
+              accessibilityLabel={`Your trust score: ${consumerProfile.trustScore ?? 0}`}
+            >
+              <Text style={styles.trustBadgeScore}>{consumerProfile.trustScore ?? 0}</Text>
+              <Text style={styles.trustBadgeLabel}>Trust</Text>
+            </TouchableOpacity>
+          )}
+          {consumerProfile && (
+            <LeadPill
+              remaining={consumerProfile.leadsRemaining}
+              allocated={consumerProfile.leadsAllocated}
+            />
+          )}
+        </View>
       </View>
 
       {/* ── Surface Tabs ── */}
@@ -411,6 +433,32 @@ const HomeScreen: React.FC = () => {
           </View>
         )}
 
+        {/* Trusted Circle placeholder — item 16: show 3 empty outlines when < 3 contacts */}
+        {showTrustedCirclePlaceholder && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Trusted Circle</Text>
+            <Text style={styles.sectionSubtitle}>
+              Connect with {3 - (consumerProfile?.contactCount ?? 0)} more provider{(3 - (consumerProfile?.contactCount ?? 0)) !== 1 ? 's' : ''} to build your circle
+            </Text>
+            <View style={styles.placeholderRow}>
+              {[0, 1, 2].map((i) => {
+                const filled = i < (consumerProfile?.contactCount ?? 0);
+                return (
+                  <View
+                    key={i}
+                    style={[styles.placeholderCircle, filled && styles.placeholderCircleFilled]}
+                  >
+                    {filled
+                      ? <Text style={styles.placeholderCheckmark}>✓</Text>
+                      : <Text style={styles.placeholderPlus}>+</Text>
+                    }
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
         {/* Rising Brands — Products tab only */}
         {activeTab === 'products' && risingBrands.length > 0 && (
           <View style={styles.section}>
@@ -472,6 +520,66 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 10,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  // Consumer trust badge — item 17
+  trustBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: '#2E7D72',
+    backgroundColor: '#E6F4F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  trustBadgeScore: {
+    fontSize: 13,
+    fontFamily: 'PlusJakartaSans-Bold',
+    color: '#2E7D72',
+    lineHeight: 14,
+  },
+  trustBadgeLabel: {
+    fontSize: 7,
+    fontFamily: 'PlusJakartaSans-Medium',
+    color: '#2E7D72',
+    letterSpacing: 0.2,
+  },
+  // Trusted Circle placeholder — item 16
+  placeholderRow: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingTop: 8,
+  },
+  placeholderCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
+    borderColor: '#E8E0D0',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FAF7F0',
+  },
+  placeholderCircleFilled: {
+    borderColor: '#2E7D72',
+    borderStyle: 'solid',
+    backgroundColor: '#E6F4F2',
+  },
+  placeholderPlus: {
+    fontSize: 20,
+    color: '#C8C0B4',
+    fontFamily: 'PlusJakartaSans-Regular',
+  },
+  placeholderCheckmark: {
+    fontSize: 18,
+    color: '#2E7D72',
+    fontFamily: 'PlusJakartaSans-Bold',
   },
   logo: {
     fontSize: 22,
