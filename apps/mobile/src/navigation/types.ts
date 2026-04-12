@@ -203,6 +203,7 @@ export type ProviderStackParamList = {
 
 // ─── Root Navigator (top-level) ───────────────────────────────────────────────
 export type RootStackParamList = {
+  WelcomeBack: undefined;
   Splash: undefined;
   Auth: undefined;
   ConsumerApp: undefined;

@@ -38,9 +38,10 @@ export function ModeSelectionScreen(): React.ReactElement {
   const { firebaseIdToken, phone } = route.params;
   const [selected, setSelected] = useState<'consumer' | 'provider' | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const setTokens      = useAuthStore((s) => s.setTokens);
-  const setUser        = useAuthStore((s) => s.setUser);
-  const setMode        = useAuthStore((s) => s.setMode);
+  const setTokens       = useAuthStore((s) => s.setTokens);
+  const setUser         = useAuthStore((s) => s.setUser);
+  const setMode         = useAuthStore((s) => s.setMode);
+  const setDisplayName  = useAuthStore((s) => s.setDisplayName);
   const setLocation    = useLocationStore((s) => s.setLocation);
 
   /**
@@ -82,6 +83,7 @@ export function ModeSelectionScreen(): React.ReactElement {
       setTokens(result.access_token, result.refresh_token);
       setUser(result.userId, phone);
       setMode(mode);
+      if (result.display_name) setDisplayName(result.display_name);
       // Capture GPS after successful auth — consumer only
       if (mode === 'consumer') {
         captureGpsSilently();

@@ -6,6 +6,7 @@ import { AuthNavigator } from './AuthNavigator';
 import { ConsumerNavigator } from './ConsumerNavigator';
 import { ProviderNavigator } from './ProviderNavigator';
 import { SplashScreen } from '../screens/shared/SplashScreen';
+import { WelcomeBackScreen } from '../screens/shared/WelcomeBackScreen';
 import type { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -34,11 +35,20 @@ export function RootNavigator(): React.ReactElement {
       {!isAuthenticated ? (
         <Stack.Screen name="Auth" component={AuthNavigator} />
       ) : isConsumer ? (
-        <Stack.Screen name="ConsumerApp" component={ConsumerNavigator} />
+        <>
+          <Stack.Screen name="WelcomeBack" component={WelcomeBackScreen} />
+          <Stack.Screen name="ConsumerApp" component={ConsumerNavigator} />
+          <Stack.Screen name="ProviderApp" component={ProviderNavigator} />
+        </>
       ) : isProvider ? (
-        <Stack.Screen name="ProviderApp" component={ProviderNavigator} />
+        <>
+          <Stack.Screen name="WelcomeBack" component={WelcomeBackScreen} />
+          <Stack.Screen name="ProviderApp" component={ProviderNavigator} />
+          <Stack.Screen name="ConsumerApp" component={ConsumerNavigator} />
+        </>
       ) : (
-        <Stack.Screen name="Auth" component={AuthNavigator} />
+        // Authenticated but no mode set — show welcome to pick
+        <Stack.Screen name="WelcomeBack" component={WelcomeBackScreen} />
       )}
     </Stack.Navigator>
   );

@@ -27,6 +27,7 @@ import {
  View, Text, StyleSheet, TouchableOpacity, FlatList,
  ActivityIndicator, Alert, ScrollView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -216,8 +217,8 @@ export function SlotBookingScreen(): React.ReactElement {
     <SafeAreaView style={styles.safeArea}>
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>←</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{top:10,bottom:10,left:10,right:10}}>
+          <Ionicons name="chevron-back" size={24} color="#1C1C2E" />
         </TouchableOpacity>
         <View style={styles.headerMeta}>
           <Text style={styles.headerTitle}>Book a slot</Text>

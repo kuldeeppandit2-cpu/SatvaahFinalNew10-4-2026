@@ -27,6 +27,7 @@ const KEYS = {
   SUBSCRIPTION_TIER: 'auth.subscriptionTier',
   FCM_TOKEN: 'auth.fcmToken',
   ONBOARDING_SEEN: 'auth.onboardingSeen', // NOT cleared on logout — by design
+  DISPLAY_NAME: 'auth.displayName',
 } as const;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -41,6 +42,7 @@ export interface AuthState {
   // User identity
   userId: string | null;
   phone: string | null;
+  displayName: string | null;
   mode: UserMode | null;
   subscriptionTier: SubscriptionTier;
   fcmToken: string | null;
@@ -55,6 +57,7 @@ export interface AuthState {
   hydrateFromStorage: () => Promise<void>;
   setTokens: (access: string, refresh: string) => void;
   setUser: (userId: string, phone: string) => void;
+  setDisplayName: (name: string) => void;
   setMode: (mode: UserMode) => void;
   setFcmToken: (token: string) => void;
   setSubscriptionTier: (tier: SubscriptionTier) => void;
@@ -69,6 +72,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   refreshToken: null,
   userId: null,
   phone: null,
+  displayName: null,
   mode: null,
   subscriptionTier: 'free',
   fcmToken: null,
@@ -85,6 +89,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const refreshToken = storage.getString(KEYS.REFRESH_TOKEN) ?? null;
     const userId = storage.getString(KEYS.USER_ID) ?? null;
     const phone = storage.getString(KEYS.PHONE) ?? null;
+    const displayName = storage.getString(KEYS.DISPLAY_NAME) ?? null;
     const mode = (storage.getString(KEYS.MODE) as UserMode) ?? null;
     const subscriptionTier = (storage.getString(KEYS.SUBSCRIPTION_TIER) as SubscriptionTier) ?? 'free';
     const fcmToken = storage.getString(KEYS.FCM_TOKEN) ?? null;
@@ -96,6 +101,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       refreshToken,
       userId,
       phone,
+      displayName,
       mode,
       subscriptionTier,
       fcmToken,
@@ -114,6 +120,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     storage.set(KEYS.USER_ID, userId);
     storage.set(KEYS.PHONE, phone);
     set({ userId, phone });
+  },
+  setDisplayName: (name: string): void => {
+    storage.set(KEYS.DISPLAY_NAME, name);
+    set({ displayName: name });
   },
 
   setMode: (mode: UserMode): void => {
@@ -170,6 +180,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       refreshToken: null,
       userId: null,
       phone: null,
+      displayName: null,
       mode: null,
       subscriptionTier: 'free',
       fcmToken: null,
