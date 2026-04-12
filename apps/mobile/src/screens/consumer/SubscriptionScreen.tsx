@@ -274,8 +274,7 @@ export default function SubscriptionScreen({
       {/* ── Footer ── */}
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          All plans are annual. Leads refresh every month. Unused lea
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>ds do not roll over unless
+          All plans are annual. Leads refresh every month. Unused leads do not roll over unless
           your plan includes lead rollover.
         </Text>
         <Text style={[styles.footerText, { marginTop: 8 }]}>
@@ -283,7 +282,6 @@ export default function SubscriptionScreen({
         </Text>
       </View>
     </ScrollView>
-        </SafeAreaView>
     </SafeAreaView>
   );
 }
