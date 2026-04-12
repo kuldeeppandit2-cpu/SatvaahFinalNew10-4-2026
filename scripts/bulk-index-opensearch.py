@@ -80,6 +80,7 @@ def ensure_index():
                     "is_active":         {"type": "boolean"},
                     "is_claimed":        {"type": "boolean"},
                     "is_scrape_record":  {"type": "boolean"},
+                    "contact_count":     {"type": "integer"},
                     "created_at":        {"type": "date"},
                     "updated_at":        {"type": "date"},
                     "synced_at":         {"type": "date"},
@@ -120,11 +121,18 @@ SELECT
     pp.is_geo_verified::text,
     pp.is_active::text,
     pp.is_claimed::text,
-    pp.is_scrape_record::text
+    pp.is_scrape_record::text,
+    COALESCE(ce_counts.contact_count::text, '0') as contact_count
 FROM provider_profiles pp
 LEFT JOIN cities c ON c.id = pp.city_id
 LEFT JOIN taxonomy_nodes tn ON tn.id = pp.taxonomy_node_id
 LEFT JOIN trust_scores ts ON ts.provider_id = pp.id
+LEFT JOIN (
+    SELECT provider_id, COUNT(*) as contact_count
+    FROM contact_events
+    WHERE provider_status = 'accepted'
+    GROUP BY provider_id
+) ce_counts ON ce_counts.provider_id = pp.id
 WHERE pp.is_active = true
 ORDER BY pp.created_at
 """
@@ -141,7 +149,7 @@ def parse_row(row):
     area_id, taxonomy_node_id, taxonomy_name, l1, l2, l3, l4, \
     lat, lng, trust_score, trust_tier, is_phone_verified, \
     is_aadhaar_verified, is_geo_verified, is_active, \
-    is_claimed, is_scrape_record = parts[:23] if len(parts) >= 23 else (parts + [''] * 23)[:23]
+    is_claimed, is_scrape_record, contact_count = parts[:24] if len(parts) >= 24 else (parts + [''] * 24)[:24]
 
     # Build geo_point only if both lat and lng are present and valid
     geo_point = None
@@ -180,6 +188,7 @@ def parse_row(row):
         "is_active":          to_bool(is_active),
         "is_claimed":         to_bool(is_claimed),
         "is_scrape_record":   to_bool(is_scrape_record),
+        "contact_count":      int(contact_count) if contact_count and contact_count.strip().isdigit() else 0,
         "synced_at":          time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
     }
 
