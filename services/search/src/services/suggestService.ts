@@ -115,6 +115,7 @@ export async function suggestService(
         l4 ASC
       LIMIT ${maxResults}
     `;
+  }
   // L3 fallback: if no L4 match, try matching l3 label
   // e.g. "heart doctor" → no L4 → finds "Cardiologist" at L3
   if (nodes.length === 0) {
