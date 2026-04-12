@@ -10,8 +10,8 @@
  * Consumer sees status change within 1 second.
  */
 
-import React, {
 import { ScreenHeader } from '../../components/ScreenHeader';
+import React, {
   useCallback,
   useEffect,
   useMemo,
