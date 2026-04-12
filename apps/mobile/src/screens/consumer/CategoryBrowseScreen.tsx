@@ -51,8 +51,13 @@ type LocalStack = {
   };
   SearchResults: {
     query: string;
-    taxonomyNodeId: string;
+    taxonomyNodeId?: string;
+    taxonomyL4?: string;
+    taxonomyL3?: string;
+    taxonomyL2?: string;
+    taxonomyL1?: string;
     tab: Tab;
+    locationName?: string;
   };
 };
 
@@ -145,12 +150,18 @@ export function CategoryBrowseScreen(): React.ReactElement {
   }, [navigation, tab, l1, l2, color]);
 
   const onPressL4 = useCallback((leaf: L4Leaf) => {
+    // title at l4 level = the L3 label (set by onPressL3 → title: g.l3)
+    const l3Label = level === 'l4' ? title : undefined;
     navigation.navigate('SearchResults', {
-      query: leaf.l4,
+      query:          leaf.l4,
       taxonomyNodeId: leaf.id,
+      taxonomyL4:     leaf.l4,
+      taxonomyL3:     l3Label,
+      taxonomyL2:     l2 ?? undefined,
+      taxonomyL1:     l1,
       tab,
     });
-  }, [navigation, tab]);
+  }, [navigation, tab, l1, l2, title, level]);
 
   // ── Render ───────────────────────────────────────────────────────────────
   if (loading) {
