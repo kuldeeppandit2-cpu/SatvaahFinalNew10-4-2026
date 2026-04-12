@@ -211,6 +211,9 @@ const SearchResultsScreen: React.FC = () => {
   const { lat, lng } = useLocationStore();
   const locationName = routeLocationName ?? 'your location';
 
+  // Track coords used in the last search — re-fire only if moved > 5km (BUG-13 fix)
+  const lastSearchCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
+
   // ── State ──────────────────────────────────────────────────────────────────
   const [results, setResults]           = useState<ProviderCardData[]>([]);
   const [meta, setMeta]                 = useState<SearchMeta | null>(null);
@@ -239,6 +242,7 @@ const SearchResultsScreen: React.FC = () => {
       if (pageNum === 1) {
         setLoading(true);
         lockedRingKm.current = undefined; // reset ring lock on fresh search
+        lastSearchCoordsRef.current = { lat, lng }; // record coords for drift detection
       } else {
         setLoadingMore(true);
       }
@@ -300,6 +304,28 @@ const SearchResultsScreen: React.FC = () => {
     setResults([]);
     fetchResults(1);
   }, [query, tab, sort, filters]);
+
+  // Re-fire search when GPS coords change significantly (BUG-13 fix).
+  // On cold start: store defaults to Hyderabad, first search fires with wrong city.
+  // When real GPS arrives (~1-2s later), this effect fires and corrects results.
+  // Threshold: 5km — avoids re-firing on minor GPS drift during normal use.
+  // haversineKm: rough distance formula, accurate enough for 5km threshold.
+  useEffect(() => {
+    const last = lastSearchCoordsRef.current;
+    if (!last) return; // first search not yet fired — main effect will handle it
+    const dLat = (lat - last.lat) * (Math.PI / 180);
+    const dLng = (lng - last.lng) * (Math.PI / 180);
+    const a = Math.sin(dLat / 2) ** 2
+      + Math.cos(last.lat * (Math.PI / 180))
+      * Math.cos(lat * (Math.PI / 180))
+      * Math.sin(dLng / 2) ** 2;
+    const distanceKm = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    if (distanceKm > 5) {
+      setPage(1);
+      setResults([]);
+      fetchResults(1);
+    }
+  }, [lat, lng]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── WebSocket /availability ────────────────────────────────────────────────
 
