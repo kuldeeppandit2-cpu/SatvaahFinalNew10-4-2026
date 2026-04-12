@@ -102,6 +102,7 @@ export interface RingSearchResult {
   expanded: boolean;
   taxonomy_level_used: string | null;
   bucket_used: number | null;
+  bucket_label: string | null;
 }
 
 // ─── Bucket definitions ───────────────────────────────────────────────────────
@@ -378,6 +379,7 @@ export async function expandingRingSearch(
       has_more: from + results.length < total,
       ring_km: input.ringKm, ring_label: `${input.ringKm}km`,
       narration: '', expanded: true, taxonomy_level_used: null, bucket_used: null,
+      bucket_label: null,
     };
   }
 
@@ -415,6 +417,7 @@ export async function expandingRingSearch(
         narration, expanded: bucket.id > 1,
         taxonomy_level_used: bucket.useL3Fallback ? 'l3' : 'l4',
         bucket_used: bucket.id,
+        bucket_label: bucket.label,
       };
     }
 
@@ -431,5 +434,6 @@ export async function expandingRingSearch(
     has_more: false, ring_km: 0, ring_label: 'none',
     narration: `No ${requestedLabel} found anywhere in India yet.`,
     expanded: true, taxonomy_level_used: null, bucket_used: null,
+    bucket_label: null,
   };
 }

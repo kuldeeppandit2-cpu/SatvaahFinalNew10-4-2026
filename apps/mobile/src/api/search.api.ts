@@ -123,6 +123,7 @@ export interface SearchMeta {
   ring_label: string;
   narration: string | null;
   taxonomy_level_used: string | null;
+  bucket_label: string | null;
 }
 
 export interface SearchResponse {
@@ -258,6 +259,7 @@ export async function searchProviders(
       ring_label:           inner.ring_label ?? '',
       narration:            inner.narration ?? null,
       taxonomy_level_used:  inner.taxonomy_level_used ?? null,
+      bucket_label:         inner.bucket_label ?? null,
     },
   };
 }

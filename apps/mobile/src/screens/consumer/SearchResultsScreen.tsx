@@ -491,13 +491,16 @@ const SearchResultsScreen: React.FC = () => {
 
   // ── Narration banner — show for ring expansion OR taxonomy fallback ─────────
 
-  const showNarration = !!meta?.narration && (
-    (meta.ring_km > 3) ||
-    (meta.taxonomy_level_used && meta.taxonomy_level_used !== 'l4')
-  );
+  // Show narration whenever bucket context is available (always with 7-bucket system)
+  const showNarration = !!meta?.narration;
 
   const NarrationBanner = showNarration ? (
     <View style={styles.narrationBanner}>
+      {!!meta?.bucket_label && (
+        <View style={styles.bucketChip}>
+          <Text style={styles.bucketChipText}>{meta.bucket_label}</Text>
+        </View>
+      )}
       <Text style={styles.narrationText}>{meta!.narration}</Text>
     </View>
   ) : null;
@@ -669,6 +672,21 @@ const styles = StyleSheet.create({
   },
 
   // Narration banner — Saffron bg, Ivory text
+  bucketChip: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#1C1C2E',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginBottom: 6,
+  },
+  bucketChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FAF7F0',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
   narrationBanner: {
     backgroundColor: '#C8691A',
     paddingHorizontal: 16,
