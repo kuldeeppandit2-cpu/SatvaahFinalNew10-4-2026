@@ -565,7 +565,7 @@ const SearchResultsScreen: React.FC = () => {
         data={displayResults}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        estimatedItemSize={120}
+        estimatedItemSize={160}
         onEndReached={onEndReached}
         onEndReachedThreshold={0.3}
         ListFooterComponent={ListFooter}
