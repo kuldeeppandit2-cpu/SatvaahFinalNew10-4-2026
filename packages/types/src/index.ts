@@ -947,6 +947,18 @@ export type SystemConfigKey =
   | 'search_ring_4_km'   // = 50
   | 'search_ring_5_km'   // = 150
   | 'search_ring_6_km'   // = 1000 (pan-India, rare specialists)
+  // Search bucket strategy (7-bucket waterfall)
+  | 'search_bucket_max_results'           // = 5  (max results per bucket)
+  | 'search_bucket_1_max_km'              // = 6  (verified, vicinity)
+  | 'search_bucket_2_min_km'              // = 7  (verified, city outer)
+  | 'search_bucket_2_max_km'              // = 50 (verified, city outer)
+  | 'search_bucket_3_max_km'             // = 50 (verified, related L3)
+  | 'search_bucket_4_max_km'              // = 6  (unverified, vicinity)
+  | 'search_bucket_5_min_km'              // = 7  (unverified, city outer)
+  | 'search_bucket_5_max_km'              // = 50 (unverified, city outer)
+  | 'search_bucket_6_max_km'             // = 50 (unverified, related L3)
+  | 'search_bucket_7_tabs'               // = 'services,expertise' (outside city)
+  | 'search_bucket_7_max_km'             // = 1000 (outside city)
   // Referral
   | 'referral_reward_leads'
   | 'referral_code_expiry_days'
