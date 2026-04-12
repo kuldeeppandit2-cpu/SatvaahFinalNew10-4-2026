@@ -80,7 +80,7 @@ export async function suggestService(
   // $queryRawUnsafe is safe here: tab is validated above; term uses parameterised $1/$2/$3.
   // We need $queryRawUnsafe (not $queryRaw) because the tab fragment is injected as SQL,
   // but tab has been allowlisted above — only one of the 4 valid enum values can reach here.
-  let nodes: NodeRow[];
+  let nodes: NodeRow[] = [];
 
   if (tab && validTabs.includes(tab)) {
     nodes = await prisma.$queryRaw<NodeRow[]>`
@@ -115,22 +115,46 @@ export async function suggestService(
         l4 ASC
       LIMIT ${maxResults}
     `;
+  // L3 fallback: if no L4 match, try matching l3 label
+  // e.g. "heart doctor" → no L4 → finds "Cardiologist" at L3
+  if (nodes.length === 0) {
+    const l3Nodes = tab && ['products','services','expertise','establishments'].includes(tab)
+      ? await prisma.$queryRaw<NodeRow[]>`
+          SELECT DISTINCT ON (l1, l2, l3)
+            id, l1, l2, l3, l4, tab::text AS tab,
+            home_visit, search_intent_expiry_days, verification_required
+          FROM taxonomy_nodes
+          WHERE is_active = true AND tab::text = ${tab}
+            AND LOWER(l3) LIKE ${term}
+          ORDER BY l1, l2, l3, id
+          LIMIT ${maxResults}
+        `
+      : await prisma.$queryRaw<NodeRow[]>`
+          SELECT DISTINCT ON (l1, l2, l3)
+            id, l1, l2, l3, l4, tab::text AS tab,
+            home_visit, search_intent_expiry_days, verification_required
+          FROM taxonomy_nodes
+          WHERE is_active = true AND LOWER(l3) LIKE ${term}
+          ORDER BY l1, l2, l3, id
+          LIMIT ${maxResults}
+        `;
+    if (l3Nodes.length > 0) nodes = l3Nodes;
   }
 
   const results: SuggestResult[] = nodes
-    .filter((node) => node.l4 != null)
+    .filter((node) => node.l4 != null || node.l3 != null)
     .map((node) => ({
       id:                        node.id,
-      name:                      node.l4!,
+      name:                      node.l4 ?? node.l3 ?? '',
       l1:                        node.l1,
       l2:                        node.l2 ?? null,
       l3:                        node.l3 ?? null,
-      l4:                        node.l4!,
+      l4:                        node.l4 ?? null,
       tab:                       node.tab,
       homeVisit:                 node.home_visit,
       search_intent_expiry_days: node.search_intent_expiry_days ?? null,
       verification_required:     node.verification_required,
-      breadcrumb:                [node.l1, node.l2, node.l3].filter(Boolean).join(' \u2192 '),
+      breadcrumb:                [node.l1, node.l2, node.l3].filter(Boolean).join(' → '),
     }));
 
   logger.info('suggest.query.success', { correlationId, q, returned: results.length });

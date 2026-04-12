@@ -197,11 +197,12 @@ const SearchScreen: React.FC = () => {
       }
       setLoadingSuggestions(true);
       try {
-        const results = await getSearchSuggestions(text, tab);
-        setSuggestions((results ?? []).filter(r => r && r.id && r.name));
-        // If voice triggered and exactly 1 result — auto-select
-        if (voiceActive && results.length === 1) {
-          handleNodeSelect(results[0]);
+        const filtered = (results ?? []).filter(r => r && r.id && r.name);
+        setSuggestions(filtered);
+        // Auto-select if exactly 1 result — whether typing or voice
+        // User doesn't need to see a dropdown with 1 option — just fire the search
+        if (filtered.length === 1) {
+          handleNodeSelect(filtered[0]);
         }
       } catch {
         setSuggestions([]);

@@ -223,9 +223,8 @@ function buildOsQuery(
     filterClauses.push({ term: { tab } });
   }
 
-  if (ring.crossCityOnly) {
-    filterClauses.push({ term: { is_claimed: true } });
-  }
+  // crossCityOnly: do NOT filter by is_claimed — show all providers at long range
+  // is_claimed is already in the sort (desc) so verified providers still rank first
 
   return {
     from,
@@ -268,20 +267,23 @@ function buildNarration(
   const displayLabel = foundLabel ?? entityLabel;
   const countLabel = total > 999 ? '999+' : `${total}`;
 
-  // Taxonomy fallback narration
+  // Taxonomy fallback narration (fell back from L4 → L3/L2/L1)
   if (taxonomyLevelUsed && requestedLabel && foundLabel && requestedLabel !== foundLabel) {
     if (total === 0) {
-      return `No ${requestedLabel} found — no ${foundLabel} within ${ring.label} of ${locationName} either.`;
+      return `No ${requestedLabel} found anywhere — try a different category.`;
     }
-    return `No ${requestedLabel} found — showing ${foundLabel} within ${ring.label} of ${locationName}.`;
+    if (ring.crossCityOnly) {
+      return `No ${requestedLabel} found near you — showing ${countLabel} ${foundLabel} available across India.`;
+    }
+    return `No ${requestedLabel} found — showing ${countLabel} ${foundLabel} within ${ring.label} of ${locationName}.`;
   }
 
   if (total === 0) {
-    return `No ${displayLabel} found within ${ring.label} of ${locationName}.`;
+    return `No ${displayLabel} found near you.`;
   }
 
   if (ring.crossCityOnly) {
-    return `Found ${countLabel} verified ${displayLabel} within ${ring.label} of ${locationName}.`;
+    return `We could not find ${displayLabel} in your city — showing ${countLabel} available across India.`;
   }
 
   return `Found ${countLabel} ${displayLabel} within ${ring.label} of ${locationName}.`;
