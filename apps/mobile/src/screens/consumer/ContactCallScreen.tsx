@@ -98,6 +98,7 @@ export function ContactCallScreen(): React.ReactElement {
       }
     } catch (err: any) {
       Alert.alert('Error', err?.message ?? 'Could not connect. Please try again.');
+      navigation.goBack();
     } finally {
       setLoading(false);
     }
