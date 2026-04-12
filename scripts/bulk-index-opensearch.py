@@ -88,6 +88,10 @@ def ensure_index():
                     "review_count":      {"type": "integer"},
                     "years_of_experience": {"type": "integer"},
                     "tagline":           {"type": "text"},
+                    "home_visit_available": {"type": "boolean"},
+                    "area_name":         {"type": "keyword"},
+                    "languages":         {"type": "keyword"},
+                    "has_certificate":   {"type": "boolean"},
                     "created_at":        {"type": "date"},
                     "updated_at":        {"type": "date"},
                     "synced_at":         {"type": "date"},
@@ -136,7 +140,12 @@ SELECT
     COALESCE(pp.years_experience::text, '') as years_experience,
     COALESCE(pp.bio, '') as tagline,
     COALESCE(ratings_agg.avg_rating::text, '') as avg_rating,
-    COALESCE(ratings_agg.review_count::text, '0') as review_count
+    COALESCE(ratings_agg.review_count::text, '0') as review_count,
+    pp.home_visit_available::text as home_visit_available,
+    COALESCE(a.name, '') as area_name,
+    COALESCE(pp.languages_spoken::text, '[]') as languages_spoken,
+    CASE WHEN cr.id IS NOT NULL AND cr.is_revoked = false AND cr.is_suspended = false
+         THEN 'true' ELSE 'false' END as has_certificate
 FROM provider_profiles pp
 LEFT JOIN cities c ON c.id = pp.city_id
 LEFT JOIN taxonomy_nodes tn ON tn.id = pp.taxonomy_node_id
@@ -155,6 +164,8 @@ LEFT JOIN (
     WHERE moderation_status = 'approved'
     GROUP BY provider_id
 ) ratings_agg ON ratings_agg.provider_id = pp.id
+LEFT JOIN areas a ON a.id = pp.area_id
+LEFT JOIN certificate_records cr ON cr.provider_id = pp.id
 WHERE pp.is_active = true
 ORDER BY pp.created_at
 """
@@ -171,7 +182,11 @@ def parse_row(row):
     area_id, taxonomy_node_id, taxonomy_name, l1, l2, l3, l4, \
     lat, lng, trust_score, trust_tier, is_phone_verified, \
     is_aadhaar_verified, is_geo_verified, is_active, \
-    is_claimed, is_scrape_record, contact_count,     availability_mode, is_available_str, profile_photo_s3_key,     years_experience_str, tagline, avg_rating_str, review_count_str =         parts[:32] if len(parts) >= 32 else (parts + [''] * 32)[:32]
+    is_claimed, is_scrape_record, contact_count, \
+    availability_mode, is_available_str, profile_photo_s3_key, \
+    years_experience_str, tagline, avg_rating_str, review_count_str, \
+    home_visit_str, area_name, languages_spoken_str, has_certificate_str = \
+        parts[:36] if len(parts) >= 36 else (parts + [''] * 36)[:36]
 
     # Build geo_point only if both lat and lng are present and valid
     geo_point = None
@@ -224,6 +239,12 @@ def parse_row(row):
         # ratings
         "avg_rating":         float(avg_rating_str) if avg_rating_str and avg_rating_str.strip() else None,
         "review_count":       int(review_count_str) if review_count_str and review_count_str.strip().isdigit() else 0,
+        # home_visit, area, languages, certificate
+        "home_visit_available": home_visit_str.strip().lower() in ('t', 'true', '1'),
+        "area_name":          area_name.strip() or None,
+        "languages":          [l.strip().strip('"') for l in languages_spoken_str.strip('[]').split(',')
+                               if l.strip().strip('"')] if languages_spoken_str.strip() not in ('', '[]') else [],
+        "has_certificate":    has_certificate_str.strip().lower() == 'true',
         "synced_at":          time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
     }
     # category_id is requested by expandingRingSearch._source as alias for taxonomy_node_id

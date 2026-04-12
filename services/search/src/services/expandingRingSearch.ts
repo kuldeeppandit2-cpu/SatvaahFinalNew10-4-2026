@@ -105,6 +105,13 @@ export interface ProviderHit {
   rating_count: number;
   contact_count: number;
   avg_rating: number | null;
+  homeVisit: boolean;
+  home_visit_available: boolean;
+  areaName: string;
+  area: string;
+  languages: string[];
+  has_certificate: boolean;
+  certificate_id: string | null;
 }
 
 export interface RingSearchResult {
@@ -236,6 +243,7 @@ function buildOsQuery(
       'is_claimed', 'is_scrape_record', 'listing_type', 'profile_photo_s3_key',
       'tagline', 'years_of_experience', 'review_count', 'avg_rating', 'contact_count',
       'taxonomy_name', 'taxonomy_l1', 'taxonomy_l2', 'taxonomy_l3', 'taxonomy_l4',
+      'home_visit_available', 'area_name', 'languages', 'has_certificate',
     ],
   };
 }
@@ -423,8 +431,7 @@ async function executeRingQuery(
       profile_photo_url:   s.profile_photo_s3_key ?? null,
       tagline:             s.tagline ?? null,
       years_of_experience: s.years_of_experience ?? null,
-      // review_count = contact_count (accepted events = customers served)
-      // avg_rating from ratings table (may be null for new providers)
+      // Customers served — from contact_count (accepted events in index)
       reviewCount:         contactCount,
       rating_count:        contactCount,
       contact_count:       contactCount,
@@ -432,6 +439,14 @@ async function executeRingQuery(
       rating_avg:          s.avg_rating ?? null,
       taxonomy_name:       s.taxonomy_name ?? null,
       distance_km:         distanceKm,
+      // Previously dead fields — now indexed (Fix-18/19/20)
+      homeVisit:           s.home_visit_available === true || s.home_visit_available === 'true',
+      home_visit_available: s.home_visit_available === true || s.home_visit_available === 'true',
+      areaName:            s.area_name ?? '',
+      area:                s.area_name ?? '',
+      languages:           Array.isArray(s.languages) ? s.languages : [],
+      has_certificate:     s.has_certificate === true || s.has_certificate === 'true',
+      certificate_id:      (s.has_certificate === true || s.has_certificate === 'true') ? 'verified' : null,
     };
   });
 
