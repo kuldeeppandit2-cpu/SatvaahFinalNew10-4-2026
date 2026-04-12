@@ -52,8 +52,7 @@ const PLATFORM_COLORS: Record<string, string> = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function ClaimProfileScreen({
-  const navigation = useNavigation(); route, navigation }: Props) {
+export default function ClaimProfileScreen({ route, navigation }: Props) {
   const { profile: scraped } = route.params as { profile: ScrapedProfile };
 
   const setProfile = useProviderStore((s) => s.setProfile);
