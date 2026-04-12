@@ -97,6 +97,13 @@ function SearchStack(): React.ReactElement {
       <Stack.Screen name="RateProvider" component={RateProviderScreen} />
       <Stack.Screen name="SlotBookingScreen" component={SlotBookingScreen} />
       <Stack.Screen name="OpenRating" component={OpenRatingScreen} />
+      <Stack.Screen name="SavedProviders" component={SavedProvidersScreen} />
+      <Stack.Screen name="ConsumerTrust" component={ConsumerTrustScreen} />
+      <Stack.Screen name="Razorpay" component={RazorpayScreen} />
+      <Stack.Screen name="SearchFilter" component={SearchFilterScreen} />
+      <Stack.Screen name="DataRights" component={DataRightsScreen} />
+      <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
+      <Stack.Screen name="Support" component={SupportScreen} />
     </Stack.Navigator>
   );
 }
