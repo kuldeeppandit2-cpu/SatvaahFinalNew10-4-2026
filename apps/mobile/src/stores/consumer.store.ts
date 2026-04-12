@@ -8,7 +8,7 @@ import { MMKV } from '../__stubs__/mmkv';
 
 const storage = new MMKV({ id: 'satvaaah-consumer' });
 const RECENT_SEARCHES_KEY = 'consumer.recentSearches';
-const PROFILE_SETUP_KEY = 'consumer.profileSetupComplete';
+const PROFILE_SETUP_KEY   = 'consumer.profileSetupComplete';
 const MAX_RECENT = 5;
 
 export interface SavedProvider {
@@ -56,6 +56,10 @@ export interface ConsumerState {
   hasCompletedProfileSetup: boolean;
   markProfileSetupComplete: () => void;
 
+  // Async hydration — call once in App.tsx after preloadAllMmkvStores()
+  // Reads persisted values into Zustand state after cold-start preload
+  hydrateFromStorage: () => Promise<void>;
+
   // Actions
   setSavedProviders: (providers: SavedProvider[]) => void;
   addSavedProvider: (provider: SavedProvider) => void;
@@ -87,6 +91,18 @@ export const useConsumerStore = create<ConsumerState>((set, get) => {
     markProfileSetupComplete: (): void => {
       storage.set(PROFILE_SETUP_KEY, true);
       set({ hasCompletedProfileSetup: true });
+    },
+
+    hydrateFromStorage: async (): Promise<void> => {
+      // preload() has already run (called from App.tsx preloadAllMmkvStores).
+      // Now read fresh values from the warmed in-memory cache.
+      await storage.preload(); // idempotent — safe to call again
+      const persistedSearches = storage.getString(RECENT_SEARCHES_KEY);
+      const initialRecentSearches: RecentSearch[] = persistedSearches
+        ? (JSON.parse(persistedSearches) as RecentSearch[])
+        : [];
+      const hasCompletedProfileSetup = storage.getBoolean(PROFILE_SETUP_KEY) ?? false;
+      set({ recentSearches: initialRecentSearches, hasCompletedProfileSetup });
     },
 
     setSavedProviders: (providers): void => set({ savedProviders: providers }),

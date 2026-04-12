@@ -10,19 +10,12 @@ import { create } from 'zustand';
 import axios from 'axios';
 import { MMKV } from '../__stubs__/mmkv';
 
-// Encrypted MMKV storage (device-level encryption)
+// Encrypted MMKV storage (device-level encryption in native build).
+// In Expo Go: AsyncStorage-backed stub (see __stubs__/mmkv.ts).
+// Production fix: encryptionKey must come from expo-secure-store (see TODO in stub).
 const storage = new MMKV({
   id: 'satvaaah-auth',
-  // audit-ref: MM1 — MMKV encryption key
-  // DEV: hardcoded key is acceptable for development and testing.
-  // PRODUCTION FIX REQUIRED before launch:
-  //   Replace with: import * as SecureStore from 'expo-secure-store';
-  //   const key = await SecureStore.getItemAsync('mmkv_encryption_key')
-  //     ?? crypto.randomUUID(); // generate once, store back
-  //   await SecureStore.setItemAsync('mmkv_encryption_key', key);
-  // This binds the key to the device's secure enclave (iOS) or Keystore (Android).
-  // A hardcoded key means ALL devices share the same key — not per-device encryption.
-  encryptionKey: 'satvaaah-mmkv-key-v1', // TODO(PROD): replace with expo-secure-store derived key
+  encryptionKey: 'satvaaah-mmkv-key-v1', // TODO(PROD): replace with expo-secure-store key
 });
 
 const KEYS = {
@@ -82,8 +75,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   hasSeenOnboarding: false,
   isHydrated: false,
 
-  // Read all persisted values from MMKV on app start
+  // Read all persisted values from MMKV on app start.
+  // Step 1: preload() warms in-memory cache from AsyncStorage (Expo Go only).
+  //         In native build with real MMKV, preload() is a no-op (data already sync).
+  // Step 2: read all keys — now returns persisted values from previous session.
   hydrateFromStorage: async (): Promise<void> => {
+    await storage.preload();
     const accessToken = storage.getString(KEYS.ACCESS_TOKEN) ?? null;
     const refreshToken = storage.getString(KEYS.REFRESH_TOKEN) ?? null;
     const userId = storage.getString(KEYS.USER_ID) ?? null;

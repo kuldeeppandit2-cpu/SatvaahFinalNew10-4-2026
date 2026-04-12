@@ -24,6 +24,8 @@ messaging.AuthorizationStatus = { AUTHORIZED: 1, PROVISIONAL: 2 };
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { linking } from './src/navigation/linking';
 import { useAuthStore } from './src/stores/auth.store';
+import { useConsumerStore } from './src/stores/consumer.store';
+import { preloadAllMmkvStores } from './src/__stubs__/mmkv';
 import { apiClient } from './src/api/client';
 import * as Location from 'expo-location';
 import { useLocationStore } from './src/stores/location.store';
@@ -33,48 +35,61 @@ SplashScreen.preventAutoHideAsync();
 
 export default function App(): React.ReactElement {
   const [appReady, setAppReady] = useState(false);
-  const hydrateFromStorage = useAuthStore((s) => s.hydrateFromStorage);
-  const isHydrated = useAuthStore((s) => s.isHydrated);
+  const hydrateAuthStore     = useAuthStore((s) => s.hydrateFromStorage);
+  const hydrateConsumerStore = useConsumerStore((s) => s.hydrateFromStorage);
+  const isHydrated  = useAuthStore((s) => s.isHydrated);
   const setFcmToken = useAuthStore((s) => s.setFcmToken);
   const accessToken = useAuthStore((s) => s.accessToken);
   const setLocation = useLocationStore((s) => s.setLocation);
 
   useEffect(() => {
     async function prepare(): Promise<void> {
-      // Step 1: Load fonts — NON-FATAL. A font failure must never block app startup.
-      // If fonts fail, app continues with system fonts. Screens still work.
+      // ── Step 1: Preload MMKV → AsyncStorage cache ─────────────────────────
+      // MUST run first. Warms the in-memory MMKV cache so subsequent
+      // synchronous getString/getBoolean calls return persisted values.
+      // Without this, every cold start loses the auth session (BUG-01 fix).
+      try {
+        await preloadAllMmkvStores();
+      } catch {
+        // Non-fatal — stores fall back to defaults (fresh login required)
+      }
+
+      // ── Step 2: Load fonts — NON-FATAL ────────────────────────────────────
       try {
         await Font.loadAsync({
           'PlusJakartaSans-ExtraLight': require('./assets/fonts/PlusJakartaSans-ExtraLight.ttf'),
-          'PlusJakartaSans-Light': require('./assets/fonts/PlusJakartaSans-Light.ttf'),
-          'PlusJakartaSans-Regular': require('./assets/fonts/PlusJakartaSans-Regular.ttf'),
-          'PlusJakartaSans-Medium': require('./assets/fonts/PlusJakartaSans-Medium.ttf'),
-          'PlusJakartaSans-SemiBold': require('./assets/fonts/PlusJakartaSans-SemiBold.ttf'),
-          'PlusJakartaSans-Bold': require('./assets/fonts/PlusJakartaSans-Bold.ttf'),
-          'PlusJakartaSans-ExtraBold': require('./assets/fonts/PlusJakartaSans-ExtraBold.ttf'),
-          'PlusJakartaSans-Italic': require('./assets/fonts/PlusJakartaSans-Italic.ttf'),
+          'PlusJakartaSans-Light':      require('./assets/fonts/PlusJakartaSans-Light.ttf'),
+          'PlusJakartaSans-Regular':    require('./assets/fonts/PlusJakartaSans-Regular.ttf'),
+          'PlusJakartaSans-Medium':     require('./assets/fonts/PlusJakartaSans-Medium.ttf'),
+          'PlusJakartaSans-SemiBold':   require('./assets/fonts/PlusJakartaSans-SemiBold.ttf'),
+          'PlusJakartaSans-Bold':       require('./assets/fonts/PlusJakartaSans-Bold.ttf'),
+          'PlusJakartaSans-ExtraBold':  require('./assets/fonts/PlusJakartaSans-ExtraBold.ttf'),
+          'PlusJakartaSans-Italic':     require('./assets/fonts/PlusJakartaSans-Italic.ttf'),
           'PlusJakartaSans-BoldItalic': require('./assets/fonts/PlusJakartaSans-BoldItalic.ttf'),
         });
       } catch (fontError) {
-        // Non-fatal — app continues with system fonts
-        // Font.loadAsync crash must never prevent app from loading
         console.log('[App] Fonts using system fallback:', (fontError as Error)?.message);
       }
 
-      // Step 2: Hydrate Zustand auth store — ALWAYS runs regardless of font result.
-      // This sets isHydrated=true which allows SplashScreen.hideAsync() to run.
-      // WITHOUT this step completing, the native splash screen NEVER dismisses.
+      // ── Step 3: Hydrate auth store ────────────────────────────────────────
+      // Sets isHydrated=true → allows SplashScreen.hideAsync() to run.
+      // Now reads from warmed MMKV cache → returns persisted tokens.
       try {
-        await hydrateFromStorage();
-      } catch (hydrateError) {
-        console.warn('[App] Hydration failed:', hydrateError);
+        await hydrateAuthStore();
+      } catch (err) {
+        console.warn('[App] Auth hydration failed:', err);
       }
+
+      // ── Step 4: Hydrate consumer store ────────────────────────────────────
+      // Reads persisted recentSearches + hasCompletedProfileSetup from MMKV.
+      // Fire-and-forget — consumer store failure never blocks splash dismiss.
+      hydrateConsumerStore().catch(() => {});
 
       setAppReady(true);
     }
 
     prepare();
-  }, [hydrateFromStorage]);
+  }, [hydrateAuthStore, hydrateConsumerStore]);
 
   // GPS capture on every app open — silent, non-blocking
   useEffect(() => {
