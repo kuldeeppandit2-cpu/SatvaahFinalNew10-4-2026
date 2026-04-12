@@ -49,6 +49,12 @@ export const searchProviders = async (
     page: pageRaw,
     ring_km: ringKmRaw,
     location_name,
+    // Taxonomy anchor — set by CategoryBrowseScreen (S1) and SearchScreen (S2)
+    taxonomy_node_id,
+    taxonomy_l4,
+    taxonomy_l3,
+    taxonomy_l2,
+    taxonomy_l1,
   } = req.query as Record<string, string | undefined>;
 
   // ── Validate lat / lng ─────────────────────────────────────────────────────
@@ -124,6 +130,12 @@ export const searchProviders = async (
     ringKm,
     locationName: location_name?.trim() ?? 'your location',
     correlationId,
+    // Taxonomy anchor — optional; undefined = open search (no taxonomy constraint)
+    taxonomyNodeId: taxonomy_node_id?.trim() || undefined,
+    taxonomyL4:     taxonomy_l4?.trim()     || undefined,
+    taxonomyL3:     taxonomy_l3?.trim()     || undefined,
+    taxonomyL2:     taxonomy_l2?.trim()     || undefined,
+    taxonomyL1:     taxonomy_l1?.trim()     || undefined,
   });
 
   res.status(200).json({ success: true, data: result });
