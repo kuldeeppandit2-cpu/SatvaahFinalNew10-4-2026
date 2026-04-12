@@ -32,7 +32,6 @@ export function OtpScreen(): React.ReactElement {
     if (countdown <= 0) return;
     const t = setTimeout(() => setCountdown(c => c - 1), 1000);
     return () => clearTimeout(t);
-  <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top', 'bottom']}>
   }, [countdown]);
 
   function shake() {
@@ -79,6 +78,8 @@ export function OtpScreen(): React.ReactElement {
   }
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top', 'bottom']}>
+
     <KeyboardAvoidingView style={s.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
 
@@ -136,7 +137,7 @@ export function OtpScreen(): React.ReactElement {
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
-  </SafeAreaView>
+    </SafeAreaView>
   );
 }
 

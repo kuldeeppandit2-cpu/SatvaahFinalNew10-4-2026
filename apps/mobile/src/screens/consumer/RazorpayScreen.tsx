@@ -90,7 +90,6 @@ export default function RazorpayScreen({ route, navigation }: Props) {
   // ── Cleanup ──
   useEffect(() => {
     return () => {
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
       <ScreenHeader title="Checkout" onBack={() => navigation.goBack()} />
       if (upiTimeoutRef.current) clearTimeout(upiTimeoutRef.current);
     };
@@ -218,6 +217,8 @@ export default function RazorpayScreen({ route, navigation }: Props) {
   // ────────────────────────────────────────────────────────────────────────────
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
+
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
 
       {/* ── Creating order ── */}
@@ -317,7 +318,7 @@ export default function RazorpayScreen({ route, navigation }: Props) {
         </View>
       )}
     </View>
-      </SafeAreaView>
+    </SafeAreaView>
   );
 }
 
