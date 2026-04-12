@@ -2,18 +2,15 @@
 //
 // Taxonomy autocomplete for the search bar.
 //
-// RULES (from MASTER_CONTEXT):
+// RULES:
 //   • Taxonomy-constrained ONLY — never searches raw provider records.
 //   • Minimum 2 chars (suggest_min_chars from system_config, default 2).
 //   • Maximum 8 results (suggest_max_results from system_config, default 8).
-//   • Fuzzy match on taxonomy_nodes.l4 using PostgreSQL ILIKE / pg_trgm.
-//   • Returns: { id, l4, breadcrumb: 'l1 → l2 → l3' }
+//   • Match on l4 (display name) AND search_synonyms (multilingual terms).
+//   • Returns full TaxonomyNode shape that mobile SearchScreen expects.
 //
-// Why Postgres and not OpenSearch for suggest?
-//   taxonomy_nodes is a small, rarely-changing reference table (~5k rows).
-//   A Prisma ILIKE query with an indexed column is fast (< 5 ms) and does not
-//   require a separate OpenSearch taxonomy index. The response is NOT cached
-//   per query because debouncing (300 ms) in the client already limits traffic.
+// Why Postgres and not OpenSearch?
+//   taxonomy_nodes is ~1555 rows. $queryRaw ILIKE is < 5 ms. No separate index needed.
 
 import { prisma } from '@satvaaah/db';
 import { loadSystemConfig } from '@satvaaah/config';
@@ -28,10 +25,31 @@ export interface SuggestInput {
   correlationId: string;
 }
 
+/** Full shape returned to mobile — matches TaxonomyNode interface in search.api.ts */
 export interface SuggestResult {
   id: string;
-  l4: string;
-  breadcrumb: string; // 'l1 → l2 → l3'
+  name: string;                      // = l4 — label shown in dropdown
+  l1: string;
+  l2: string | null;
+  l3: string | null;
+  l4: string | null;
+  tab: string;
+  homeVisit: boolean;
+  search_intent_expiry_days: number | null;
+  verification_required: boolean;
+  breadcrumb: string;                // 'l1 → l2 → l3' — extra context
+}
+
+interface NodeRow {
+  id: string;
+  l1: string;
+  l2: string | null;
+  l3: string | null;
+  l4: string | null;
+  tab: string;
+  home_visit: boolean;
+  search_intent_expiry_days: number | null;
+  verification_required: boolean;
 }
 
 // ─── suggestService ───────────────────────────────────────────────────────────
@@ -41,7 +59,6 @@ export async function suggestService(
 ): Promise<SuggestResult[]> {
   const { q, tab, correlationId } = input;
 
-  // ── Load config constraints ───────────────────────────────────────────────
   const config = await loadSystemConfig();
   const minChars = parseInt(config['suggest_min_chars'] ?? '2', 10);
   const maxResults = parseInt(config['suggest_max_results'] ?? '8', 10);
@@ -54,69 +71,69 @@ export async function suggestService(
     );
   }
 
-  logger.info('suggest.query.start', {
-    correlationId,
-    q,
-    tab: tab ?? null,
-    minChars,
-    maxResults,
-  });
+  logger.info('suggest.query.start', { correlationId, q, tab: tab ?? null });
 
-  // ── Build Prisma WHERE clause ─────────────────────────────────────────────
-  // We do a case-insensitive ILIKE on l4 only. The leading + trailing %
-  // allows mid-word matches ("plumb" matches "plumber", "plumbing").
-  //
-  // If tab is provided, filter to nodes that belong to that tab segment.
-  // taxonomy_nodes.tab must exist as a column for this to work.
-  const whereClause: Record<string, unknown> = {
-    l4: {
-      contains: q.trim(),
-      mode: 'insensitive',
-    },
-    is_active: true,
-  };
+  const term = `%${q.trim().toLowerCase()}%`;
+  const prefixTerm = `${q.trim().toLowerCase()}%`;
+  const validTabs = ['products', 'services', 'expertise', 'establishments'];
 
-  if (
-    tab &&
-    ['products', 'services', 'expertise', 'establishments'].includes(tab)
-  ) {
-    whereClause['tab'] = tab;
+  // $queryRawUnsafe is safe here: tab is validated above; term uses parameterised $1/$2/$3.
+  // We need $queryRawUnsafe (not $queryRaw) because the tab fragment is injected as SQL,
+  // but tab has been allowlisted above — only one of the 4 valid enum values can reach here.
+  let nodes: NodeRow[];
+
+  if (tab && validTabs.includes(tab)) {
+    nodes = await prisma.$queryRaw<NodeRow[]>`
+      SELECT
+        id, l1, l2, l3, l4, tab::text AS tab,
+        home_visit, search_intent_expiry_days, verification_required
+      FROM taxonomy_nodes
+      WHERE is_active = true
+        AND tab::text = ${tab}
+        AND (
+          LOWER(l4) LIKE ${term}
+          OR LOWER(search_synonyms) LIKE ${term}
+        )
+      ORDER BY
+        CASE WHEN LOWER(l4) LIKE ${prefixTerm} THEN 0 ELSE 1 END,
+        l4 ASC
+      LIMIT ${maxResults}
+    `;
+  } else {
+    nodes = await prisma.$queryRaw<NodeRow[]>`
+      SELECT
+        id, l1, l2, l3, l4, tab::text AS tab,
+        home_visit, search_intent_expiry_days, verification_required
+      FROM taxonomy_nodes
+      WHERE is_active = true
+        AND (
+          LOWER(l4) LIKE ${term}
+          OR LOWER(search_synonyms) LIKE ${term}
+        )
+      ORDER BY
+        CASE WHEN LOWER(l4) LIKE ${prefixTerm} THEN 0 ELSE 1 END,
+        l4 ASC
+      LIMIT ${maxResults}
+    `;
   }
 
-  // ── Query taxonomy_nodes ──────────────────────────────────────────────────
-  const nodes = await prisma.taxonomyNode.findMany({
-    where: whereClause as any,
-    select: {
-      id: true,
-      l1: true,
-      l2: true,
-      l3: true,
-      l4: true,
-    },
-    take: maxResults,
-    orderBy: [
-      // Exact prefix matches first (l4 starts with query term)
-      // Prisma doesn't support ORDER BY CASE, so we rely on DB index scan order.
-      // The index on (tab, l4) ensures prefix hits surface early.
-      { l4: 'asc' },
-    ],
-  });
-
   const results: SuggestResult[] = nodes
-    .filter((node) => node.l4 != null) // l4 is nullable in schema
+    .filter((node) => node.l4 != null)
     .map((node) => ({
-    id: node.id,
-    l4: node.l4!,
-    breadcrumb: [node.l1, node.l2, node.l3]
-      .filter(Boolean)
-      .join(' \u2192 '), // → character
-  }));
+      id:                        node.id,
+      name:                      node.l4!,
+      l1:                        node.l1,
+      l2:                        node.l2 ?? null,
+      l3:                        node.l3 ?? null,
+      l4:                        node.l4!,
+      tab:                       node.tab,
+      homeVisit:                 node.home_visit,
+      search_intent_expiry_days: node.search_intent_expiry_days ?? null,
+      verification_required:     node.verification_required,
+      breadcrumb:                [node.l1, node.l2, node.l3].filter(Boolean).join(' \u2192 '),
+    }));
 
-  logger.info('suggest.query.success', {
-    correlationId,
-    q,
-    returned: results.length,
-  });
+  logger.info('suggest.query.success', { correlationId, q, returned: results.length });
 
   return results;
 }
