@@ -137,6 +137,15 @@ export async function updateLeadService(input: UpdateLeadInput) {
           },
         },
       },
+      provider: {
+        select: {
+          tab: true,
+          taxonomy_node_id: true,
+          taxonomy_node: {
+            select: { l4: true },
+          },
+        },
+      },
     },
   });
 
@@ -276,13 +285,17 @@ export async function updateLeadService(input: UpdateLeadInput) {
       return updated;
     });
 
-    // FCM to consumer: contact declined
+    // FCM to consumer: contact declined — includes taxonomy for deep-link to SearchResults
     sendFcmNotification({
       userId:    event.consumer.user_id,
       eventType: 'contact_declined',
       payload: {
-        contact_event_id: eventId,
-        provider_id:      providerId,
+        contact_event_id:  eventId,
+        provider_id:       providerId,
+        // Taxonomy fields for deep-link: satvaaah://search/{taxonomy_node_id}?tab=...&l4=...
+        taxonomy_node_id:  event.provider.taxonomy_node_id ?? '',
+        taxonomy_l4:       event.provider.taxonomy_node?.l4 ?? '',
+        tab:               event.provider.tab ?? 'services',
       },
       correlationId,
     }).catch((err) => {
