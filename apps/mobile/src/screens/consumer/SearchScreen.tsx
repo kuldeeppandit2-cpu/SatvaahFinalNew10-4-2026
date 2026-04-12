@@ -198,7 +198,7 @@ const SearchScreen: React.FC = () => {
       setLoadingSuggestions(true);
       try {
         const results = await getSearchSuggestions(text, tab);
-        setSuggestions(results);
+        setSuggestions((results ?? []).filter(r => r && r.id && r.name));
         // If voice triggered and exactly 1 result — auto-select
         if (voiceActive && results.length === 1) {
           handleNodeSelect(results[0]);
@@ -318,8 +318,8 @@ const SearchScreen: React.FC = () => {
             <Text style={styles.suggestionIconText}>🔎</Text>
           </View>
           <View style={styles.suggestionText}>
-            <Text style={styles.suggestionName}>{item.name}</Text>
-            {breadcrumb.length > item.name.length + 2 && (
+            <Text style={styles.suggestionName}>{item.name ?? ''}</Text>
+            {item.name && breadcrumb.length > item.name.length + 2 && (
               <Text style={styles.suggestionBreadcrumb} numberOfLines={1}>
                 {breadcrumb}
               </Text>
