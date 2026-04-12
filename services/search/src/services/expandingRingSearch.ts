@@ -102,6 +102,8 @@ export interface ProviderHit {
   tagline: string | null;
   years_of_experience: number | null;
   reviewCount: number;
+  rating_count: number;
+  contact_count: number;
   avg_rating: number | null;
 }
 
@@ -229,10 +231,11 @@ function buildOsQuery(
     ],
     script_fields: {},
     _source: [
-      'provider_id', 'display_name', 'category_id', 'tab', 'city_id', 'geo_point',
+      'provider_id', 'display_name', 'category_id', 'taxonomy_node_id', 'tab', 'city_id', 'geo_point',
       'trust_score', 'trust_tier', 'is_available', 'availability_mode', 'is_active',
       'is_claimed', 'is_scrape_record', 'listing_type', 'profile_photo_s3_key',
-      'tagline', 'years_of_experience', 'review_count', 'avg_rating',
+      'tagline', 'years_of_experience', 'review_count', 'avg_rating', 'contact_count',
+      'taxonomy_name', 'taxonomy_l1', 'taxonomy_l2', 'taxonomy_l3', 'taxonomy_l4',
     ],
   };
 }
@@ -391,27 +394,40 @@ async function executeRingQuery(
     const distanceKm: number | null =
       hit.sort && hit.sort[2] != null ? Number(hit.sort[2]) : null;
 
+    // category_id is an alias for taxonomy_node_id in the index (set by bulk-index script).
+    // Fall back to taxonomy_node_id in case the doc was indexed before the alias was added.
+    const categoryId = s.category_id ?? s.taxonomy_node_id ?? '';
+
+    // contact_count = accepted contact events (indexed in Step 19, BUG-12 fix).
+    // Used for "N customers served" on provider cards.
+    const contactCount: number = typeof s.contact_count === 'number'
+      ? s.contact_count
+      : (parseInt(String(s.contact_count ?? '0'), 10) || 0);
+
     return {
       providerId:          s.provider_id ?? '',
       displayName:         s.display_name ?? '',
-      category_id:         s.category_id ?? '',
+      category_id:         categoryId,
       tab:                 s.tab ?? '',
       cityId:              s.city_id ?? '',
       geo_point:           s.geo_point ?? null,
       trustScore:          s.trust_score ?? 0,
-      trustTier:           s.trust_tier ?? 'basic',
-      isAvailable:         s.is_available ?? false,
-      availabilityMode:    s.availability_mode ?? 'offline',
-      isActive:            s.is_active ?? false,
-      isClaimed:           s.is_claimed ?? false,
-      isScrapeRecord:      s.is_scrape_record ?? false,
+      trustTier:           s.trust_tier ?? 'unverified',
+      isAvailable:         s.is_available === true || s.is_available === 'true',
+      availabilityMode:    s.availability_mode ?? 'unavailable',
+      isActive:            s.is_active === true || s.is_active === 'true',
+      isClaimed:           s.is_claimed === true || s.is_claimed === 'true',
+      isScrapeRecord:      s.is_scrape_record === true || s.is_scrape_record === 'true',
       listingType:         s.listing_type ?? '',
       profilePhotoS3Key:   s.profile_photo_s3_key ?? null,
       profile_photo_url:   s.profile_photo_s3_key ?? null,
       tagline:             s.tagline ?? null,
       years_of_experience: s.years_of_experience ?? null,
-      reviewCount:         s.review_count ?? 0,
-      rating_count:        s.review_count ?? 0,
+      // review_count = contact_count (accepted events = customers served)
+      // avg_rating from ratings table (may be null for new providers)
+      reviewCount:         contactCount,
+      rating_count:        contactCount,
+      contact_count:       contactCount,
       avg_rating:          s.avg_rating ?? null,
       rating_avg:          s.avg_rating ?? null,
       taxonomy_name:       s.taxonomy_name ?? null,

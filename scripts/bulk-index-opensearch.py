@@ -81,6 +81,13 @@ def ensure_index():
                     "is_claimed":        {"type": "boolean"},
                     "is_scrape_record":  {"type": "boolean"},
                     "contact_count":     {"type": "integer"},
+                    "is_available":      {"type": "boolean"},
+                    "availability_mode": {"type": "keyword"},
+                    "profile_photo_s3_key": {"type": "keyword"},
+                    "avg_rating":        {"type": "float"},
+                    "review_count":      {"type": "integer"},
+                    "years_of_experience": {"type": "integer"},
+                    "tagline":           {"type": "text"},
                     "created_at":        {"type": "date"},
                     "updated_at":        {"type": "date"},
                     "synced_at":         {"type": "date"},
@@ -122,7 +129,14 @@ SELECT
     pp.is_active::text,
     pp.is_claimed::text,
     pp.is_scrape_record::text,
-    COALESCE(ce_counts.contact_count::text, '0') as contact_count
+    COALESCE(ce_counts.contact_count::text, '0') as contact_count,
+    pp.availability::text as availability_mode,
+    CASE WHEN pp.availability = 'available' THEN 'true' ELSE 'false' END as is_available,
+    COALESCE(pp.profile_photo_s3_key, '') as profile_photo_s3_key,
+    COALESCE(pp.years_experience::text, '') as years_experience,
+    COALESCE(pp.bio, '') as tagline,
+    COALESCE(ratings_agg.avg_rating::text, '') as avg_rating,
+    COALESCE(ratings_agg.review_count::text, '0') as review_count
 FROM provider_profiles pp
 LEFT JOIN cities c ON c.id = pp.city_id
 LEFT JOIN taxonomy_nodes tn ON tn.id = pp.taxonomy_node_id
@@ -133,6 +147,14 @@ LEFT JOIN (
     WHERE provider_status = 'accepted'
     GROUP BY provider_id
 ) ce_counts ON ce_counts.provider_id = pp.id
+LEFT JOIN (
+    SELECT provider_id,
+           ROUND(AVG(overall_stars)::numeric, 2) as avg_rating,
+           COUNT(*) as review_count
+    FROM ratings
+    WHERE moderation_status = 'approved'
+    GROUP BY provider_id
+) ratings_agg ON ratings_agg.provider_id = pp.id
 WHERE pp.is_active = true
 ORDER BY pp.created_at
 """
@@ -149,7 +171,7 @@ def parse_row(row):
     area_id, taxonomy_node_id, taxonomy_name, l1, l2, l3, l4, \
     lat, lng, trust_score, trust_tier, is_phone_verified, \
     is_aadhaar_verified, is_geo_verified, is_active, \
-    is_claimed, is_scrape_record, contact_count = parts[:24] if len(parts) >= 24 else (parts + [''] * 24)[:24]
+    is_claimed, is_scrape_record, contact_count,     availability_mode, is_available_str, profile_photo_s3_key,     years_experience_str, tagline, avg_rating_str, review_count_str =         parts[:32] if len(parts) >= 32 else (parts + [''] * 32)[:32]
 
     # Build geo_point only if both lat and lng are present and valid
     geo_point = None
@@ -165,7 +187,7 @@ def parse_row(row):
     def to_bool(v):
         return v.strip().lower() in ('t', 'true', '1')
 
-    return {
+    doc = {
         "provider_id":        provider_id,
         "display_name":       display_name or '',
         "listing_type":       listing_type or 'free',
@@ -189,8 +211,24 @@ def parse_row(row):
         "is_claimed":         to_bool(is_claimed),
         "is_scrape_record":   to_bool(is_scrape_record),
         "contact_count":      int(contact_count) if contact_count and contact_count.strip().isdigit() else 0,
+        # availability — is_available true/false, availability_mode = available/by_appointment/unavailable
+        "is_available":       availability_mode.strip().lower() == 'available',
+        "availability_mode":  availability_mode.strip() or 'unavailable',
+        # profile photo S3 key
+        "profile_photo_s3_key": profile_photo_s3_key.strip() or None,
+        # category_id alias — same as taxonomy_node_id (search requests category_id)
+        "category_id":        None,  # set below
+        # experience, tagline
+        "years_of_experience": int(years_experience_str) if years_experience_str and years_experience_str.strip().isdigit() else None,
+        "tagline":            tagline.strip() or None,
+        # ratings
+        "avg_rating":         float(avg_rating_str) if avg_rating_str and avg_rating_str.strip() else None,
+        "review_count":       int(review_count_str) if review_count_str and review_count_str.strip().isdigit() else 0,
         "synced_at":          time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
     }
+    # category_id is requested by expandingRingSearch._source as alias for taxonomy_node_id
+    doc["category_id"] = doc.get("taxonomy_node_id")
+    return doc
 
 def bulk_index(docs):
     """Send bulk index request to OpenSearch."""
