@@ -56,6 +56,10 @@ const DEDUPE = [
   'react-native',
   'expo-asset',                    // prevent registry duplication across monorepo
   '@react-native/assets-registry', // owns the actual registry Map — must be singleton
+  'expo-font',                     // font registry must be singleton — prevents
+                                   // "Cannot read property 'set' of undefined" crash
+  'expo-modules-core',             // core native module registry — must be singleton
+  '@react-native-async-storage',   // async storage singleton for MMKV stub persistence
 ];
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {

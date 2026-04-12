@@ -21,6 +21,15 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Defensive: AsyncStorage may be null/undefined if RN bridge not initialized yet.
+// All AsyncStorage calls are guarded with this check.
+function asyncStorageReady(): boolean {
+  return (
+    AsyncStorage != null &&
+    typeof AsyncStorage.setItem === 'function'
+  );
+}
+
 // Per-instance in-memory cache
 // Key format: `mmkv:${id}:${key}`
 const memCache: Record<string, string> = {};
@@ -47,7 +56,9 @@ export class MMKV {
     const str = String(value);
     memCache[sk] = str;
     // Write-through: AsyncStorage is fire-and-forget, never throws to caller
-    AsyncStorage.setItem(sk, str).catch(() => {});
+    if (asyncStorageReady()) {
+      AsyncStorage.setItem(sk, str).catch(() => {});
+    }
   }
 
   getString(key: string): string | undefined {
