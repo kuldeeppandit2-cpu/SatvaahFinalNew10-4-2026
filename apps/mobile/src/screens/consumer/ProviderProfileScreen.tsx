@@ -34,10 +34,11 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient }                                          from '../../api/client';
 import { getTrustScore, trustRingColor, trustTierLabel }      from '../../api/trust.api';
 import type { TrustScore }                                    from '../../api/trust.api';
-import { getSavedProviders, saveProvider, unsaveProvider }    from '../../api/contact.api';
+import { getSavedProviders, saveProvider }                    from '../../api/contact.api';
+import { unsaveProvider }                                     from '../../api/savedProviders.api';
 import { TrustBreakdownModal }                                from './TrustBreakdownModal';
 import { useAuthStore }                                       from '../../stores/auth.store';
-import * as Location                                         from 'expo-location';
+import { useLocationStore }                                   from '../../stores/location.store';
 import { useConsumerStore }                                   from '../../stores/consumer.store';
 import type { ConsumerStackParamList }                        from '../../navigation/types';
 
@@ -106,11 +107,12 @@ interface ProviderProfile {
   listingType:        string;
   category:            string;
   bio:                 string;
-  famous_for:          string | null;   // provider's own words, max 200 chars
-  phone:               string;          // MASTER_CONTEXT: always visible, no gate
+  famous_for:          string | null;
+  phone:               string;
+  whatsapp_phone:      string | null;
   photo_url:           string | null;
   availability:        'available' | 'by_appointment' | 'unavailable';
-  has_calendar:        boolean;         // slot booking gate
+  has_calendar:        boolean;
   experience_years:    number | null;
   languages:           string[];
   rating_avg:          number;
@@ -122,7 +124,9 @@ interface ProviderProfile {
   city:                string;
   area:                string;
   distance_km:         number | null;
-  is_claimed:          boolean;         // true = provider has app + claimed profile; false = scraped only
+  is_claimed:          boolean;
+  is_scrape_record:    boolean;   // true = scraped, unverified provider
+  isScrapeRecord:      boolean;   // camelCase alias
 }
 
 type ProfileNav = NativeStackNavigationProp<ConsumerStackParamList, 'ProviderProfile'>;
@@ -137,69 +141,32 @@ export function ProviderProfileScreen(): React.ReactElement {
 
   const [profile,        setProfile]       = useState<ProviderProfile | null>(null);
   const [trust,          setTrust]         = useState<TrustScore | null>(null);
-  const [savedId,        setSavedId]       = useState<string | null>(null);
+  const [isSaved,        setIsSaved]       = useState(false);
   const [isSaving,       setIsSaving]      = useState(false);
   const [refreshing,     setRefreshing]    = useState(false);
   const [showBreakdown,  setShowBreakdown] = useState(false);
-  const [contactLeadCost] = useState(0);  // paise — 0 at launch (admin-configurable)
+  const [contactLeadCost] = useState(0);
 
   // ── Consumer profile setup modal ─────────────────────────────────────────
   const hasCompletedProfileSetup = useConsumerStore((s) => s.hasCompletedProfileSetup);
   const markProfileSetupComplete = useConsumerStore((s) => s.markProfileSetupComplete);
-  const [showSetupModal, setShowSetupModal] = useState(false);
-  const [pendingContactType, setPendingContactType] = useState<'call' | 'message' | 'slot_booking' | null>(null);
-  const [setupName, setSetupName] = useState('');
-  const [setupCities, setSetupCities] = useState<{ id: string; name: string }[]>([]);
-  const [setupCityId, setSetupCityId] = useState('');
-  const [setupLoading, setSetupLoading] = useState(false);
-  const [setupGeoStatus, setSetupGeoStatus] = useState<'idle' | 'loading' | 'captured' | 'denied'>('idle');
-  const [setupGeoCoords, setSetupGeoCoords] = useState<{ lat: number; lng: number } | null>(null);
-
-  // Fetch cities for setup modal on mount
-  useEffect(() => {
-    apiClient.get('/api/v1/cities?active=true')
-      .then((res) => {
-        const cities = res.data?.data ?? [];
-        setSetupCities(cities);
-        if (cities.length > 0) setSetupCityId(cities[0].id);
-      })
-      .catch(() => {});
-  }, []);
-
-  async function captureGeoLocation(): Promise<void> {
-    setSetupGeoStatus('loading');
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') { setSetupGeoStatus('denied'); return; }
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setSetupGeoCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
-      setSetupGeoStatus('captured');
-    } catch {
-      setSetupGeoStatus('denied');
-    }
-  }
+  const [showSetupModal, setShowSetupModal]           = useState(false);
+  const [pendingContactType, setPendingContactType]   = useState<'call' | 'message' | 'slot_booking' | null>(null);
+  const [setupName, setSetupName]                     = useState('');
+  const [setupPlace, setSetupPlace]                   = useState<'Home' | 'Work' | 'Other'>('Home');
+  const [setupLoading, setSetupLoading]               = useState(false);
 
   async function handleProfileSetupSubmit(): Promise<void> {
-    if (!setupName.trim() || !setupCityId) {
-      Alert.alert('Required', 'Please enter your name and select your city.');
+    if (!setupName.trim()) {
+      Alert.alert('Required', 'Please enter your name.');
       return;
     }
     setSetupLoading(true);
     try {
       await apiClient.post('/api/v1/consumers/profile', {
         display_name: setupName.trim(),
-        city_id: setupCityId,
+        place_type:   setupPlace,
       });
-
-      // audit-ref: DB2 consumer_profiles — persist geo_lat/geo_lng/area_id (V050 fields)
-      // Fire-and-forget after profile created — non-fatal if GPS was not captured
-      if (setupGeoCoords) {
-        apiClient.patch('/api/v1/consumers/me/location', {
-          geo_lat: setupGeoCoords.lat,
-          geo_lng: setupGeoCoords.lng,
-        }).catch(() => {}); // non-fatal — location can be updated later
-      }
-
       markProfileSetupComplete();
       setShowSetupModal(false);
       if (pendingContactType) proceedToContact(pendingContactType);
@@ -254,7 +221,7 @@ export function ProviderProfileScreen(): React.ReactElement {
     }
     if (savedRes.status === 'fulfilled') {
       const match = savedRes.value.find((s) => s.providerId === providerId);
-      setSavedId(match?.id ?? null);
+      setIsSaved(!!match);
     }
   }, [providerId]);
 
@@ -267,16 +234,20 @@ export function ProviderProfileScreen(): React.ReactElement {
   }, [loadData]);
 
   // ── Save / unsave provider ────────────────────────────────────────────────
+  // FIX (audit item): was using match?.id which is always undefined because
+  // SavedProvider interface in contact.api.ts has no 'id' field.
+  // savedProviders.api.ts unsaveProvider(providerId) uses providerId directly —
+  // server resolves composite (consumer_id, provider_id) from JWT.
   async function handleSaveToggle(): Promise<void> {
     if (isSaving) return;
     setIsSaving(true);
     try {
-      if (savedId) {
-        await unsaveProvider(savedId);
-        setSavedId(null);
+      if (isSaved) {
+        await unsaveProvider(providerId);
+        setIsSaved(false);
       } else {
-        const saved = await saveProvider(providerId);
-        setSavedId(saved.id);
+        await saveProvider(providerId);
+        setIsSaved(true);
       }
     } catch {
       Alert.alert('Error', 'Could not update saved providers. Try again.');
@@ -305,9 +276,10 @@ export function ProviderProfileScreen(): React.ReactElement {
     );
   }
 
-  const tierColor = trustRingColor(trust.displayScore);
-  const tierLabel = trustTierLabel(trust.trustTier);
-  const isHighly  = trust.trustTier === 'highly_trusted';
+  const tierColor     = trustRingColor(trust.displayScore);
+  const tierLabel     = trustTierLabel(trust.trustTier);
+  const isHighly      = trust.trustTier === 'highly_trusted';
+  const isScrapeRecord = profile.is_scrape_record || profile.isScrapeRecord || !profile.is_claimed;
 
   const badges = [
     { label: 'OTP Verified',  verified: profile.otp_verified },
@@ -331,6 +303,18 @@ export function ProviderProfileScreen(): React.ReactElement {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={SAFFRON} />
         }
       >
+        {/* ── Unverified banner — scraped providers only (item 14) ── */}
+        {isScrapeRecord && (
+          <View style={styles.unverifiedBanner}>
+            <Text style={styles.unverifiedBannerIcon}>⚠️</Text>
+            <View style={styles.unverifiedBannerText}>
+              <Text style={styles.unverifiedBannerTitle}>Unverified listing</Text>
+              <Text style={styles.unverifiedBannerSub}>
+                This provider has not registered on SatvAAh. You can call them directly — no messaging or booking available.
+              </Text>
+            </View>
+          </View>
+        )}
         {/* ── Hero: avatar, name, ring ── */}
         <View style={styles.hero}>
           <View style={styles.heroRow}>
@@ -480,8 +464,8 @@ export function ProviderProfileScreen(): React.ReactElement {
             <Text style={styles.actionBtnText}>📞 Call</Text>
           </TouchableOpacity>
 
-          {/* Message — only for verified providers who have claimed their profile + downloaded app */}
-          {profile.is_claimed && (
+          {/* Message — only for verified (claimed) providers. Hidden for scraped providers. */}
+          {!isScrapeRecord && (
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: SAFFRON }]}
               onPress={() => handleContact('message')}
@@ -490,8 +474,8 @@ export function ProviderProfileScreen(): React.ReactElement {
             </TouchableOpacity>
           )}
 
-          {/* Book Slot — Gold tier + has_calendar only */}
-          {isGold && profile.has_calendar && (
+          {/* Book Slot — Gold tier + has_calendar + claimed only */}
+          {isGold && profile.has_calendar && !isScrapeRecord && (
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: DEEP_INK }]}
               onPress={() => handleContact('slot_booking')}
@@ -528,52 +512,36 @@ export function ProviderProfileScreen(): React.ReactElement {
               autoFocus
             />
 
-            {/* City */}
-            <Text style={setupStyles.label}>Your city *</Text>
-            <View style={setupStyles.cityRow}>
-              {setupCities.map((city) => (
+            {/* Place type — simplified (no city picker, no GPS) */}
+            <Text style={setupStyles.label}>Where do you need the service?</Text>
+            <View style={setupStyles.placeRow}>
+              {(['Home', 'Work', 'Other'] as const).map((place) => (
                 <TouchableOpacity
-                  key={city.id}
-                  style={[setupStyles.cityChip, setupCityId === city.id && setupStyles.cityChipSelected]}
-                  onPress={() => setSetupCityId(city.id)}
+                  key={place}
+                  style={[setupStyles.placeChip, setupPlace === place && setupStyles.placeChipSelected]}
+                  onPress={() => setSetupPlace(place)}
                 >
-                  <Text style={[setupStyles.cityChipText, setupCityId === city.id && setupStyles.cityChipTextSelected]}>
-                    {city.name}
+                  <Text style={[setupStyles.placeChipText, setupPlace === place && setupStyles.placeChipTextSelected]}>
+                    {place === 'Home' ? '🏠 Home' : place === 'Work' ? '🏢 Work' : '📍 Other'}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            {/* Geo location */}
-            <Text style={setupStyles.label}>Your location *</Text>
-            <Text style={setupStyles.hint}>Helps providers near you find you faster.</Text>
-            <TouchableOpacity
-              style={[setupStyles.geoBtn, setupGeoStatus === 'captured' && setupStyles.geoBtnCaptured]}
-              onPress={captureGeoLocation}
-              disabled={setupGeoStatus === 'loading'}
-            >
-              <Text style={setupStyles.geoBtnText}>
-                {setupGeoStatus === 'idle' && '📍 Capture my location'}
-                {setupGeoStatus === 'loading' && '⏳ Getting location…'}
-                {setupGeoStatus === 'captured' && '✅ Location captured'}
-                {setupGeoStatus === 'denied' && '⚠️ Permission denied — tap to retry'}
-              </Text>
-            </TouchableOpacity>
-
-            {/* Aadhaar — optional */}
+            {/* Aadhaar prompt — optional, post name+place */}
             <View style={setupStyles.aadhaarBox}>
-              <Text style={setupStyles.aadhaarTitle}>🔒 Aadhaar verification (optional)</Text>
+              <Text style={setupStyles.aadhaarTitle}>🔒 Verified consumers get priority</Text>
               <Text style={setupStyles.aadhaarSub}>
-                Verified consumers get priority responses, better trust scores, and build credibility with providers.
+                Aadhaar-verified consumers receive faster responses and better trust with providers.
               </Text>
               <TouchableOpacity
                 style={setupStyles.aadhaarBtn}
                 onPress={() => {
                   setShowSetupModal(false);
-                  navigation.navigate('AadhaarVerify' as any)  // screen registered as 'AadhaarVerify' in ProviderNavigator.tsx;
+                  navigation.navigate('AadhaarVerify' as any);
                 }}
               >
-                <Text style={setupStyles.aadhaarBtnText}>Verify Aadhaar →</Text>
+                <Text style={setupStyles.aadhaarBtnText}>Verify with Aadhaar →</Text>
               </TouchableOpacity>
               <Text style={setupStyles.aadhaarSkip} onPress={handleProfileSetupSubmit}>
                 Skip for now
@@ -581,9 +549,9 @@ export function ProviderProfileScreen(): React.ReactElement {
             </View>
 
             <TouchableOpacity
-              style={[setupStyles.btn, (setupLoading || setupGeoStatus === 'idle') && setupStyles.btnDisabled]}
+              style={[setupStyles.btn, (!setupName.trim() || setupLoading) && setupStyles.btnDisabled]}
               onPress={handleProfileSetupSubmit}
-              disabled={setupLoading || setupGeoStatus === 'idle'}
+              disabled={!setupName.trim() || setupLoading}
             >
               <Text style={setupStyles.btnText}>{setupLoading ? 'Saving…' : 'Continue →'}</Text>
             </TouchableOpacity>
@@ -605,6 +573,18 @@ const setupStyles = StyleSheet.create({
   label:             { fontFamily: 'PlusJakartaSans-SemiBold', fontSize: 13, color: '#1C1C2E', marginBottom: 8 },
   input:             { borderWidth: 1.5, borderColor: '#E8E0D5', borderRadius: 10, padding: 14, fontSize: 15, fontFamily: 'PlusJakartaSans-Regular', color: '#1C1C2E', marginBottom: 20, backgroundColor: '#fff' },
   cityRow:           { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 28 },
+  cityChip:          { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: '#E8E0D0', backgroundColor: '#FAF7F0' },
+  cityChipSelected:  { borderColor: '#C8691A', backgroundColor: '#FFF5EC' },
+  cityChipText:      { fontFamily: 'PlusJakartaSans-Medium', fontSize: 13, color: '#1C1C2E' },
+  cityChipTextSelected: { color: '#C8691A', fontFamily: 'PlusJakartaSans-SemiBold' },
+  placeRow:          { flexDirection: 'row', gap: 10, marginBottom: 28 },
+  placeChip:         { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: '#E8E0D0', backgroundColor: '#FAF7F0', alignItems: 'center' },
+  placeChipSelected: { borderColor: '#C8691A', backgroundColor: '#FFF5EC' },
+  placeChipText:     { fontFamily: 'PlusJakartaSans-Medium', fontSize: 13, color: '#1C1C2E' },
+  placeChipTextSelected: { color: '#C8691A', fontFamily: 'PlusJakartaSans-SemiBold' },
+  geoBtn:            { borderWidth: 1.5, borderColor: '#C8691A', borderRadius: 10, padding: 14, alignItems: 'center', marginBottom: 20 },
+  geoBtnCaptured:    { backgroundColor: '#E8F5F3', borderColor: '#2E7D72' },
+  geoBtnText:        { fontFamily: 'PlusJakartaSans-SemiBold', fontSize: 14, color: '#C8691A' },
   cityChip:          { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: '#E8E0D5', backgroundColor: '#fff' },
   cityChipSelected:  { borderColor: '#C8691A', backgroundColor: '#FFF3E8' },
   cityChipText:      { fontFamily: 'PlusJakartaSans-Regular', fontSize: 13, color: '#6B6560' },
@@ -629,6 +609,31 @@ const styles = StyleSheet.create({
   safeArea:        { flex: 1, backgroundColor: IVORY },
   container:       { flex: 1 },
   scrollContent:   { paddingBottom: 16 },
+  // Unverified banner (item 14)
+  unverifiedBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFF5E6',
+    borderBottomWidth: 2,
+    borderBottomColor: '#C8691A',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  unverifiedBannerIcon: { fontSize: 20, marginTop: 1 },
+  unverifiedBannerText: { flex: 1 },
+  unverifiedBannerTitle: {
+    fontFamily: 'PlusJakartaSans-Bold',
+    fontSize: 14,
+    color: '#C8691A',
+    marginBottom: 2,
+  },
+  unverifiedBannerSub: {
+    fontFamily: 'PlusJakartaSans-Regular',
+    fontSize: 12,
+    color: '#6B6560',
+    lineHeight: 17,
+  },
   loadingContainer:{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: IVORY },
   loadingText:     { fontFamily: 'PlusJakartaSans-Regular', fontSize: 14, color: MUTED },
 
