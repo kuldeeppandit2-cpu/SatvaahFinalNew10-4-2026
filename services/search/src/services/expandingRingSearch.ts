@@ -2,25 +2,18 @@
 //
 // Expanding ring search for SatvAAh.
 //
-// Strategy:
-//   Start with the smallest ring (3 km). If zero results are found for the
-//   requested page, expand to the next ring. Keep expanding until results are
-//   found OR all rings are exhausted.
+// Two-axis expansion strategy:
+//   AXIS 1 — Geographic rings (3→7→15→50→150→1000 km): try each ring at the
+//     current taxonomy level. If zero results at all rings, climb the tree.
+//   AXIS 2 — Taxonomy tree-climb (L4→L3→L2→L1): only triggered when all rings
+//     at the current level return zero. Each climb resets ring expansion from 3 km.
 //
-//   NEVER returns zero results — the outermost ring (150 km) returns any active
-//   provider in that band, prioritising is_claimed=true and listing_type=premium.
-//
-// Ring definitions:
-//   3km   → hyperlocal (default start)
-//   7km   → local neighbourhood
-//   15km  → city district
-//   50km  → city-wide
-//   150km → cross-city (high-value only: is_claimed=true AND listing_type=premium)
+// Taxonomy filter:
+//   When taxonomyNodeId is provided, filter by exact taxonomy_node_id UUID.
+//   Tree-climb uses taxonomy_l1/l2/l3 keyword fields for broader matches.
 //
 // Parameter notes:
-//   • API accepts `lat` and `lng`  (NOT lon — matches ST_MakePoint(lng,lat) convention)
-//   • OpenSearch geo_distance query uses `lon` internally for the coordinate object
-//   • We translate at the boundary — `lng` → `lon` when building the OS query body
+//   lng (our API param) → lon (OpenSearch geo_point field key) at boundary
 
 import { getOpenSearchClient, OPENSEARCH_INDEX } from '../lib/opensearchClient';
 import { logger } from '@satvaaah/logger';
@@ -30,50 +23,45 @@ import { getConfigInt } from '@satvaaah/config';
 
 export const PAGE_SIZE = 20;
 
-// Tabs accepted by the search endpoint
 const VALID_TABS = ['products', 'services', 'expertise', 'establishments'] as const;
 export type SearchTab = (typeof VALID_TABS)[number];
 
-// Ring ladder: expand from smallest to largest
 interface RingDef {
   radiusKm: number;
   label: string;
-  /** At 150 km we only surface high-value providers (is_claimed + premium) */
   crossCityOnly?: boolean;
 }
 
-// Ring distances loaded from system_config (Rule #20 — nothing hardcoded)
-// system_config keys: search_ring_1_km..5_km (fallback to MASTER_CONTEXT defaults)
 export const DEFAULT_RINGS: RingDef[] = [
-  { radiusKm: 3,   label: '3 km' },
-  { radiusKm: 7,   label: '7 km' },
-  { radiusKm: 15,  label: '15 km' },
-  { radiusKm: 50,  label: '50 km' },
-  { radiusKm: 150, label: '150 km', crossCityOnly: true },
+  { radiusKm: 3,    label: '3 km' },
+  { radiusKm: 7,    label: '7 km' },
+  { radiusKm: 15,   label: '15 km' },
+  { radiusKm: 50,   label: '50 km' },
+  { radiusKm: 150,  label: '150 km', crossCityOnly: true },
+  { radiusKm: 1000, label: '1000 km', crossCityOnly: true },
 ];
 
 function getRings(): RingDef[] {
-  // Load per-ring distances from system_config; fall back to defaults
   try {
-    const r1 = getConfigInt('search_ring_1_km', 3);
-    const r2 = getConfigInt('search_ring_2_km', 7);
-    const r3 = getConfigInt('search_ring_3_km', 15);
-    const r4 = getConfigInt('search_ring_4_km', 50);
-    const r5 = getConfigInt('search_ring_5_km', 150);
+    const r1 = getConfigInt('search_ring_1_km');
+    const r2 = getConfigInt('search_ring_2_km');
+    const r3 = getConfigInt('search_ring_3_km');
+    const r4 = getConfigInt('search_ring_4_km');
+    const r5 = getConfigInt('search_ring_5_km');
+    const r6 = getConfigInt('search_ring_6_km');
     return [
       { radiusKm: r1, label: `${r1} km` },
       { radiusKm: r2, label: `${r2} km` },
       { radiusKm: r3, label: `${r3} km` },
       { radiusKm: r4, label: `${r4} km` },
       { radiusKm: r5, label: `${r5} km`, crossCityOnly: true },
+      { radiusKm: r6, label: `${r6} km`, crossCityOnly: true },
     ];
   } catch {
-    // system_config not loaded yet — use defaults
     return DEFAULT_RINGS;
   }
 }
 
-// RINGS is computed fresh on each call to pick up SIGHUP hot-reload changes
 function RINGS(): RingDef[] { return getRings(); }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -84,10 +72,15 @@ export interface RingSearchInput {
   lat: number;
   lng: number;
   page: number;
-  /** Locked ring radius (km) for pages > 1 — supplied by client from page-1 response */
   ringKm?: number;
   locationName?: string;
   correlationId: string;
+  // Taxonomy anchor (S1 browse + S2 after suggestion selected)
+  taxonomyNodeId?: string;
+  taxonomyL4?: string;
+  taxonomyL3?: string;
+  taxonomyL2?: string;
+  taxonomyL1?: string;
 }
 
 export interface ProviderHit {
@@ -103,6 +96,7 @@ export interface ProviderHit {
   availabilityMode: string;
   isActive: boolean;
   isClaimed: boolean;
+  isScrapeRecord: boolean;
   listingType: string;
   profilePhotoS3Key: string | null;
   tagline: string | null;
@@ -121,25 +115,73 @@ export interface RingSearchResult {
   ring_label: string;
   narration: string;
   expanded: boolean;
+  taxonomy_level_used: string | null;
+}
+
+// ─── Taxonomy level descriptor ────────────────────────────────────────────────
+
+interface TaxonomyLevel {
+  level: 'l4' | 'l3' | 'l2' | 'l1';
+  filter: object;
+  label: string;
+}
+
+function buildTaxonomyLevels(input: RingSearchInput): TaxonomyLevel[] {
+  const levels: TaxonomyLevel[] = [];
+
+  if (input.taxonomyNodeId) {
+    levels.push({
+      level: 'l4',
+      filter: { term: { taxonomy_node_id: input.taxonomyNodeId } },
+      label: input.taxonomyL4 ?? 'providers',
+    });
+  }
+
+  if (input.taxonomyL3 && input.taxonomyL1) {
+    levels.push({
+      level: 'l3',
+      filter: { bool: { filter: [
+        { term: { taxonomy_l3: input.taxonomyL3 } },
+        { term: { taxonomy_l1: input.taxonomyL1 } },
+      ] } },
+      label: input.taxonomyL3,
+    });
+  }
+
+  if (input.taxonomyL2 && input.taxonomyL1) {
+    levels.push({
+      level: 'l2',
+      filter: { bool: { filter: [
+        { term: { taxonomy_l2: input.taxonomyL2 } },
+        { term: { taxonomy_l1: input.taxonomyL1 } },
+      ] } },
+      label: input.taxonomyL2,
+    });
+  }
+
+  if (input.taxonomyL1) {
+    levels.push({
+      level: 'l1',
+      filter: { term: { taxonomy_l1: input.taxonomyL1 } },
+      label: input.taxonomyL1,
+    });
+  }
+
+  return levels;
 }
 
 // ─── buildOsQuery ─────────────────────────────────────────────────────────────
 
-/**
- * Build the OpenSearch query body for a given ring.
- * `lng` is the API parameter name; `lon` is what OpenSearch expects internally.
- */
 function buildOsQuery(
   input: RingSearchInput,
   ring: RingDef,
   from: number,
+  taxonomyFilter: object | null,
 ): object {
   const { q, tab, lat, lng } = input;
 
-  // Base must clauses
   const mustClauses: object[] = [];
 
-  // Full-text on display_name + taxonomy_l4 when query term is provided
   if (q && q.trim().length > 0) {
     mustClauses.push({
       multi_match: {
@@ -151,29 +193,27 @@ function buildOsQuery(
       },
     });
   } else {
-    // No query term → match_all (all providers in the geo ring)
     mustClauses.push({ match_all: {} });
   }
 
-  // Filter clauses — always applied
   const filterClauses: object[] = [
     { term: { is_active: true } },
     {
       geo_distance: {
         distance: `${ring.radiusKm}km`,
-        // `lng` (our API param) → `lon` (OpenSearch geo_point field key)
         geo_point: { lat, lon: lng },
       },
     },
   ];
 
-  // Tab filter (optional — if provided and valid)
+  if (taxonomyFilter) {
+    filterClauses.push(taxonomyFilter);
+  }
+
   if (tab && VALID_TABS.includes(tab as SearchTab)) {
     filterClauses.push({ term: { tab } });
   }
 
-  // 150 km cross-city ring: claimed providers only
-  // 'premium' is NOT a valid ListingType — using is_claimed=true only
   if (ring.crossCityOnly) {
     filterClauses.push({ term: { is_claimed: true } });
   }
@@ -181,45 +221,18 @@ function buildOsQuery(
   return {
     from,
     size: PAGE_SIZE,
-    query: {
-      bool: {
-        must: mustClauses,
-        filter: filterClauses,
-      },
-    },
+    query: { bool: { must: mustClauses, filter: filterClauses } },
     sort: [
+      { is_claimed: { order: 'desc' } },
       { trust_score: { order: 'desc' } },
-      // Secondary sort: distance (nearest first within same trust score band)
-      {
-        _geo_distance: {
-          geo_point: { lat, lon: lng },
-          order: 'asc',
-          unit: 'km',
-          distance_type: 'arc',
-        },
-      },
+      { _geo_distance: { geo_point: { lat, lon: lng }, order: 'asc', unit: 'km', distance_type: 'arc' } },
     ],
-    // Return distance in response metadata
     script_fields: {},
     _source: [
-      'provider_id',
-      'display_name',
-      'category_id',
-      'tab',
-      'city_id',
-      'geo_point',
-      'trust_score',
-      'trust_tier',
-      'is_available',
-      'availability_mode',
-      'is_active',
-      'is_claimed',
-      'listing_type',
-      'profile_photo_s3_key',
-      'tagline',
-      'years_of_experience',
-      'review_count',
-      'avg_rating',
+      'provider_id', 'display_name', 'category_id', 'tab', 'city_id', 'geo_point',
+      'trust_score', 'trust_tier', 'is_available', 'availability_mode', 'is_active',
+      'is_claimed', 'is_scrape_record', 'listing_type', 'profile_photo_s3_key',
+      'tagline', 'years_of_experience', 'review_count', 'avg_rating',
     ],
   };
 }
@@ -232,39 +245,39 @@ function buildNarration(
   locationName: string,
   tab: string | undefined,
   q: string | undefined,
+  taxonomyLevelUsed: string | null,
+  requestedLabel: string | undefined,
+  foundLabel: string | undefined,
 ): string {
-  // Entity label: use query term if provided, else the tab label
   const entityLabel =
     q && q.trim().length > 0
       ? q.trim().toLowerCase()
-      : tab
-        ? tab.toLowerCase()
-        : 'providers';
+      : tab ? tab.toLowerCase() : 'providers';
 
-  if (total === 0) {
-    return `No ${entityLabel} found within ${ring.label} of ${locationName}.`;
-  }
-
+  const displayLabel = foundLabel ?? entityLabel;
   const countLabel = total > 999 ? '999+' : `${total}`;
 
-  if (ring.crossCityOnly) {
-    return `Found ${countLabel} verified ${entityLabel} within ${ring.label} of ${locationName} (premium listings only).`;
+  // Taxonomy fallback narration
+  if (taxonomyLevelUsed && requestedLabel && foundLabel && requestedLabel !== foundLabel) {
+    if (total === 0) {
+      return `No ${requestedLabel} found — no ${foundLabel} within ${ring.label} of ${locationName} either.`;
+    }
+    return `No ${requestedLabel} found — showing ${foundLabel} within ${ring.label} of ${locationName}.`;
   }
 
-  return `Found ${countLabel} ${entityLabel} within ${ring.label} of ${locationName}.`;
+  if (total === 0) {
+    return `No ${displayLabel} found within ${ring.label} of ${locationName}.`;
+  }
+
+  if (ring.crossCityOnly) {
+    return `Found ${countLabel} verified ${displayLabel} within ${ring.label} of ${locationName}.`;
+  }
+
+  return `Found ${countLabel} ${displayLabel} within ${ring.label} of ${locationName}.`;
 }
 
 // ─── expandingRingSearch ──────────────────────────────────────────────────────
 
-/**
- * Executes an expanding ring search.
- *
- * Algorithm:
- *  1. If `ringKm` is provided (page > 1), lock to that ring and paginate.
- *  2. Otherwise start at 3 km and expand until results are found.
- *  3. Always return results — even if the outermost ring has none, return
- *     the response with total=0 (should never happen in production with data).
- */
 export async function expandingRingSearch(
   input: RingSearchInput,
 ): Promise<RingSearchResult> {
@@ -272,40 +285,72 @@ export async function expandingRingSearch(
   const from = (page - 1) * PAGE_SIZE;
   const osClient = getOpenSearchClient();
 
-  // ── Locked ring mode (page > 1 from client) ──────────────────────────────
+  // Locked ring mode (page > 1)
   if (ringKm !== undefined) {
     const lockedRing = RINGS().find((r) => r.radiusKm === ringKm) ?? RINGS()[RINGS().length - 1];
-    return await executeRingQuery(osClient, input, lockedRing, from, locationName, false, correlationId);
+    const taxonomyFilter = input.taxonomyNodeId
+      ? { term: { taxonomy_node_id: input.taxonomyNodeId } }
+      : null;
+    return executeRingQuery(
+      osClient, input, lockedRing, from, locationName, false, correlationId,
+      taxonomyFilter, 'l4', input.taxonomyL4, input.taxonomyL4,
+    );
   }
 
-  // ── Expanding ring mode (page 1 or no lock) ───────────────────────────────
-  let expanded = false;
-  for (const ring of RINGS()) {
-    const result = await executeRingQuery(osClient, input, ring, from, locationName, expanded, correlationId);
+  const taxonomyLevels = buildTaxonomyLevels(input);
 
-    if (result.total > 0) {
-      return result;
+  // Taxonomy-constrained expanding search
+  if (taxonomyLevels.length > 0) {
+    const requestedLabel = taxonomyLevels[0].label;
+
+    for (const txLevel of taxonomyLevels) {
+      let expanded = false;
+      for (const ring of RINGS()) {
+        const result = await executeRingQuery(
+          osClient, input, ring, from, locationName, expanded, correlationId,
+          txLevel.filter, txLevel.level, requestedLabel, txLevel.label,
+        );
+        if (result.total > 0) return result;
+
+        logger.info('search.ring.expanding', {
+          correlationId, currentRingKm: ring.radiusKm,
+          taxonomyLevel: txLevel.level, reason: 'zero_results',
+        });
+        expanded = true;
+      }
+
+      logger.info('search.taxonomy.climbing', {
+        correlationId, fromLevel: txLevel.level, fromLabel: txLevel.label,
+      });
     }
 
-    // No results in this ring — expand to next
+    // All levels + all rings exhausted
+    return executeRingQuery(
+      osClient, input, RINGS()[RINGS().length - 1],
+      from, locationName, true, correlationId,
+      null, null, requestedLabel, requestedLabel,
+    );
+  }
+
+  // Open search (no taxonomy anchor)
+  let expanded = false;
+  for (const ring of RINGS()) {
+    const result = await executeRingQuery(
+      osClient, input, ring, from, locationName, expanded, correlationId,
+      null, null, undefined, undefined,
+    );
+    if (result.total > 0) return result;
+
     logger.info('search.ring.expanding', {
-      correlationId,
-      currentRingKm: ring.radiusKm,
-      reason: 'zero_results',
+      correlationId, currentRingKm: ring.radiusKm, reason: 'zero_results',
     });
     expanded = true;
   }
 
-  // If absolutely no providers found across all rings, return the last ring's
-  // empty result (should never happen in a live system with data).
-  return await executeRingQuery(
-    osClient,
-    input,
-    RINGS()[RINGS().length - 1],
-    from,
-    locationName,
-    true,
-    correlationId,
+  return executeRingQuery(
+    osClient, input, RINGS()[RINGS().length - 1],
+    from, locationName, true, correlationId,
+    null, null, undefined, undefined,
   );
 }
 
@@ -319,22 +364,20 @@ async function executeRingQuery(
   locationName: string,
   expanded: boolean,
   correlationId: string,
+  taxonomyFilter: object | null,
+  taxonomyLevelUsed: string | null,
+  requestedLabel: string | undefined,
+  foundLabel: string | undefined,
 ): Promise<RingSearchResult> {
-  const query = buildOsQuery(input, ring, from);
+  const query = buildOsQuery(input, ring, from, taxonomyFilter);
 
   logger.info('search.opensearch.query', {
-    correlationId,
-    radiusKm: ring.radiusKm,
-    page: input.page,
-    from,
-    q: input.q ?? null,
-    tab: input.tab ?? null,
+    correlationId, radiusKm: ring.radiusKm, page: input.page, from,
+    q: input.q ?? null, tab: input.tab ?? null,
+    taxonomyNodeId: input.taxonomyNodeId ?? null, taxonomyLevel: taxonomyLevelUsed,
   });
 
-  const response = await osClient.search({
-    index: OPENSEARCH_INDEX,
-    body: query,
-  });
+  const response = await osClient.search({ index: OPENSEARCH_INDEX, body: query });
 
   const hits = response.body.hits;
   const total =
@@ -344,9 +387,9 @@ async function executeRingQuery(
 
   const results: ProviderHit[] = (hits.hits as any[]).map((hit: any) => {
     const s = hit._source ?? {};
-    // Distance is in sort values (second sort = _geo_distance)
+    // sort[2] = _geo_distance (after is_claimed + trust_score)
     const distanceKm: number | null =
-      hit.sort && hit.sort[1] != null ? Number(hit.sort[1]) : null;
+      hit.sort && hit.sort[2] != null ? Number(hit.sort[2]) : null;
 
     return {
       providerId:          s.provider_id ?? '',
@@ -361,6 +404,7 @@ async function executeRingQuery(
       availabilityMode:    s.availability_mode ?? 'offline',
       isActive:            s.is_active ?? false,
       isClaimed:           s.is_claimed ?? false,
+      isScrapeRecord:      s.is_scrape_record ?? false,
       listingType:         s.listing_type ?? '',
       profilePhotoS3Key:   s.profile_photo_s3_key ?? null,
       profile_photo_url:   s.profile_photo_s3_key ?? null,
@@ -376,30 +420,23 @@ async function executeRingQuery(
   });
 
   const narration = buildNarration(
-    total,
-    ring,
-    locationName,
-    input.tab,
-    input.q,
+    total, ring, locationName, input.tab, input.q,
+    taxonomyLevelUsed, requestedLabel, foundLabel,
   );
 
   logger.info('search.opensearch.result', {
-    correlationId,
-    radiusKm: ring.radiusKm,
-    total,
-    returned: results.length,
-    expanded,
+    correlationId, radiusKm: ring.radiusKm,
+    total, returned: results.length, expanded, taxonomyLevel: taxonomyLevelUsed,
   });
 
   return {
-    results,
-    total,
+    results, total,
     page: input.page,
     page_size: PAGE_SIZE,
     has_more: from + results.length < total,
     ring_km: ring.radiusKm,
     ring_label: ring.label,
-    narration,
-    expanded,
+    narration, expanded,
+    taxonomy_level_used: taxonomyLevelUsed,
   };
 }
