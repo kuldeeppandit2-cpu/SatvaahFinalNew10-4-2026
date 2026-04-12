@@ -35,6 +35,7 @@ function Brand() {
 export function OnboardingScreen(): React.ReactElement {
   const navigation = useNavigation<Nav>();
   const markOnboardingSeen = useAuthStore((s) => s.markOnboardingSeen);
+  const accessToken        = useAuthStore((s) => s.accessToken);
   const [active, setActive] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const TOTAL = 3;
@@ -140,14 +141,26 @@ export function OnboardingScreen(): React.ReactElement {
               goTo(active + 1);
             } else {
               markOnboardingSeen();
-              navigation.replace('Login');
+              if (accessToken) {
+                // Returning user — go to WelcomeBack in root stack
+                (navigation as any).getParent()?.navigate('WelcomeBack');
+              } else {
+                navigation.replace('Login');
+              }
             }
           }}
         >
           <Text style={s.btnTxt}>{active === TOTAL - 1 ? 'Get Started →' : 'Next →'}</Text>
         </TouchableOpacity>
         {active < TOTAL - 1 && (
-          <TouchableOpacity onPress={() => { markOnboardingSeen(); navigation.replace('Login'); }}>
+          <TouchableOpacity onPress={() => {
+            markOnboardingSeen();
+            if (accessToken) {
+              (navigation as any).getParent()?.navigate('WelcomeBack');
+            } else {
+              navigation.replace('Login');
+            }
+          }}>
             <Text style={s.skip}>Skip</Text>
           </TouchableOpacity>
         )}

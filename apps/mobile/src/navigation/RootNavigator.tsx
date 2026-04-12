@@ -12,8 +12,6 @@ import type { RootStackParamList } from './types';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator(): React.ReactElement {
-  const accessToken = useAuthStore((s) => s.accessToken);
-  const mode = useAuthStore((s) => s.mode);
   const isHydrated = useAuthStore((s) => s.isHydrated);
 
   // Show splash while MMKV is hydrating — prevents auth flash
@@ -26,21 +24,14 @@ export function RootNavigator(): React.ReactElement {
     );
   }
 
-  const isAuthenticated = !!accessToken;
-  const isConsumer = isAuthenticated && mode === 'consumer';
-  const isProvider = isAuthenticated && mode === 'provider';
-
   return (
     <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
-      {!isAuthenticated ? (
-        <Stack.Screen name="Auth" component={AuthNavigator} />
-      ) : (
-        <Stack.Group>
-          <Stack.Screen name="WelcomeBack" component={WelcomeBackScreen} />
-          <Stack.Screen name="ConsumerApp" component={ConsumerNavigator} />
-          <Stack.Screen name="ProviderApp" component={ProviderNavigator} />
-        </Stack.Group>
-      )}
+      {/* Auth (Onboarding) always shows first.
+          Onboarding branches: no token → Login, has token → WelcomeBack */}
+      <Stack.Screen name="Auth" component={AuthNavigator} />
+      <Stack.Screen name="WelcomeBack" component={WelcomeBackScreen} />
+      <Stack.Screen name="ConsumerApp" component={ConsumerNavigator} />
+      <Stack.Screen name="ProviderApp" component={ProviderNavigator} />
     </Stack.Navigator>
   );
 }
