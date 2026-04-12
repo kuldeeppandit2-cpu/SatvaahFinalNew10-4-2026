@@ -292,6 +292,13 @@ export function ConversationScreen(): React.ReactElement {
         </View>
       </View>
 
+      {/* Offline banner */}
+      {!connected && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineText}>⚪ Reconnecting… messages will sync when online</Text>
+        </View>
+      )}
+
       {/* Messages — FlashList inverted, estimatedItemSize=72 */}
       <KeyboardAvoidingView
         style={styles.flex}
@@ -349,6 +356,8 @@ export function ConversationScreen(): React.ReactElement {
 
 const styles = StyleSheet.create({
   safeArea:       { flex: 1, backgroundColor: IVORY },
+  offlineBanner:  { backgroundColor: '#FEF3E8', paddingVertical: 6, paddingHorizontal: 12, alignItems: 'center' },
+  offlineText:    { fontSize: 12, color: '#92400E', fontFamily: 'PlusJakartaSans-Regular' },
   flex:           { flex: 1 },
   header:         { flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#EDE7DB', gap: 12 },
   backBtn:        { padding: 4 },

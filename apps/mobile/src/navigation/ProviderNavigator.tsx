@@ -115,7 +115,17 @@ function OnboardingStack(): React.ReactElement {
 // ─── Provider Tab Navigator ───────────────────────────────────────────────────
 export function ProviderNavigator(): React.ReactElement {
   const profile = useProviderStore((s) => s.profile);
-  const pendingLeadsCount = 0; // TODO: wire to leads store when LeadsScreen is built
+  const [pendingLeadsCount, setPendingLeadsCount] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!profile?.listingType) return;
+    // Fire-and-forget fetch of pending leads count for badge
+    import('../api/provider.api').then(({ getLeads }) => {
+      getLeads({ status: 'pending', limit: 1 })
+        .then(res => setPendingLeadsCount(res?.meta?.total ?? 0))
+        .catch(() => {});
+    });
+  }, [profile]);
 
   // Show onboarding if provider hasn't completed profile setup
   const profileComplete = !!profile?.listingType;
