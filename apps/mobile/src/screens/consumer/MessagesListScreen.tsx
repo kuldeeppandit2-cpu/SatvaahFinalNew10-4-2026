@@ -50,6 +50,13 @@ export function MessagesListScreen(): React.ReactElement {
   function onRefresh() { setRefreshing(true); load(); }
 
   function openConversation(event: ContactEvent) {
+    // Call-type contacts have no chat messages — opening ConversationScreen shows
+    // an empty chat which confuses users (audit item 24).
+    // Route call contacts to ProviderProfile instead.
+    if (event.contactType === 'call') {
+      navigation.navigate('ProviderProfile', { providerId: event.providerId });
+      return;
+    }
     navigation.navigate('Conversation', {
       contactEventId: event.id,
       otherPartyName: event.providerDisplayName,
