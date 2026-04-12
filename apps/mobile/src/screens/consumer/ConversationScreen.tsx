@@ -28,6 +28,7 @@ import { FlashList } from '../../__stubs__/flash-list';
 import * as ImagePicker from 'expo-image-picker';
 import { io, type Socket } from 'socket.io-client';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { ENV } from '../../config/env';
 
 import {
   getMessages, sendMessage,
@@ -44,7 +45,9 @@ const IVORY     = '#FAF7F0';
 const WARM_SAND = '#F0E4CC';
 const MUTED     = '#9E9589';
 
-const WS_BASE   = process.env.EXPO_PUBLIC_WS_BASE_URL ?? 'http://localhost:3002';
+// Use canonical ENV.WS_BASE_URL — routes through nginx gateway (fix-17)
+// nginx now has WebSocket upgrade headers (Fix-03), so port 3000 works for WS.
+const WS_BASE = ENV.WS_BASE_URL;
 const MAX_CHARS = 500;
 
 // ─── Typing indicator (staggered 3-dot animation) ─────────────────────────────

@@ -36,6 +36,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { io, Socket } from 'socket.io-client';
+import { ENV } from '../../config/env';
 import {
   type SavedProviderItem,
   computeScoreDelta,
@@ -57,7 +58,8 @@ const GREY = '#6B6560';
 const BORDER = '#E8E0D0';
 
 // User service WebSocket host — should come from env config in production
-const WS_HOST = process.env.EXPO_PUBLIC_USER_SERVICE_WS ?? 'http://localhost:3002';
+// Use canonical ENV.WS_BASE_URL — routes through nginx gateway (fix-17)
+const WS_HOST = ENV.WS_BASE_URL;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
