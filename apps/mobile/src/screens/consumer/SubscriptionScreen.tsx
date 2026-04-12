@@ -18,8 +18,8 @@ import {
  StyleSheet,
  Text,
  TouchableOpacity,
- View,
-} from 'react-native';
+ View,,
+  StatusBar,} from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import '../../__stubs__/get-random-values';
@@ -222,6 +222,7 @@ export default function SubscriptionScreen({
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
     <ScreenHeader title="My Subscription" onBack={() => navigation.goBack()} />
     <ScrollView
       style={{ backgroundColor: IVORY }}

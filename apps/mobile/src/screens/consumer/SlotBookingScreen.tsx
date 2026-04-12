@@ -25,8 +25,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
  View, Text, StyleSheet, TouchableOpacity, FlatList,
- ActivityIndicator, Alert, ScrollView,
-} from 'react-native';
+ ActivityIndicator, Alert, ScrollView,,
+  StatusBar,} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -214,7 +214,8 @@ export function SlotBookingScreen(): React.ReactElement {
   const availableCount  = slots.filter((s) => s.is_available).length;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
       {/* ── Header ── */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{top:10,bottom:10,left:10,right:10}}>

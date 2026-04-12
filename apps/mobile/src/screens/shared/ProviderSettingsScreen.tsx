@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, ActivityIndicator,
+  StatusBar,} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader } from '../../components/ScreenHeader';
@@ -78,6 +79,7 @@ export function ProviderSettingsScreen() {
 
   if (loading) return (
     <SafeAreaView style={s.safe} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
       <ScreenHeader title="Settings" onBack={() => navigation.goBack()} />
       <View style={s.center}><ActivityIndicator color={COLORS.saffron} /></View>
     </SafeAreaView>

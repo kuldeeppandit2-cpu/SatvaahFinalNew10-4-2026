@@ -28,8 +28,8 @@ import {
   Switch,
   Text,
   TouchableOpacity,
-  View,
-} from 'react-native';
+  View,,
+  StatusBar,} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../stores/auth.store';
@@ -469,6 +469,7 @@ export default function AvailabilityScreen() {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Availability</Text>

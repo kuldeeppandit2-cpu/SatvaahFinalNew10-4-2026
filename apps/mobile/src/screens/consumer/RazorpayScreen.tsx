@@ -25,8 +25,8 @@ import {
  StyleSheet,
  Text,
  TouchableOpacity,
- View,
-} from 'react-native';
+ View,,
+  StatusBar,} from 'react-native';
 import RazorpayCheckout from '../../__stubs__/razorpay';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -218,6 +218,7 @@ export default function RazorpayScreen({ route, navigation }: Props) {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
 
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
 

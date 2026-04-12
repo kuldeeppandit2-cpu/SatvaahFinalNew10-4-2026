@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator,
+  StatusBar,} from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { getTrustHistory, trustRingColor } from '../../api/trust.api';
@@ -35,6 +36,7 @@ export function TrustHistoryScreen() {
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
       <ScreenHeader title="Trust History" onBack={() => navigation.goBack()} />
       {loading ? (
         <View style={s.center}><ActivityIndicator color={COLORS.saffron} size="large" /></View>

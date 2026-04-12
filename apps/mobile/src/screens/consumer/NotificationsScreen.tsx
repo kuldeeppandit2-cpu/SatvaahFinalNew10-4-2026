@@ -36,8 +36,8 @@ import {
  Switch,
  Text,
  TouchableOpacity,
- View,
-} from 'react-native';
+ View,,
+  StatusBar,} from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -420,6 +420,7 @@ export default function NotificationsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
 
     <View style={styles.container}>
       {/* Header controls */}

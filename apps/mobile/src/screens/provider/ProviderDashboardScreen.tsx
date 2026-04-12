@@ -24,8 +24,8 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-} from 'react-native';
+  View,,
+  StatusBar,} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, G } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
@@ -382,6 +382,7 @@ export default function ProviderDashboardScreen() {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}

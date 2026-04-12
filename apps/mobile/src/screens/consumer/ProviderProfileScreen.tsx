@@ -27,8 +27,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
  View, Text, ScrollView, StyleSheet, TouchableOpacity,
  Animated, RefreshControl, Alert,
- Modal, TextInput, KeyboardAvoidingView, Platform,
-} from 'react-native';
+ Modal, TextInput, KeyboardAvoidingView, Platform,,
+  StatusBar,} from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -292,6 +292,7 @@ export function ProviderProfileScreen(): React.ReactElement {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
       <ScreenHeader title="Provider Profile" onBack={() => navigation.goBack()} />
       <ScrollView
         style={styles.container}

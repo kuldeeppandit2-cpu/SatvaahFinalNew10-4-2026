@@ -26,8 +26,8 @@ import {
  StyleSheet,
  Text,
  TouchableOpacity,
- View,
-} from 'react-native';
+ View,,
+  StatusBar,} from 'react-native';
 import Svg, { Circle, Text as SvgText } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -304,6 +304,7 @@ export default function ConsumerTrustScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
     <ScreenHeader title="Trust Score" onBack={() => navigation.goBack()} />
     <ScrollView
       style={styles.container}

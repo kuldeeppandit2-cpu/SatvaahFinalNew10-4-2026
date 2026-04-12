@@ -18,8 +18,8 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
  View, Text, StyleSheet, TouchableOpacity,
- ActivityIndicator, Alert,
-} from 'react-native';
+ ActivityIndicator, Alert,,
+  StatusBar,} from 'react-native';
 import BottomSheet, { BottomSheetView, BottomSheetTextInput, BottomSheetBackdrop } from '../../__stubs__/bottom-sheet';
 import type { BottomSheetBackdropProps } from '../../__stubs__/bottom-sheet';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -118,6 +118,7 @@ export function ContactMessageScreen(): React.ReactElement {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
     <ScreenHeader title="Send Message" onBack={() => navigation.goBack()} />
     <BottomSheet
       ref={sheetRef}

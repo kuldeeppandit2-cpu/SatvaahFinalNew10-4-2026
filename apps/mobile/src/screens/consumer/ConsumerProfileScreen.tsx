@@ -29,8 +29,8 @@ import {
  StyleSheet,
  Text,
  TouchableOpacity,
- View,
-} from 'react-native';
+ View,,
+  StatusBar,} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { apiClient } from '../../api/client';
@@ -438,6 +438,7 @@ export default function ConsumerProfileScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.scrollContent}

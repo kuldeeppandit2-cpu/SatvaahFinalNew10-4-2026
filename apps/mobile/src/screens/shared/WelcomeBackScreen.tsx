@@ -15,13 +15,22 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '../../stores/auth.store';
 import { apiClient } from '../../api/client';
 import { COLORS } from '../../constants/colors';
 
 const { width: W } = Dimensions.get('window');
 
+type Nav = NativeStackNavigationProp<{
+  WelcomeBack: undefined;
+  ConsumerApp: undefined;
+  ProviderApp: undefined;
+}>;
+
 export function WelcomeBackScreen(): React.ReactElement {
+  const navigation     = useNavigation<Nav>();
   const setMode        = useAuthStore((s) => s.setMode);
   const displayName    = useAuthStore((s) => s.displayName);
   const setDisplayName = useAuthStore((s) => s.setDisplayName);
@@ -49,6 +58,7 @@ export function WelcomeBackScreen(): React.ReactElement {
     } catch {}
     setMode(mode);
     setLoading(null);
+    navigation.navigate(mode === 'consumer' ? 'ConsumerApp' : 'ProviderApp');
   }
 
   return (
