@@ -11,7 +11,10 @@ import { useRoute } from '@react-navigation/native';
 import type { AuthScreenProps } from '../../navigation/types';
 import { verifyFirebaseToken } from '../../api/auth.api';
 import { useAuthStore } from '../../stores/auth.store';
+import { useLocationStore } from '../../stores/location.store';
+import { apiClient } from '../../api/client';
 import { COLORS } from '../../constants/colors';
+import * as Location from 'expo-location';
 
 type ModeRouteProps = AuthScreenProps<'ModeSelection'>['route'];
 const { height: H } = Dimensions.get('window');
@@ -34,9 +37,38 @@ export function ModeSelectionScreen(): React.ReactElement {
   const { firebaseIdToken, phone } = route.params;
   const [selected, setSelected] = useState<'consumer' | 'provider' | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const setTokens = useAuthStore((s) => s.setTokens);
-  const setUser   = useAuthStore((s) => s.setUser);
-  const setMode   = useAuthStore((s) => s.setMode);
+  const setTokens      = useAuthStore((s) => s.setTokens);
+  const setUser        = useAuthStore((s) => s.setUser);
+  const setMode        = useAuthStore((s) => s.setMode);
+  const setLocation    = useLocationStore((s) => s.setLocation);
+
+  /**
+   * Silent GPS capture — consumer mode only.
+   * Fire-and-forget: never blocks UI, never throws to caller.
+   * 1. Request foreground permission (already granted in most cases after login)
+   * 2. Get current position (Balanced accuracy, 8s timeout)
+   * 3. Populate useLocationStore (used by all search screens)
+   * 4. PATCH /api/v1/consumers/me/location (persists to consumer_profiles)
+   */
+  function captureGpsSilently(): void {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+          timeInterval: 8000,
+        } as any);
+        const { latitude: lat, longitude: lng } = loc.coords;
+        // Populate store — all search screens read from here
+        setLocation({ lat, lng });
+        // Persist to backend — fire-and-forget
+        apiClient.patch('/api/v1/consumers/me/location', { lat, lng }).catch(() => {});
+      } catch {
+        // GPS denied or unavailable — store retains Hyderabad default, silently skip
+      }
+    })();
+  }
 
   async function handleSelect(mode: 'consumer' | 'provider') {
     if (isLoading) return;
@@ -49,6 +81,10 @@ export function ModeSelectionScreen(): React.ReactElement {
       setTokens(result.access_token, result.refresh_token);
       setUser(result.userId, phone);
       setMode(mode);
+      // Capture GPS after successful auth — consumer only
+      if (mode === 'consumer') {
+        captureGpsSilently();
+      }
     } catch (error: unknown) {
       const code = (error as any)?.response?.data?.error?.code;
       Alert.alert(
