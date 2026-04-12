@@ -24,6 +24,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp, RouteProp } from '@react-navigation/native-stack';
 
@@ -224,7 +225,7 @@ function renderHeader(icon: string, title: string, onBack: () => void): React.Re
         onPress={onBack}
         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
       >
-        <Text style={styles.backArrow}>←</Text>
+        <Ionicons name="chevron-back" size={24} color="#1C1C2E" />
       </TouchableOpacity>
       <Text style={styles.headerIcon}>{icon}</Text>
       <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>

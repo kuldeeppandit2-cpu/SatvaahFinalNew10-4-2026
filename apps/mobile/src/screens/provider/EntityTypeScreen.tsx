@@ -26,6 +26,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ProviderOnboardingParamList } from '../../navigation/provider.navigator';
 import { useProviderStore, type EntityClass } from '../../stores/provider.store';
 import type { ListingType } from '../../api/provider.api';
+import { ScreenHeader } from '../../components/ScreenHeader';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -111,12 +112,7 @@ export default function EntityTypeScreen({
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <TouchableOpacity
-        onPress={() => navigation.goBack()}
-        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 }}
-      >
-        <Text style={{ fontSize: 16, color: '#C8691A', fontFamily: 'PlusJakartaSans-SemiBold' }}>← Back</Text>
-      </TouchableOpacity>
+      <ScreenHeader title="Provider Type" onBack={() => navigation.goBack()} />
       <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
       <ScrollView
         contentContainerStyle={styles.container}

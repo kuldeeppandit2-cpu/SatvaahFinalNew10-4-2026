@@ -13,6 +13,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import auth from '../../__stubs__/firebase-auth';
 import type { AuthStackParamList } from '../../navigation/types';
 import type { AuthScreenProps } from '../../navigation/types';
+import { ScreenHeader } from '../../components/ScreenHeader';
 
 type OtpNav = NativeStackNavigationProp<AuthStackParamList, 'Otp'>;
 type OtpRouteProps = AuthScreenProps<'Otp'>['route'];
@@ -83,10 +84,8 @@ export function OtpScreen(): React.ReactElement {
     <KeyboardAvoidingView style={s.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
 
+      <ScreenHeader title="Verify Phone" onBack={() => navigation.goBack()} />
       <View style={s.header}>
-        <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={s.backText}>← Back</Text>
-        </TouchableOpacity>
         <View style={s.brandRow}>
           <Text style={s.brandInk}>Satv</Text>
           <View style={s.brandAA}><Text style={s.brandAAText}>AA</Text></View>

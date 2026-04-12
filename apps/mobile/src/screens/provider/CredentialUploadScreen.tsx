@@ -471,18 +471,15 @@ export const CredentialUploadScreen: React.FC = () => {
       {/* Nav */}
       <View style={styles.navBar}>
         <TouchableOpacity
-          onPress={() =>
-            uploadState === 'uploading' ? null : navigation.goBack()
-          }
+          onPress={() => uploadState !== 'uploading' && navigation.goBack()}
+          disabled={uploadState === 'uploading'}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Text
-            style={[
-              styles.navBack,
-              uploadState === 'uploading' && { color: '#CCCCDD' },
-            ]}
-          >
-            ←
-          </Text>
+          <Ionicons
+            name="chevron-back"
+            size={24}
+            color={uploadState === 'uploading' ? '#CCCCDD' : '#1C1C2E'}
+          />
         </TouchableOpacity>
         <Text style={styles.navTitle}>Upload Credential</Text>
         <View style={{ width: 40 }} />

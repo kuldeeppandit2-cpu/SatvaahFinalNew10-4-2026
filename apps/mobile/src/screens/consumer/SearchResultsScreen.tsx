@@ -48,6 +48,7 @@ import {
 } from '../../api/search.api';
 import { useLocationStore } from '../../stores/location.store';
 import { ENV } from '../../config/env';
+import { Ionicons } from '@expo/vector-icons';
 
 // ─── Navigation ────────────────────────────────────────────────────────────────
 
@@ -520,8 +521,8 @@ const SearchResultsScreen: React.FC = () => {
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.backIcon}>←</Text>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} hitSlop={{ top:10,bottom:10,left:10,right:10 }}>
+          <Ionicons name="chevron-back" size={24} color="#1C1C2E" />
         </TouchableOpacity>
         <View style={styles.headerInfo}>
           <Text style={styles.headerQuery} numberOfLines={1}>{query}</Text>
