@@ -1,11 +1,10 @@
 /**
  * SatvAAh — Root App Component
- * Simplified for Expo Go compatibility
  */
 
 import React, { useEffect, useState } from 'react';
+import { View, Text } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { linking } from './src/navigation/linking';
@@ -15,7 +14,6 @@ import { preloadAllMmkvStores } from './src/__stubs__/mmkv';
 import { useLocationStore } from './src/stores/location.store';
 import * as Location from 'expo-location';
 
-// Stubs for native-only modules
 const messaging: any = () => ({
   requestPermission: async () => 1,
   getToken: async () => null,
@@ -35,31 +33,34 @@ export default function App(): React.ReactElement {
       try { await preloadAllMmkvStores(); } catch {}
       try { await useLocationStore.getState().preload(); } catch {}
       try { await hydrateAuth(); } catch {}
-      try { hydrateConsumer(); } catch {}
+      try { await hydrateConsumer(); } catch {}
+      setReady(true);
     }
-    // Always show app after 2s max, regardless of what happens
-    const t = setTimeout(() => setReady(true), 2000);
-    init().then(() => { clearTimeout(t); setReady(true); }).catch(() => setReady(true));
+    const t = setTimeout(() => setReady(true), 3000);
+    init().finally(() => { clearTimeout(t); setReady(true); });
     return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
-    Location.requestForegroundPermissionsAsync().then(({ status }) => {
-      if (status !== 'granted') return;
-      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
-        .then(loc => setLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude }))
-        .catch(() => {});
-    }).catch(() => {});
+    Location.requestForegroundPermissionsAsync()
+      .then(({ status }) => {
+        if (status !== 'granted') return;
+        return Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      })
+      .then(loc => { if (loc) setLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude }); })
+      .catch(() => {});
   }, []);
 
-  // Show blank ivory screen while loading (max 2s)
   if (!ready) {
-    return <View style={{ flex: 1, backgroundColor: '#FAF7F0' }} />;
+    return <View style={{ flex: 1, backgroundColor: '#C8691A', alignItems: 'center', justifyContent: 'center' }}>
+      <Text style={{ fontFamily: 'System', fontSize: 48, fontWeight: '800', color: '#FAF7F0', letterSpacing: -1 }}>SatvAAh</Text>
+      <Text style={{ fontFamily: 'System', fontSize: 16, fontStyle: 'italic', color: '#FAF7F0', marginTop: 8, opacity: 0.9 }}>Truth that travels.</Text>
+    </View>;
   }
 
   return (
     <>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
       <NavigationContainer linking={linking}>
         <RootNavigator />
       </NavigationContainer>
