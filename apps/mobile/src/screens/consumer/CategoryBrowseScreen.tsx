@@ -35,7 +35,6 @@ import {
   type L3Group,
   type L4Leaf,
 } from '../../api/search.api';
-import { useLocation } from '../../hooks/useLocation';
 
 // ─── Local navigation types ───────────────────────────────────────────────────
 type LocalStack = {
@@ -104,7 +103,6 @@ export function CategoryBrowseScreen(): React.ReactElement {
   const navigation = useNavigation<Nav>();
   const route      = useRoute<Route>();
   const { tab, level, l1, l2, title, icon, color, l4Leaves } = route.params;
-  const location   = useLocation();
 
   const [l2Groups, setL2Groups] = useState<L2Group[]>([]);
   const [l3Groups, setL3Groups] = useState<L3Group[]>([]);
