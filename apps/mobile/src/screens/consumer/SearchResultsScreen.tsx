@@ -1,23 +1,16 @@
-import { useLocation } from "../../hooks/useLocation";
 /**
  * apps/mobile/src/screens/consumer/SearchResultsScreen.tsx
  * SatvAAh Phase 18 — Search Results
  *
- * Spec requirements:
- *   • Ring narration banner: Saffron bg (#C8691A), Ivory text (#FAF7F0)
- *     — shown when ring expanded beyond 3km
- *   • ProviderCard with trust ring (colour = tier)
- *   • FlashList (NOT FlatList) — performance
- *   • Real-time availability via WebSocket /availability namespace
- *     — public, no auth, joins room city:{city_id}
- *     — REST catchup on reconnect (exponential backoff 1s→30s)
- *   • Sort by trust_score DESC default
- *   • Pagination: 10 per page, infinite scroll
- *
- * WebSocket /availability:
- *   Server: user service port 3002
- *   Room:   city:{city_id}
- *   Event:  availability_updated → { provider_id, is_available, updated_at }
+ * Spec:
+ *   • Taxonomy params forwarded to backend (items 2, 5, 6 from audit)
+ *   • ring_km lock on pagination (item 5)
+ *   • Verified-first display sort: isClaimed=true group before scraped (item 8)
+ *   • Verified/Unverified badge on card (item 9)
+ *   • Customers served count on card (item 10)
+ *   • Near X · Change location chip in header (item 11)
+ *   • Narration banner: ring expansion + taxonomy fallback (item 21)
+ *   • FlashList, WebSocket /availability, REST catchup
  */
 
 import React, {
@@ -53,7 +46,6 @@ import {
   type ProviderCardData,
   type SearchMeta,
 } from '../../api/search.api';
-import { useAuthStore } from '../../stores/auth.store';
 import { useLocationStore } from '../../stores/location.store';
 import { ENV } from '../../config/env';
 
@@ -72,29 +64,29 @@ type FilterParams = {
 type ConsumerStackParamList = {
   SearchResults: {
     query: string;
-    taxonomyNodeId: string;
+    taxonomyNodeId?: string;
+    taxonomyL4?: string;
+    taxonomyL3?: string;
+    taxonomyL2?: string;
+    taxonomyL1?: string;
     tab: Tab;
+    locationName?: string;
     filters?: FilterParams;
   };
-  SearchFilter: {
-    filters: FilterParams;
-    tab: Tab;
-  };
+  SearchFilter: { filters: FilterParams; tab: Tab };
   ProviderProfile: { providerId: string };
 };
 
-type Nav  = NativeStackNavigationProp<ConsumerStackParamList>;
+type Nav   = NativeStackNavigationProp<ConsumerStackParamList>;
 type Route = RouteProp<ConsumerStackParamList, 'SearchResults'>;
 
 // ─── Sort Options ──────────────────────────────────────────────────────────────
 
 const SORT_OPTIONS: { key: SortOrder; label: string }[] = [
   { key: 'trust_score', label: 'Most Trusted' },
-  { key: 'distance',    label: 'Nearest'       },
-  { key: 'rating',      label: 'Top Rated'     },
+  { key: 'distance',    label: 'Nearest'      },
+  { key: 'rating',      label: 'Top Rated'    },
 ];
-
-// city_id resolved from search results (first hit's cityId) — see cityIdRef below
 
 // ─── Provider Card ─────────────────────────────────────────────────────────────
 
@@ -104,7 +96,7 @@ interface ProviderCardProps {
 }
 
 const ProviderCard: React.FC<ProviderCardProps> = React.memo(({ item, onPress }) => {
-  const ringColor = trustRingColor(item.trustTier);
+  const ringColor = item.isScrapeRecord ? '#9B8E7C' : trustRingColor(item.trustTier);
   const tierLabel = trustTierLabel(item.trustTier);
 
   return (
@@ -114,7 +106,7 @@ const ProviderCard: React.FC<ProviderCardProps> = React.memo(({ item, onPress })
       accessibilityRole="button"
       accessibilityLabel={`${item.displayName}, ${item.taxonomy_name}, trust score ${item.trustScore}`}
     >
-      {/* Avatar with trust ring */}
+      {/* Avatar with trust ring — grey ring for scraped providers */}
       <View style={[styles.avatarRing, { borderColor: ringColor }]}>
         {item.profile_photo_url ? (
           <Image source={{ uri: item.profile_photo_url }} style={styles.avatar} />
@@ -131,14 +123,28 @@ const ProviderCard: React.FC<ProviderCardProps> = React.memo(({ item, onPress })
       <View style={styles.cardInfo}>
         <View style={styles.cardNameRow}>
           <Text style={styles.cardName} numberOfLines={1}>{item.displayName}</Text>
-          {item.certificate_id && (
-            <View style={styles.certBadge}>
-              <Text style={styles.certBadgeText}>✓</Text>
+
+          {/* Verified / Unverified badge */}
+          {item.isScrapeRecord ? (
+            <View style={styles.unverifiedBadge}>
+              <Text style={styles.unverifiedBadgeText}>Unverified</Text>
+            </View>
+          ) : (
+            <View style={styles.verifiedBadge}>
+              <Text style={styles.verifiedBadgeText}>✓ Verified</Text>
             </View>
           )}
         </View>
+
         <Text style={styles.cardCategory} numberOfLines={1}>{item.taxonomy_name}</Text>
         <Text style={styles.cardArea} numberOfLines={1}>{item.areaName}</Text>
+
+        {/* Customers served count — only show if > 0 */}
+        {item.rating_count > 0 && (
+          <Text style={styles.cardServedCount}>
+            {item.rating_count} customer{item.rating_count !== 1 ? 's' : ''} served
+          </Text>
+        )}
 
         {/* Availability + home visit row */}
         <View style={styles.cardTagRow}>
@@ -176,7 +182,9 @@ const ProviderCard: React.FC<ProviderCardProps> = React.memo(({ item, onPress })
         {item.rating_avg != null && (
           <Text style={styles.ratingText}>★ {item.rating_avg.toFixed(1)}</Text>
         )}
-        {item.distance_km != null && <Text style={styles.distanceText}>{item.distance_km?.toFixed(1) ?? '0.0'} km</Text>}
+        {item.distance_km != null && (
+          <Text style={styles.distanceText}>{item.distance_km.toFixed(1)} km</Text>
+        )}
       </View>
     </Pressable>
   );
@@ -187,8 +195,21 @@ const ProviderCard: React.FC<ProviderCardProps> = React.memo(({ item, onPress })
 const SearchResultsScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const route      = useRoute<Route>();
-  const { query, taxonomyNodeId, tab, filters: routeFilters } = route.params;
-  const location = useLocation();
+  const {
+    query,
+    taxonomyNodeId,
+    taxonomyL4,
+    taxonomyL3,
+    taxonomyL2,
+    taxonomyL1,
+    tab,
+    locationName: routeLocationName,
+    filters: routeFilters,
+  } = route.params;
+
+  // Read GPS from locationStore (populated at login by ModeSelectionScreen — Step 8)
+  const { lat, lng } = useLocationStore();
+  const locationName = routeLocationName ?? 'your location';
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [results, setResults]           = useState<ProviderCardData[]>([]);
@@ -203,43 +224,70 @@ const SearchResultsScreen: React.FC = () => {
   const [filters, setFilters]           = useState<FilterParams>(
     routeFilters ?? { sort: 'trust_score' },
   );
-  // Track availability changes: provider_id → is_available
   const [availMap, setAvailMap]         = useState<Record<string, boolean>>({});
   const wsConnected                     = useRef(false);
   const socketRef                       = useRef<Socket | null>(null);
   const lastAvailTs                     = useRef(new Date().toISOString());
-  // city_id for /availability WS room — resolved from first search result
   const cityIdRef                       = useRef<string>('');
+  // Lock ring_km after page 1 so pagination stays within the found ring
+  const lockedRingKm                    = useRef<number | undefined>(undefined);
 
   // ── Fetch results ──────────────────────────────────────────────────────────
 
   const fetchResults = useCallback(
-    async (pageNum: number, isRefresh = false) => {
-      if (pageNum === 1) setLoading(true);
-      else setLoadingMore(true);
+    async (pageNum: number) => {
+      if (pageNum === 1) {
+        setLoading(true);
+        lockedRingKm.current = undefined; // reset ring lock on fresh search
+      } else {
+        setLoadingMore(true);
+      }
       setError(null);
       try {
         const res = await searchProviders({
           q: query,
           tab,
-          lat: location.lat,
-          lng: location.lng,
+          lat,
+          lng,
           page: pageNum,
+          // Lock ring_km for pages > 1 so we stay in the same ring
+          ring_km: pageNum > 1 ? lockedRingKm.current : undefined,
           sort,
           ...filters,
+          // Taxonomy anchor — ensures backend uses the selected L4 node
+          taxonomy_node_id: taxonomyNodeId,
+          taxonomy_l4:      taxonomyL4,
+          taxonomy_l3:      taxonomyL3,
+          taxonomy_l2:      taxonomyL2,
+          taxonomy_l1:      taxonomyL1,
         });
+
+        // Lock ring for subsequent pages
+        if (pageNum === 1) {
+          lockedRingKm.current = res.meta.ring_km;
+        }
+
         setMeta(res.meta);
         setResults((prev) =>
           pageNum === 1 ? res.data : [...prev, ...res.data],
         );
-      } catch (e: any) {
+
+        // Capture city_id for WS room join — use first result's cityId
+        if (pageNum === 1 && res.data.length > 0 && !cityIdRef.current) {
+          const cityId = res.data[0].cityId;
+          if (cityId) {
+            cityIdRef.current = cityId;
+            socketRef.current?.emit('join_city', cityId);
+          }
+        }
+      } catch {
         setError('Could not load results. Pull down to retry.');
       } finally {
         setLoading(false);
         setLoadingMore(false);
       }
     },
-    [query, tab, sort, filters, location],
+    [query, tab, lat, lng, sort, filters, taxonomyNodeId, taxonomyL4, taxonomyL3, taxonomyL2, taxonomyL1],
   );
 
   useEffect(() => {
@@ -249,9 +297,6 @@ const SearchResultsScreen: React.FC = () => {
   }, [query, tab, sort, filters]);
 
   // ── WebSocket /availability ────────────────────────────────────────────────
-  // Namespace: /availability — PUBLIC, no auth
-  // Room: city:{city_id}
-  // Reconnection: exponential backoff 1s→30s, infinite retries
 
   useEffect(() => {
     const socket = io(`${ENV.WS_BASE_URL}/availability`, {
@@ -261,19 +306,16 @@ const SearchResultsScreen: React.FC = () => {
       reconnectionDelay: 1000,
       reconnectionDelayMax: 30000,
       randomizationFactor: 0.3,
-      auth: {}, // Public namespace — no auth
+      auth: {},
     });
 
     socketRef.current = socket;
 
     socket.on('connect', () => {
       wsConnected.current = true;
-      // join_city expects a UUID string — only join if we have a valid cityId
       if (cityIdRef.current) {
         socket.emit('join_city', cityIdRef.current);
       }
-
-      // REST catchup — apply any changes missed during disconnect
       const since = lastAvailTs.current;
       getAvailabilityChanges(since)
         .then((changes) => {
@@ -285,9 +327,7 @@ const SearchResultsScreen: React.FC = () => {
             lastAvailTs.current = changes[changes.length - 1].updatedAt;
           }
         })
-        .catch(() => {
-          // Non-critical catchup failure — silently ignore
-        });
+        .catch(() => {});
     });
 
     socket.on('availability_updated', (payload: {
@@ -303,9 +343,7 @@ const SearchResultsScreen: React.FC = () => {
       lastAvailTs.current = payload.updatedAt;
     });
 
-    socket.on('disconnect', () => {
-      wsConnected.current = false;
-    });
+    socket.on('disconnect', () => { wsConnected.current = false; });
 
     return () => {
       socket.disconnect();
@@ -313,8 +351,8 @@ const SearchResultsScreen: React.FC = () => {
     };
   }, []);
 
-  // ── Filter screen result listener ─────────────────────────────────────────
-  // SearchFilterScreen navigates back with new filters via route.params
+  // ── Filter screen result listener ──────────────────────────────────────────
+
   useEffect(() => {
     if (routeFilters) {
       setFilters(routeFilters);
@@ -322,28 +360,34 @@ const SearchResultsScreen: React.FC = () => {
     }
   }, [routeFilters]);
 
-  // ── Merge availability overrides into result list ─────────────────────────
-  const displayResults = useMemo(
-    () =>
-      results.map((p) =>
-        availMap[p.id] !== undefined
-          ? { ...p, is_available: availMap[p.id] }
-          : p,
-      ),
-    [results, availMap],
-  );
+  // ── Merge availability + verified-first sort ───────────────────────────────
+  // Backend already sorts verified-first, but after availability overlay we
+  // preserve the verified group at top: claimed providers before scraped ones.
 
-  // ── Pagination ────────────────────────────────────────────────────────────
+  const displayResults = useMemo(() => {
+    const merged = results.map((p) =>
+      availMap[p.id] !== undefined
+        ? { ...p, is_available: availMap[p.id] }
+        : p,
+    );
+    // Stable verified-first: claimed group on top, scraped group below
+    // Within each group preserve backend order (trust_score DESC, distance ASC)
+    const verified  = merged.filter((p) => !p.isScrapeRecord);
+    const unverified = merged.filter((p) => p.isScrapeRecord);
+    return [...verified, ...unverified];
+  }, [results, availMap]);
+
+  // ── Pagination — uses has_more (fixed from meta.pages) ────────────────────
 
   const onEndReached = useCallback(() => {
     if (!meta || loadingMore || loading) return;
-    if (page >= meta.pages) return;
+    if (!meta.has_more) return;
     const next = page + 1;
     setPage(next);
     fetchResults(next);
   }, [meta, page, loadingMore, loading, fetchResults]);
 
-  // ── Render helpers ────────────────────────────────────────────────────────
+  // ── Render helpers ─────────────────────────────────────────────────────────
 
   const renderItem = useCallback(
     ({ item }: { item: ProviderCardData }) => (
@@ -359,28 +403,21 @@ const SearchResultsScreen: React.FC = () => {
 
   const ListFooter = useMemo(() => {
     if (loadingMore) {
-      return (
-        <ActivityIndicator
-          color="#C8691A"
-          style={{ marginVertical: 16 }}
-        />
-      );
+      return <ActivityIndicator color="#C8691A" style={{ marginVertical: 16 }} />;
     }
-    if (meta && page >= meta.pages && results.length > 0) {
+    if (meta && !meta.has_more && results.length > 0) {
       return (
-        <Text style={styles.endText}>
-          All {meta.total} results shown
-        </Text>
+        <Text style={styles.endText}>All {meta.total} results shown</Text>
       );
     }
     return null;
-  }, [loadingMore, meta, page, results.length]);
+  }, [loadingMore, meta, results.length]);
 
   const openFilters = useCallback(() => {
     navigation.navigate('SearchFilter', { filters, tab });
   }, [navigation, filters, tab]);
 
-  // ── Sort bar ──────────────────────────────────────────────────────────────
+  // ── Sort bar ───────────────────────────────────────────────────────────────
 
   const SortBar = (
     <View style={styles.sortBar}>
@@ -402,16 +439,20 @@ const SearchResultsScreen: React.FC = () => {
     </View>
   );
 
-  // ── Narration banner ──────────────────────────────────────────────────────
+  // ── Narration banner — show for ring expansion OR taxonomy fallback ─────────
 
-  const NarrationBanner =
-    meta?.narration && meta.ring_km > 3 ? (
-      <View style={styles.narrationBanner}>
-        <Text style={styles.narrationText}>{meta.narration}</Text>
-      </View>
-    ) : null;
+  const showNarration = !!meta?.narration && (
+    (meta.ring_km > 3) ||
+    (meta.taxonomy_level_used && meta.taxonomy_level_used !== 'l4')
+  );
 
-  // ── Main render ───────────────────────────────────────────────────────────
+  const NarrationBanner = showNarration ? (
+    <View style={styles.narrationBanner}>
+      <Text style={styles.narrationText}>{meta!.narration}</Text>
+    </View>
+  ) : null;
+
+  // ── Main render ────────────────────────────────────────────────────────────
 
   if (loading && results.length === 0) {
     return (
@@ -430,10 +471,7 @@ const SearchResultsScreen: React.FC = () => {
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <View style={styles.headerInfo}>
@@ -444,9 +482,20 @@ const SearchResultsScreen: React.FC = () => {
             </Text>
           )}
         </View>
+        {/* Near X · Change location chip (item 11) */}
+        <TouchableOpacity
+          style={styles.locationChip}
+          onPress={() => navigation.goBack()}
+          accessibilityLabel="Change search location"
+        >
+          <Text style={styles.locationChipText} numberOfLines={1}>
+            📍 {locationName}
+          </Text>
+          <Text style={styles.locationChipChange}> · Change</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* ── Ring narration banner — Saffron bg, Ivory text ── */}
+      {/* ── Ring / taxonomy narration banner ── */}
       {NarrationBanner}
 
       {/* ── Sort / filter bar ── */}
@@ -467,7 +516,7 @@ const SearchResultsScreen: React.FC = () => {
         data={displayResults}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        estimatedItemSize={100}
+        estimatedItemSize={120}
         onEndReached={onEndReached}
         onEndReachedThreshold={0.3}
         ListFooterComponent={ListFooter}
@@ -480,7 +529,7 @@ const SearchResultsScreen: React.FC = () => {
               <Text style={styles.emptyIcon}>🔍</Text>
               <Text style={styles.emptyTitle}>No providers found yet</Text>
               <Text style={styles.emptyBody}>
-                We searched up to 150km around you. No providers are registered in this category yet.
+                We searched up to 1000km around you. No providers are registered in this category yet.
               </Text>
               <Text style={styles.emptyBody}>
                 We'll notify you as soon as a provider registers nearby.
@@ -496,15 +545,8 @@ const SearchResultsScreen: React.FC = () => {
 // ─── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: '#FAF7F0',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  safe: { flex: 1, backgroundColor: '#FAF7F0' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: {
     marginTop: 12,
     fontSize: 14,
@@ -536,21 +578,43 @@ const styles = StyleSheet.create({
     color: '#1C1C2E',
     marginTop: 2,
   },
+  // Near X · Change chip (item 11)
+  locationChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: '#F0E8D8',
+    marginLeft: 8,
+    maxWidth: 140,
+  },
+  locationChipText: {
+    fontSize: 11,
+    fontFamily: 'PlusJakartaSans-Medium',
+    color: '#1C1C2E',
+    flexShrink: 1,
+  },
+  locationChipChange: {
+    fontSize: 11,
+    fontFamily: 'PlusJakartaSans-SemiBold',
+    color: '#C8691A',
+  },
 
   // Narration banner — Saffron bg, Ivory text
   narrationBanner: {
-    backgroundColor: '#C8691A',  // Saffron
+    backgroundColor: '#C8691A',
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
   narrationText: {
-    color: '#FAF7F0',             // Ivory
+    color: '#FAF7F0',
     fontSize: 13,
     fontFamily: 'PlusJakartaSans-Medium',
     lineHeight: 18,
   },
 
-  // Sort + filter bar
+  // Sort bar
   sortBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -569,32 +633,13 @@ const styles = StyleSheet.create({
     borderColor: '#E8E0D0',
     backgroundColor: '#FAF7F0',
   },
-  sortChipActive: {
-    borderColor: '#C8691A',
-    backgroundColor: '#FFF5EC',
-  },
-  sortLabel: {
-    fontSize: 12,
-    fontFamily: 'PlusJakartaSans-Medium',
-    color: '#1C1C2E',
-  },
-  sortLabelActive: {
-    color: '#C8691A',
-    fontFamily: 'PlusJakartaSans-SemiBold',
-  },
-  filterBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 16,
-    backgroundColor: '#1C1C2E',
-  },
-  filterBtnText: {
-    fontSize: 12,
-    fontFamily: 'PlusJakartaSans-SemiBold',
-    color: '#FAF7F0',
-  },
+  sortChipActive: { borderColor: '#C8691A', backgroundColor: '#FFF5EC' },
+  sortLabel: { fontSize: 12, fontFamily: 'PlusJakartaSans-Medium', color: '#1C1C2E' },
+  sortLabelActive: { color: '#C8691A', fontFamily: 'PlusJakartaSans-SemiBold' },
+  filterBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, backgroundColor: '#1C1C2E' },
+  filterBtnText: { fontSize: 12, fontFamily: 'PlusJakartaSans-SemiBold', color: '#FAF7F0' },
 
-  // Error banner
+  // Error
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -603,33 +648,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  errorText: {
-    flex: 1,
-    fontSize: 13,
-    fontFamily: 'PlusJakartaSans-Regular',
-    color: '#C4502A',
-  },
-  retryText: {
-    fontSize: 13,
-    fontFamily: 'PlusJakartaSans-SemiBold',
-    color: '#C8691A',
-    marginLeft: 8,
-  },
+  errorText: { flex: 1, fontSize: 13, fontFamily: 'PlusJakartaSans-Regular', color: '#C4502A' },
+  retryText: { fontSize: 13, fontFamily: 'PlusJakartaSans-SemiBold', color: '#C8691A', marginLeft: 8 },
 
   // List
   listContent: { paddingBottom: 100 },
-  separator: {
-    height: 1,
-    backgroundColor: '#EDE6D8',
-    marginLeft: 80,
-  },
-  endText: {
-    textAlign: 'center',
-    fontSize: 12,
-    fontFamily: 'PlusJakartaSans-Regular',
-    color: '#9B8E7C',
-    padding: 16,
-  },
+  separator: { height: 1, backgroundColor: '#EDE6D8', marginLeft: 80 },
+  endText: { textAlign: 'center', fontSize: 12, fontFamily: 'PlusJakartaSans-Regular', color: '#9B8E7C', padding: 16 },
 
   // Provider Card
   card: {
@@ -649,9 +674,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  cardPressed: {
-    backgroundColor: '#F5EFE4',
-  },
+  cardPressed: { backgroundColor: '#F5EFE4' },
   avatarRing: {
     width: 56,
     height: 56,
@@ -663,55 +686,53 @@ const styles = StyleSheet.create({
     marginRight: 12,
     flexShrink: 0,
   },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-  },
+  avatar: { width: 48, height: 48, borderRadius: 24 },
   avatarFallback: {
     backgroundColor: '#E8E0D0',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarInitial: {
-    fontSize: 18,
-    fontFamily: 'PlusJakartaSans-SemiBold',
-    color: '#1C1C2E',
-  },
+  avatarInitial: { fontSize: 18, fontFamily: 'PlusJakartaSans-SemiBold', color: '#1C1C2E' },
   cardInfo: { flex: 1, marginRight: 8 },
-  cardNameRow: { flexDirection: 'row', alignItems: 'center' },
-  cardName: {
-    flex: 1,
-    fontSize: 16,
-    fontFamily: 'PlusJakartaSans-Bold',
-    color: '#1C1C2E',
+  cardNameRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
+  cardName: { fontSize: 15, fontFamily: 'PlusJakartaSans-Bold', color: '#1C1C2E', flexShrink: 1 },
+
+  // Verified badge (item 9)
+  verifiedBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: '#E6F4F2',
   },
-  certBadge: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#2E7D72',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 4,
-  },
-  certBadgeText: {
+  verifiedBadgeText: {
     fontSize: 10,
-    color: '#FAF7F0',
-    fontFamily: 'PlusJakartaSans-Bold',
-  },
-  cardCategory: {
-    fontSize: 13,
     fontFamily: 'PlusJakartaSans-SemiBold',
-    color: '#C8691A',
-    marginTop: 3,
+    color: '#2E7D72',
   },
-  cardArea: {
-    fontSize: 12,
-    fontFamily: 'PlusJakartaSans-Medium',
-    color: '#1C1C2E',
+  // Unverified badge (item 9)
+  unverifiedBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: '#F4F0E8',
+  },
+  unverifiedBadgeText: {
+    fontSize: 10,
+    fontFamily: 'PlusJakartaSans-SemiBold',
+    color: '#9B8E7C',
+  },
+
+  cardCategory: { fontSize: 13, fontFamily: 'PlusJakartaSans-SemiBold', color: '#C8691A', marginTop: 3 },
+  cardArea: { fontSize: 12, fontFamily: 'PlusJakartaSans-Medium', color: '#1C1C2E', marginTop: 2 },
+
+  // Customers served (item 10)
+  cardServedCount: {
+    fontSize: 11,
+    fontFamily: 'PlusJakartaSans-Regular',
+    color: '#6B6560',
     marginTop: 2,
   },
+
   cardTagRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -726,34 +747,13 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 8,
   },
-  availDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 4,
-  },
-  availText: {
-    fontSize: 11,
-    fontFamily: 'PlusJakartaSans-SemiBold',
-  },
-  homeVisitTag: {
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 8,
-    backgroundColor: '#F0E4CC',
-  },
-  homeVisitText: {
-    fontSize: 11,
-    fontFamily: 'PlusJakartaSans-Medium',
-    color: '#C8691A',
-  },
+  availDot: { width: 6, height: 6, borderRadius: 3, marginRight: 4 },
+  availText: { fontSize: 11, fontFamily: 'PlusJakartaSans-SemiBold' },
+  homeVisitTag: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, backgroundColor: '#F0E4CC' },
+  homeVisitText: { fontSize: 11, fontFamily: 'PlusJakartaSans-Medium', color: '#C8691A' },
 
-  // Trust score badge (right side)
-  cardRight: {
-    alignItems: 'center',
-    flexShrink: 0,
-    width: 56,
-  },
+  // Trust score badge
+  cardRight: { alignItems: 'center', flexShrink: 0, width: 56 },
   scoreBadge: {
     width: 48,
     height: 48,
@@ -763,52 +763,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FAF7F0',
   },
-  scoreText: {
-    fontSize: 15,
-    fontFamily: 'PlusJakartaSans-Bold',
-    lineHeight: 16,
-  },
-  scoreTierLabel: {
-    fontSize: 8,
-    fontFamily: 'PlusJakartaSans-Medium',
-    letterSpacing: -0.2,
-  },
-  ratingText: {
-    marginTop: 4,
-    fontSize: 11,
-    fontFamily: 'PlusJakartaSans-Medium',
-    color: '#D97706',
-  },
-  distanceText: {
-    marginTop: 2,
-    fontSize: 11,
-    fontFamily: 'PlusJakartaSans-Regular',
-    color: '#9B8E7C',
-  },
+  scoreText: { fontSize: 15, fontFamily: 'PlusJakartaSans-Bold', lineHeight: 16 },
+  scoreTierLabel: { fontSize: 8, fontFamily: 'PlusJakartaSans-Medium', letterSpacing: -0.2 },
+  ratingText: { marginTop: 4, fontSize: 11, fontFamily: 'PlusJakartaSans-Medium', color: '#D97706' },
+  distanceText: { marginTop: 2, fontSize: 11, fontFamily: 'PlusJakartaSans-Regular', color: '#9B8E7C' },
 
   // Empty state
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-    paddingTop: 80,
-  },
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, paddingTop: 80 },
   emptyIcon: { fontSize: 40, marginBottom: 12 },
-  emptyTitle: {
-    fontSize: 16,
-    fontFamily: 'PlusJakartaSans-SemiBold',
-    color: '#1C1C2E',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  emptyBody: {
-    fontSize: 13,
-    fontFamily: 'PlusJakartaSans-Regular',
-    color: '#1C1C2E',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
+  emptyTitle: { fontSize: 16, fontFamily: 'PlusJakartaSans-SemiBold', color: '#1C1C2E', textAlign: 'center', marginBottom: 8 },
+  emptyBody: { fontSize: 13, fontFamily: 'PlusJakartaSans-Regular', color: '#1C1C2E', textAlign: 'center', lineHeight: 20 },
 });
 
 export default SearchResultsScreen;
