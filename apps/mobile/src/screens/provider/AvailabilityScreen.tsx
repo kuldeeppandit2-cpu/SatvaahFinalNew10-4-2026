@@ -28,8 +28,9 @@ import {
   Switch,
   Text,
   TouchableOpacity,
-  View,,
-  StatusBar,} from 'react-native';
+  View,
+  StatusBar,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../stores/auth.store';

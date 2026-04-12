@@ -24,8 +24,9 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,,
-  StatusBar,} from 'react-native';
+  View,
+  StatusBar,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { getLeads, updateLead } from '../../api/provider.api';

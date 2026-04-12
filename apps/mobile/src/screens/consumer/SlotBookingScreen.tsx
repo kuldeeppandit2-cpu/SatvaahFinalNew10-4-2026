@@ -25,8 +25,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
  View, Text, StyleSheet, TouchableOpacity, FlatList,
- ActivityIndicator, Alert, ScrollView,,
-  StatusBar,} from 'react-native';
+ ActivityIndicator, Alert, ScrollView,
+  StatusBar,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';

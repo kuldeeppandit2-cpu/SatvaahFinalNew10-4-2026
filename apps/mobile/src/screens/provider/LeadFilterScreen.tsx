@@ -14,8 +14,9 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,,
-  StatusBar,} from 'react-native';
+  View,
+  StatusBar,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 

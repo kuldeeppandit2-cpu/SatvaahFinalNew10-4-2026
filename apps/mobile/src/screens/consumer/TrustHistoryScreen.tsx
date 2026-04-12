@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator,
-  StatusBar,} from 'react-native';
+  StatusBar,
+} from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { getTrustHistory, trustRingColor } from '../../api/trust.api';

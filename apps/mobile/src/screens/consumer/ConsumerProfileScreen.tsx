@@ -29,8 +29,9 @@ import {
  StyleSheet,
  Text,
  TouchableOpacity,
- View,,
-  StatusBar,} from 'react-native';
+ View,
+  StatusBar,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { apiClient } from '../../api/client';

@@ -26,8 +26,9 @@ import {
  Text,
  TextInput,
  TouchableOpacity,
- View,,
-  StatusBar,} from 'react-native';
+ View,
+  StatusBar,
+} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

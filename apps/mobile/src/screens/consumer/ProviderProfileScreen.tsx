@@ -27,8 +27,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
  View, Text, ScrollView, StyleSheet, TouchableOpacity,
  Animated, RefreshControl, Alert,
- Modal, TextInput, KeyboardAvoidingView, Platform,,
-  StatusBar,} from 'react-native';
+ Modal, TextInput, KeyboardAvoidingView, Platform,
+  StatusBar,
+} from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';

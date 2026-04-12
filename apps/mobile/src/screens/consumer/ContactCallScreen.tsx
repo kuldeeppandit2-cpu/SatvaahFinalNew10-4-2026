@@ -18,8 +18,9 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
  View, Text, StyleSheet, TouchableOpacity,
- ActivityIndicator, Linking, Alert,,
-  StatusBar,} from 'react-native';
+ ActivityIndicator, Linking, Alert,
+  StatusBar,
+} from 'react-native';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '../../__stubs__/bottom-sheet';
 import type { BottomSheetBackdropProps } from '../../__stubs__/bottom-sheet';
 import { useNavigation, useRoute } from '@react-navigation/native';

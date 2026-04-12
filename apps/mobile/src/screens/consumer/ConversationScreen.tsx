@@ -24,8 +24,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
  View, Text, StyleSheet, TouchableOpacity,
  TextInput, Animated, Alert,
- KeyboardAvoidingView, Platform, ActivityIndicator,,
-  StatusBar,} from 'react-native';
+ KeyboardAvoidingView, Platform, ActivityIndicator,
+  StatusBar,
+} from 'react-native';
 import { FlashList } from '../../__stubs__/flash-list';
 import * as ImagePicker from 'expo-image-picker';
 import { io, type Socket } from 'socket.io-client';

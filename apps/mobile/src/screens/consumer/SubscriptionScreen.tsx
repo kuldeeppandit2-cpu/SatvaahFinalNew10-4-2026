@@ -18,8 +18,9 @@ import {
  StyleSheet,
  Text,
  TouchableOpacity,
- View,,
-  StatusBar,} from 'react-native';
+ View,
+  StatusBar,
+} from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import '../../__stubs__/get-random-values';

@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
   },
   tabsContainer: {
     paddingHorizontal: 16,
-    gap: 8,,
+    gap: 8,
     paddingBottom: 24,
   },
   tab: {

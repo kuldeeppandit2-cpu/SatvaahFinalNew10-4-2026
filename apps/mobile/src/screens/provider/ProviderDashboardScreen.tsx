@@ -24,8 +24,9 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,,
-  StatusBar,} from 'react-native';
+  View,
+  StatusBar,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, G } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
