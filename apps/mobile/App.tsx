@@ -90,7 +90,10 @@ export default function App(): React.ReactElement {
       setAppReady(true);
     }
 
-    prepare();
+    // Timeout fallback — if prepare() hangs for any reason, 
+    // force the app to show after 3 seconds rather than staying black
+    const timeout = setTimeout(() => setAppReady(true), 3000);
+    prepare().finally(() => clearTimeout(timeout));
   }, [hydrateAuthStore, hydrateConsumerStore]);
 
   // GPS capture on every app open — silent, non-blocking
