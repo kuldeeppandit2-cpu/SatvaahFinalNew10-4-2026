@@ -22,9 +22,23 @@ const storage = new MMKV({ id: 'satvaaah-location' });
 const LAT_KEY = 'location.lat';
 const LNG_KEY = 'location.lng';
 
-// Hyderabad city centre — default when no GPS history exists
+// Hyderabad city centre — default when no GPS history or GPS is outside India
 const DEFAULT_LAT = 17.385;
 const DEFAULT_LNG = 78.4867;
+
+// India bounding box (approximate): lat 6–38, lng 67–98
+// If GPS is outside India (e.g. iOS Simulator defaults to San Francisco),
+// fall back to Hyderabad centre so search returns real results during testing.
+// On a real Indian device this check is never triggered.
+const INDIA_LAT_MIN = 6.0;
+const INDIA_LAT_MAX = 38.0;
+const INDIA_LNG_MIN = 67.0;
+const INDIA_LNG_MAX = 98.0;
+
+function isInIndia(lat: number, lng: number): boolean {
+  return lat >= INDIA_LAT_MIN && lat <= INDIA_LAT_MAX &&
+         lng >= INDIA_LNG_MIN && lng <= INDIA_LNG_MAX;
+}
 
 // Read persisted coords synchronously on module init.
 // After preloadAllMmkvStores() (called in App.tsx before any store reads),
@@ -55,9 +69,16 @@ export const useLocationStore = create<LocationState>((set) => ({
   lat: DEFAULT_LAT,  // replaced after preload()
   lng: DEFAULT_LNG,
   setLocation: (loc: { lat: number; lng: number }): void => {
-    // Validate before storing — never persist 0,0 or out-of-bounds
-    const lat = isNaN(loc.lat) || loc.lat < -90  || loc.lat > 90  ? DEFAULT_LAT : loc.lat;
-    const lng = isNaN(loc.lng) || loc.lng < -180 || loc.lng > 180 ? DEFAULT_LNG : loc.lng;
+    // Validate range
+    let lat = isNaN(loc.lat) || loc.lat < -90  || loc.lat > 90  ? DEFAULT_LAT : loc.lat;
+    let lng = isNaN(loc.lng) || loc.lng < -180 || loc.lng > 180 ? DEFAULT_LNG : loc.lng;
+    // If GPS is outside India (e.g. iOS Simulator → San Francisco), fall back to
+    // Hyderabad so search works during development. Real Indian devices never hit this.
+    if (!isInIndia(lat, lng)) {
+      console.log(`[Location] GPS (${lat.toFixed(3)}, ${lng.toFixed(3)}) outside India — using Hyderabad default`);
+      lat = DEFAULT_LAT;
+      lng = DEFAULT_LNG;
+    }
     storage.set(LAT_KEY, String(lat));
     storage.set(LNG_KEY, String(lng));
     set({ lat, lng });
