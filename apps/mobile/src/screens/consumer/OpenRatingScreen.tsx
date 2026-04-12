@@ -72,8 +72,7 @@ function StarRow({
   onChange?: (v: number) => void;
 }) {
   return (
-        <ScreenHeader title="Rate Your Experience" onBack={() => navigation.goBack()} />
-    <View style={styles.starRow}>
+        <View style={styles.starRow}>
       {[1, 2, 3, 4, 5].map((s) => (
         <TouchableOpacity
           key={s}
@@ -220,6 +219,7 @@ export default function OpenRatingScreen({ route, navigation }: Props) {
   const charLeft = 500 - reviewText.length;
 
   return (
+    <ScreenHeader title="Rate Your Experience" onBack={() => navigation.goBack()} />
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: IVORY }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}

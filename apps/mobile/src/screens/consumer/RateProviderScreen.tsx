@@ -67,8 +67,7 @@ interface StarRowProps {
 
 function StarRow({ value, size = 48, onChange, readonly = false }: StarRowProps) {
   return (
-        <ScreenHeader title="Rate Provider" onBack={() => navigation.goBack()} />
-    <View style={styles.starRow}>
+        <View style={styles.starRow}>
       {[1, 2, 3, 4, 5].map((s) => (
         <TouchableOpacity
           key={s}
@@ -275,6 +274,7 @@ export default function RateProviderScreen({ route, navigation }: Props) {
   const charLeft = 500 - reviewText.length;
 
   return (
+    <ScreenHeader title="Rate Provider" onBack={() => navigation.goBack()} />
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
 
     <KeyboardAvoidingView

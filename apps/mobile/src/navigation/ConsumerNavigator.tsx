@@ -124,6 +124,8 @@ function ProfileStack(): React.ReactElement {
       <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
       <Stack.Screen name="Support" component={SupportScreen} />
       <Stack.Screen name="OpenRating" component={OpenRatingScreen} />
+      <Stack.Screen name="SavedProviders" component={SavedProvidersScreen} />
+      <Stack.Screen name="ProviderProfile" component={ProviderProfileScreen} />
     </Stack.Navigator>
   );
 }

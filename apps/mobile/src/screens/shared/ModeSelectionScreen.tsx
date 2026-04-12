@@ -186,7 +186,7 @@ const b = StyleSheet.create({
 
 const s = StyleSheet.create({
   root:          { flex: 1, backgroundColor: '#FAF7F0' },
-  top:           { paddingHorizontal: 28, paddingTop: 68, justifyContent: 'flex-start' },
+  top:           { paddingHorizontal: 28, paddingTop: 20, justifyContent: 'flex-start' },
   tag:           { alignSelf: 'flex-start', backgroundColor: '#1C1C2E', borderRadius: 4, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 16 },
   tagTxt:        { fontSize: 10, fontWeight: '700', color: '#FAF7F0', letterSpacing: 2 },
   hl:            { fontSize: 20, fontWeight: '800', color: '#1C1C2E', lineHeight: 28, marginBottom: 12 },

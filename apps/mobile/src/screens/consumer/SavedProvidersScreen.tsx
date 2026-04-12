@@ -84,8 +84,7 @@ function ScoreDeltaBadge({
   const tierLabel = trustTierLabel(currentTier);
 
   return (
-        <ScreenHeader title="Saved Providers" onBack={() => navigation.goBack()} />
-    <View style={[styles.deltaBadge, { backgroundColor: isUp ? '#E8F5E9' : '#FDECEA' }]}>
+        <View style={[styles.deltaBadge, { backgroundColor: isUp ? '#E8F5E9' : '#FDECEA' }]}>
       <Text style={[styles.deltaText, { color: colour }]}>
         {arrow} {sign}{delta.delta} since you saved · Now {tierLabel}
       </Text>
@@ -326,6 +325,7 @@ export default function SavedProvidersScreen() {
   }
 
   return (
+    <ScreenHeader title="Saved Providers" onBack={() => navigation.goBack()} />
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
 
     <View style={styles.container}>

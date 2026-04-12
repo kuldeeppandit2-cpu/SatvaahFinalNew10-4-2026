@@ -74,8 +74,7 @@ function PlanCard({ plan, isCurrentTier, onSelect }: PlanCardProps) {
   const isFree = plan.tier === 'free';
 
   return (
-        <ScreenHeader title="My Subscription" onBack={() => navigation.goBack()} />
-    <View style={[styles.planCard, isCurrentTier && styles.planCardActive]}>
+        <View style={[styles.planCard, isCurrentTier && styles.planCardActive]}>
       {/* Popular badge */}
       {cfg.popular && (
         <View style={styles.popularBadge}>
@@ -222,6 +221,7 @@ export default function SubscriptionScreen({
   }
 
   return (
+    <ScreenHeader title="My Subscription" onBack={() => navigation.goBack()} />
     <ScrollView
       style={{ backgroundColor: IVORY }}
       contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}

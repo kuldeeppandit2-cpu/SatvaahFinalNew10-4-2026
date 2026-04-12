@@ -10,6 +10,7 @@
  * On toggle: immediately update local state + fire PATCH (fire-and-forget, shows error toast).
  */
 
+import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, Switch, StyleSheet, TouchableOpacity,
@@ -147,8 +148,8 @@ export function NotificationSettingsScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backIcon}>←</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{top:12,bottom:12,left:12,right:12}}>
+          <Ionicons name="chevron-back" size={24} color={COLORS.deepInk} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notification Settings</Text>
         {saving && <ActivityIndicator color={COLORS.saffron} size="small" style={{ marginRight: 16 }} />}

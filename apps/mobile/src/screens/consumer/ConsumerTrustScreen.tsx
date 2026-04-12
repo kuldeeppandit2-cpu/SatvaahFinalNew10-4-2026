@@ -141,7 +141,6 @@ function TrustRing({
   const centre = size / 2;
 
   return (
-        <ScreenHeader title="Trust Score" onBack={() => navigation.goBack()} />
     <View style={styles.ringContainer}>
       <Svg width={size} height={size}>
         {/* Track */}
@@ -304,6 +303,8 @@ export default function ConsumerTrustScreen() {
   const tierConfig = TIER_CONFIG[trustData.trustTier];
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
+    <ScreenHeader title="Trust Score" onBack={() => navigation.goBack()} />
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.scrollContent}
@@ -319,8 +320,7 @@ export default function ConsumerTrustScreen() {
             Providers can see your trust tier
           </Text>
         </View>
-        <Text style={styles.
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>tierDesc}>{tierConfig.description}</Text>
+        <Text style={styles.tierDesc}>{tierConfig.description}</Text>
         <Text style={styles.lastCalc}>
           Updated{' '}
           {new Date(trustData.lastCalculatedAt).toLocaleDateString('en-IN', {
@@ -382,7 +382,7 @@ export default function ConsumerTrustScreen() {
         <Ionicons name="chevron-forward" size={14} color={GREY} />
       </TouchableOpacity>
     </ScrollView>
-        </SafeAreaView>
+    </SafeAreaView>
   );
 }
 

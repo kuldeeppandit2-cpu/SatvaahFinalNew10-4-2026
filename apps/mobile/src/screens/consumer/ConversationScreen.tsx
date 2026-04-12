@@ -18,6 +18,7 @@
  *   • Message deduplication by id
  */
 
+import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -280,8 +281,8 @@ export function ConversationScreen(): React.ReactElement {
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>←</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{top:12,bottom:12,left:12,right:12}}>
+          <Ionicons name="chevron-back" size={24} color={DEEP_INK} />
         </TouchableOpacity>
         <View style={styles.headerMeta}>
           <Text style={styles.headerName}>{otherPartyName}</Text>

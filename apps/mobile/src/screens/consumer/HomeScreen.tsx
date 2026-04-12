@@ -57,7 +57,7 @@ import {
   type Category,
   type RisingBrand,
 } from '../../api/search.api';
-import { apiClient } from '../../utils/apiClient';
+import { apiClient } from '../../api/client';
 import { useAuthStore } from '../../stores/auth.store';
 
 // ─── Navigation ────────────────────────────────────────────────────────────────
