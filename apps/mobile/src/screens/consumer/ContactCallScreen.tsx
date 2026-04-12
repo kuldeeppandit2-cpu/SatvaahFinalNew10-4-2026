@@ -63,7 +63,9 @@ export function ContactCallScreen(): React.ReactElement {
 
   const sheetRef    = useRef<BottomSheet>(null);
   const [loading,   setLoading]   = useState(false);
-  const phone    = providerPhone ?? '';  // always visible — no state needed
+  // Sanitise providerPhone — guard against 'null' string passed from ProviderProfileScreen
+  // when profile.phone was null. ''.trim() and 'null' are both treated as no phone.
+  const phone = (providerPhone && providerPhone !== 'null') ? providerPhone.trim() : '';
   const leadCost = 0;                    // paise — 0 at launch (admin-configurable)
   const leadsRemaining = useConsumerStore((s) => s.leadBalance);
 
@@ -92,10 +94,22 @@ export function ContactCallScreen(): React.ReactElement {
       });
 
       // Provider phone always visible — use from event or passed param
-      const dialPhone = event.provider_phone || phone;
-      if (dialPhone) {
-        await Linking.openURL(`tel:${dialPhone}`);
+      // Sanitise: reject 'null' string, empty string, non-E.164 looking values
+      const rawPhone = event.provider_phone || phone;
+      const dialPhone = (rawPhone && rawPhone !== 'null' && rawPhone.trim().length > 5)
+        ? rawPhone.trim()
+        : null;
+
+      if (!dialPhone) {
+        Alert.alert(
+          'Phone unavailable',
+          'This provider has not listed a phone number.',
+          [{ text: 'OK', onPress: () => navigation.goBack() }],
+        );
+        return;
       }
+
+      await Linking.openURL(`tel:${dialPhone}`);
     } catch (err: any) {
       Alert.alert('Error', err?.message ?? 'Could not connect. Please try again.');
       navigation.goBack();
