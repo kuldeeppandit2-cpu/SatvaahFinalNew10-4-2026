@@ -9,6 +9,7 @@ import {
  Dimensions, ScrollView, StatusBar,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useAuthStore } from '../../stores/auth.store';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/types';
 
@@ -33,6 +34,7 @@ function Brand() {
 
 export function OnboardingScreen(): React.ReactElement {
   const navigation = useNavigation<Nav>();
+  const markOnboardingSeen = useAuthStore((s) => s.markOnboardingSeen);
   const [active, setActive] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const TOTAL = 3;
@@ -133,12 +135,19 @@ export function OnboardingScreen(): React.ReactElement {
       <View style={s.bottom}>
         <TouchableOpacity
           style={s.btn} activeOpacity={0.85}
-          onPress={() => active < TOTAL - 1 ? goTo(active + 1) : navigation.replace('Login')}
+          onPress={() => {
+            if (active < TOTAL - 1) {
+              goTo(active + 1);
+            } else {
+              markOnboardingSeen();
+              navigation.replace('Login');
+            }
+          }}
         >
           <Text style={s.btnTxt}>{active === TOTAL - 1 ? 'Get Started →' : 'Next →'}</Text>
         </TouchableOpacity>
         {active < TOTAL - 1 && (
-          <TouchableOpacity onPress={() => navigation.replace('Login')}>
+          <TouchableOpacity onPress={() => { markOnboardingSeen(); navigation.replace('Login'); }}>
             <Text style={s.skip}>Skip</Text>
           </TouchableOpacity>
         )}

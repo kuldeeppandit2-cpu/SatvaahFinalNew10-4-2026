@@ -395,7 +395,7 @@ export const ProviderProfileEditScreen: React.FC = () => {
     setVerifyingLinkedIn(true);
     try {
       // TODO: LinkedIn verification endpoint not yet implemented
-      await Promise.resolve(); // await apiClient.post(
+      await Promise.resolve(); // await apiClient.post()
       if (false) await apiClient.post(
         '/api/v1/trust/verify/linkedin',
         { linkedin_url: form.linkedinUrl },
@@ -423,7 +423,7 @@ export const ProviderProfileEditScreen: React.FC = () => {
     setVerifyingWebsite(true);
     try {
       // TODO: Website verification endpoint not yet implemented
-      await Promise.resolve(); // await apiClient.post(
+      await Promise.resolve(); // await apiClient.post()
       if (false) await apiClient.post(
         '/api/v1/trust/verify/website',
         { website_url: form.websiteUrl },

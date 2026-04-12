@@ -34,21 +34,12 @@ export function RootNavigator(): React.ReactElement {
     <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
       {!isAuthenticated ? (
         <Stack.Screen name="Auth" component={AuthNavigator} />
-      ) : isConsumer ? (
-        <>
-          <Stack.Screen name="WelcomeBack" component={WelcomeBackScreen} />
-          <Stack.Screen name="ConsumerApp" component={ConsumerNavigator} />
-          <Stack.Screen name="ProviderApp" component={ProviderNavigator} />
-        </>
-      ) : isProvider ? (
-        <>
-          <Stack.Screen name="WelcomeBack" component={WelcomeBackScreen} />
-          <Stack.Screen name="ProviderApp" component={ProviderNavigator} />
-          <Stack.Screen name="ConsumerApp" component={ConsumerNavigator} />
-        </>
       ) : (
-        // Authenticated but no mode set — show welcome to pick
-        <Stack.Screen name="WelcomeBack" component={WelcomeBackScreen} />
+        <Stack.Group>
+          <Stack.Screen name="WelcomeBack" component={WelcomeBackScreen} />
+          <Stack.Screen name="ConsumerApp" component={ConsumerNavigator} />
+          <Stack.Screen name="ProviderApp" component={ProviderNavigator} />
+        </Stack.Group>
       )}
     </Stack.Navigator>
   );
