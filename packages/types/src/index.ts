@@ -946,6 +946,7 @@ export type SystemConfigKey =
   | 'search_ring_3_km'   // = 15
   | 'search_ring_4_km'   // = 50
   | 'search_ring_5_km'   // = 150
+  | 'search_ring_6_km'   // = 1000 (pan-India, rare specialists)
   // Referral
   | 'referral_reward_leads'
   | 'referral_code_expiry_days'
