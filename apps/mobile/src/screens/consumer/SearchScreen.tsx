@@ -58,8 +58,13 @@ type ConsumerStackParamList = {
   Search: { tab: Tab; initialQuery?: string };
   SearchResults: {
     query: string;
-    taxonomyNodeId: string;
+    taxonomyNodeId?: string;
+    taxonomyL4?: string;
+    taxonomyL3?: string;
+    taxonomyL2?: string;
+    taxonomyL1?: string;
     tab: Tab;
+    locationName?: string;
   };
 };
 
@@ -238,11 +243,16 @@ const SearchScreen: React.FC = () => {
       });
       // Save to recent
       saveRecentSearch(tab, node);
-      // Navigate to results
+      // Navigate — use node.tab (the taxonomy node's correct tab, not the route param)
+      // Pass full taxonomy anchor so backend can apply the most specific filter
       navigation.navigate('SearchResults', {
-        query: node.name,
+        query:          node.name,
         taxonomyNodeId: node.id,
-        tab,
+        taxonomyL4:     node.l4  ?? node.name,
+        taxonomyL3:     node.l3  ?? undefined,
+        taxonomyL2:     node.l2  ?? undefined,
+        taxonomyL1:     node.l1,
+        tab:            node.tab as Tab,
       });
     },
     [tab, navigation],
