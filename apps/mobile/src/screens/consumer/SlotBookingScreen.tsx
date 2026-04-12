@@ -86,8 +86,7 @@ function buildDateStrip(): Date[] {
 // ─── GoldGate — shown to non-Gold consumers ───────────────────────────────────
 function GoldGate({ onBack }: { onBack: () => void }): React.ReactElement {
   return (
-    <SafeAreaView style={styles.gateContainer} edges={['top', 'bottom']}>
-      <View style={styles.gateLockBox}>
+          <View style={styles.gateLockBox}>
         <Text style={styles.gateLock}>🔒</Text>
         <Text style={styles.gateTitle}>Gold tier required</Text>
         <Text style={styles.gateBody}>
@@ -98,7 +97,6 @@ function GoldGate({ onBack }: { onBack: () => void }): React.ReactElement {
           <Text style={styles.gateBtnText}>Go back</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
   );
 }
 

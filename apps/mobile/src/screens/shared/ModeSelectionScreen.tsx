@@ -22,7 +22,6 @@ const { height: H } = Dimensions.get('window');
 
 function Brand() {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top', 'bottom']}>
     <View style={b.wrap}>
       <View style={b.row}>
         <Text style={b.ink}>Satv</Text>
@@ -106,6 +105,8 @@ export function ModeSelectionScreen(): React.ReactElement {
   const BRAND_H = SLIDE_H * 0.56;
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top', 'bottom']}>
+
     <View style={s.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
 

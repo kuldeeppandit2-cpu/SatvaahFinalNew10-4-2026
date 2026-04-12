@@ -152,8 +152,7 @@ function NotificationCard({
       extrapolate: 'clamp',
     });
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
-      <TouchableOpacity style={styles.swipeDismiss} onPress={handleDismiss}>
+            <TouchableOpacity style={styles.swipeDismiss} onPress={handleDismiss}>
         <Animated.View style={{ transform: [{ scale }], alignItems: 'center' }}>
           <Ionicons name="checkmark-done-outline" size={22} color="#fff" />
           <Text style={styles.swipeDismissText}>Dismiss</Text>
@@ -420,6 +419,8 @@ export default function NotificationsScreen() {
   }
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
+
     <View style={styles.container}>
       {/* Header controls */}
       <View style={styles.headerBar}>
@@ -496,7 +497,7 @@ export default function NotificationsScreen() {
         onToggle={handlePrefToggle}
       />
     </View>
-      </SafeAreaView>
+    </SafeAreaView>
   );
 }
 

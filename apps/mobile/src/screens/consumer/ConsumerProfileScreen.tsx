@@ -156,8 +156,7 @@ function AvatarBlock({
     : '';
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
-    <View style={styles.avatarBlock}>
+        <View style={styles.avatarBlock}>
       {/* Avatar */}
       <View style={styles.avatarCircle}>
         <Text style={styles.avatarInitials}>{initials(profile.displayName)}</Text>
@@ -438,6 +437,7 @@ export default function ConsumerProfileScreen() {
   }
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.scrollContent}
@@ -538,6 +538,8 @@ function SettingsRow({
   noBorder?: boolean;
 }) {
   return (
+    
+    
     <TouchableOpacity
       style={[styles.settingsRow, noBorder && { borderBottomWidth: 0 }]}
       onPress={onPress}

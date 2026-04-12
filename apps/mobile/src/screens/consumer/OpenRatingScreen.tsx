@@ -72,8 +72,7 @@ function StarRow({
   onChange?: (v: number) => void;
 }) {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
-    <ScreenHeader title="Rate Your Experience" onBack={() => navigation.goBack()} />
+        <ScreenHeader title="Rate Your Experience" onBack={() => navigation.goBack()} />
     <View style={styles.starRow}>
       {[1, 2, 3, 4, 5].map((s) => (
         <TouchableOpacity
@@ -358,7 +357,8 @@ export default function OpenRatingScreen({ route, navigation }: Props) {
           disabled={submitting || photosUploading}
           activeOpacity={0.85}
         >
-          {submitting || photosUploading ? (
+          {submittin
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>g || photosUploading ? (
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.submitText}>Submit Community Rating</Text>
@@ -370,7 +370,7 @@ export default function OpenRatingScreen({ route, navigation }: Props) {
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
-    </SafeAreaView>
+            </SafeAreaView>
   );
 }
 

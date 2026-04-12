@@ -20,7 +20,6 @@ const BRAND_H = SLIDE_H * 0.56;
 
 function Brand() {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top', 'bottom']}>
     <View style={b.wrap}>
       <View style={b.row}>
         <Text style={b.ink}>Satv</Text>
@@ -50,7 +49,7 @@ export function OnboardingScreen(): React.ReactElement {
   }
 
   return (
-    <View style={s.root}>
+    <SafeAreaView style={s.root} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
 
       <View style={s.prog}>
@@ -144,7 +143,6 @@ export function OnboardingScreen(): React.ReactElement {
           </TouchableOpacity>
         )}
       </View>
-    </View>
     </SafeAreaView>
   );
 }
@@ -160,7 +158,7 @@ const b = StyleSheet.create({
 
 const s = StyleSheet.create({
   root:       { flex: 1, backgroundColor: '#FAF7F0' },
-  prog:       { flexDirection: 'row', gap: 5, paddingHorizontal: 28, paddingTop: 56, height: 70 },
+  prog:       { flexDirection: 'row', gap: 5, paddingHorizontal: 28, paddingTop: 12, height: 32 },
   seg:        { flex: 1, height: 2, borderRadius: 1, backgroundColor: '#E8E0D5' },
   segOn:      { backgroundColor: '#C8691A' },
   scroller:   { flex: 0 },
@@ -183,7 +181,7 @@ const s = StyleSheet.create({
   bink:       { fontSize: 14, fontWeight: '700', color: '#1C1C2E' },
   footerWrap: { paddingHorizontal: 28, height: 52, justifyContent: 'center' },
   footTxt:    { fontSize: 13, fontWeight: '600', color: '#1C1C2E', textAlign: 'center' },
-  bottom:     { paddingHorizontal: 28, paddingBottom: 44, gap: 12 },
+  bottom:     { paddingHorizontal: 28, paddingBottom: 32, gap: 12 },
   btn:        { backgroundColor: '#C8691A', borderRadius: 14, paddingVertical: 17, alignItems: 'center' },
   btnTxt:     { fontSize: 16, fontWeight: '700', color: '#FAF7F0' },
   skip:       { textAlign: 'center', color: '#1C1C2E', fontSize: 14, fontWeight: '500' },
