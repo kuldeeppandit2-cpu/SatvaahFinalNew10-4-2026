@@ -729,8 +729,7 @@ const styles = StyleSheet.create({
 
   // List
   listContent: { paddingBottom: 100,
-    flexGrow: 1,
-  },
+    },
   separator: { height: 1, backgroundColor: '#EDE6D8', marginLeft: 80 },
   endText: { textAlign: 'center', fontSize: 12, fontFamily: 'PlusJakartaSans-Regular', color: '#9B8E7C', padding: 16 },
 
@@ -852,16 +851,6 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 16, fontFamily: 'PlusJakartaSans-SemiBold', color: '#1C1C2E', textAlign: 'center', marginBottom: 8 },
   emptyBody: { fontSize: 13, fontFamily: 'PlusJakartaSans-Regular', color: '#1C1C2E', textAlign: 'center', lineHeight: 20 },
   // Location picker modal
-
-
-
-
-
-
-
-
-
-
 
 });
 

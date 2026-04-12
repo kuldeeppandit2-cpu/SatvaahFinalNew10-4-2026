@@ -509,8 +509,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: IVORY },
   loader: { flex: 1, backgroundColor: IVORY, justifyContent: 'center', alignItems: 'center' },
   listContent: { paddingBottom: 32,
-    flexGrow: 1,
-  },
+    },
 
   backBtn: {
     padding: 4,

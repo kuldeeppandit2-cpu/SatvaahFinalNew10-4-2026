@@ -680,8 +680,7 @@ const styles = StyleSheet.create({
   // Scroll
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 16,
-    flexGrow: 1,
-  },
+    },
 
   // Section wrapper
   section: {

@@ -355,8 +355,7 @@ const styles = StyleSheet.create({
   safeArea:            { flex: 1, backgroundColor: IVORY },
   container:           { flex: 1 },
   scrollContent:       { paddingBottom: 16,
-    flexGrow: 1,
-  },
+    },
 
   // Header
   header:              { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#EDE7DB', gap: 12 },
