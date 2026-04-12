@@ -34,34 +34,43 @@ export type ConsumerTabParamList = {
 export type ConsumerStackParamList = {
   Home: undefined;
   Search: {
+    // 'tab' is the correct param name (SearchScreen reads route.params.tab)
+    // 'initialTab' was wrong — caused tab to be silently dropped (BUG-09 fix)
+    tab?: 'products' | 'services' | 'expertise' | 'establishments';
     initialQuery?: string;
-    initialTab?: 'products' | 'services' | 'expertise' | 'establishments';
   };
   SearchResults: {
     query: string;
     tab: 'products' | 'services' | 'expertise' | 'establishments';
+    // Taxonomy anchor — all optional (open search if absent)
     taxonomyNodeId?: string;
+    taxonomyL4?: string;
+    taxonomyL3?: string;
+    taxonomyL2?: string;
+    taxonomyL1?: string;
+    locationName?: string;
+    fromDeepLink?: boolean;
   };
   ProviderProfile: {
     providerId: string;
-    // Optional pre-fetched data for fast initial render
     previewName?: string;
     previewScore?: number;
+    fromDeepLink?: boolean;
   };
   ContactCall: {
     providerId: string;
     providerName: string;
-    providerPhone?: string;  // always visible per MASTER_CONTEXT
-    providerScore?: number;  // for trust ring colour in bottom sheet
-    providerTier?: string;   // tier label display
-    topSignals?: string[];   // top 3 verified signal labels for urgency strip
+    providerPhone?: string;
+    providerScore?: number;
+    providerTier?: string;
+    topSignals?: string[];
   };
   ContactMessage: {
     providerId: string;
     providerName: string;
-    contactEventId?: string;  // optional — screen creates the event itself
-    providerScore?: number;   // for trust ring colour in bottom sheet
-    providerTier?: string;    // tier label display
+    contactEventId?: string;
+    providerScore?: number;
+    providerTier?: string;
   };
   SlotBookingScreen: {
     providerId: string;
@@ -74,18 +83,47 @@ export type ConsumerStackParamList = {
   };
   RateProvider: {
     providerId: string;
-    providerName: string;
-    contactEventId?: string;         // null = open community rating
-    ratingType: 'verified' | 'open'; // drives weight
+    providerName?: string;        // optional — deep link may not have name
+    contactEventId?: string;      // null = open community rating
+    ratingType?: 'verified' | 'open'; // optional — defaults to 'verified' in screen
+    fromNotification?: boolean;   // true = opened from rating_reminder FCM (BUG-07 fix)
+  };
+  OpenRating: {
+    provider_id: string;
+    provider_name?: string;
+    tab?: string;
+    rating_dimensions?: unknown[];
   };
   SavedProviders: undefined;
   ConsumerProfile: undefined;
+  ConsumerTrust: undefined;        // BUG-10 fix — was missing entirely
   ConsumerSubscription: undefined;
   Notifications: undefined;
+  NotificationSettings: undefined;
+  DataRights: undefined;
+  Support: undefined;
+  SearchFilter: {
+    filters: {
+      min_trust?: number;
+      max_distance?: number;
+      availability?: boolean;
+      homeVisit?: boolean;
+      languages?: string;
+      min_rating?: number;
+      sort: 'trust_score' | 'distance' | 'rating';
+    };
+    tab: 'products' | 'services' | 'expertise' | 'establishments';
+  };
   DeepLinkResolver: {
     providerId?: string;
     referralCode?: string;
     certId?: string;
+  };
+  Razorpay: {
+    orderId: string;
+    amount: number;
+    currency?: string;
+    description?: string;
   };
   CategoryBrowse: {
     tab: 'products' | 'services' | 'expertise' | 'establishments';
