@@ -24,13 +24,14 @@ import { logger } from '@satvaaah/logger';
 // GOOGLE_APPLICATION_CREDENTIALS or injected as FIREBASE_SERVICE_ACCOUNT_JSON.
 if (!admin.apps.length) {
   const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if (serviceAccountJson) {
-    admin.initializeApp({
-      credential: admin.credential.cert(JSON.parse(serviceAccountJson)),
-    });
+  let parsed: Record<string, unknown> | null = null;
+  try { if (serviceAccountJson) parsed = JSON.parse(serviceAccountJson); } catch { parsed = null; }
+  // Only use cert() if we have a real service account with project_id
+  // Empty {} or missing env var → dev mode (push notifications are no-ops)
+  if (parsed && typeof parsed.project_id === 'string') {
+    admin.initializeApp({ credential: admin.credential.cert(parsed as admin.ServiceAccount) });
   } else {
-    // Falls back to Application Default Credentials (ADC) in production (ECS task role / GCP)
-    admin.initializeApp();
+    admin.initializeApp({ projectId: 'satvaaah-dev' });
   }
 }
 
