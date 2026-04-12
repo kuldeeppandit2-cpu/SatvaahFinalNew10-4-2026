@@ -368,7 +368,7 @@ const styles = StyleSheet.create({
   headerName:     { fontFamily: 'PlusJakartaSans-Bold', fontSize: 16, color: DEEP_INK },
   headerStatus:   { fontFamily: 'PlusJakartaSans-Regular', fontSize: 12, color: MUTED },
   listContent:    { padding: 12,
-    paddingBottom: 100,,
+    paddingBottom: 100,
     flexGrow: 1,
   },
   bubbleWrapper:  { marginVertical: 3, maxWidth: '80%' },

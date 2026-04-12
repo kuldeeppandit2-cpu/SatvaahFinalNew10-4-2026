@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 48,,
+    paddingBottom: 48,
     flexGrow: 1,
   },
   illustrationWrap: {

@@ -679,7 +679,7 @@ const styles = StyleSheet.create({
   // Scroll
   scroll: {
     paddingHorizontal: 16,
-    paddingBottom:     24,,
+    paddingBottom:     24,
     flexGrow: 1,
   },
 

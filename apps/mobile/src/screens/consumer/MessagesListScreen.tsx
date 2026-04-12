@@ -155,7 +155,7 @@ const s = StyleSheet.create({
   title:   { fontFamily: 'PlusJakartaSans-Bold', fontSize: 22, color: '#1C1C2E' },
   loader:  { marginTop: 48 },
   list:    { paddingTop: 8,
-    paddingBottom: 80,,
+    paddingBottom: 80,
     flexGrow: 1,
   },
   empty:   { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },

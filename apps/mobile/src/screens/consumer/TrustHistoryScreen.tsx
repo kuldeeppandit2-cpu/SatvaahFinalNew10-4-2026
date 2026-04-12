@@ -86,7 +86,7 @@ const s = StyleSheet.create({
   emptyTitle: { fontSize: 18, fontWeight: '600', color: COLORS.deepInk, marginBottom: 8, textAlign: 'center' },
   emptyBody: { fontSize: 14, color: COLORS.muted, textAlign: 'center', lineHeight: 20 },
   list: { padding: 16,
-    paddingBottom: 80,,
+    paddingBottom: 80,
     flexGrow: 1,
   },
   sep: { height: 1, backgroundColor: COLORS.border },

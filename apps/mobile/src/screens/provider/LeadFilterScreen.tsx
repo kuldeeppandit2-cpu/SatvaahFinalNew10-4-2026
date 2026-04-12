@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
   // Scroll
   scroll: {
     paddingHorizontal: 16,
-    paddingBottom:     16,,
+    paddingBottom:     16,
     flexGrow: 1,
   },
 
