@@ -18,6 +18,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
  ActivityIndicator,
@@ -141,6 +142,7 @@ function TrustRing({
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
+    <ScreenHeader title="Trust Score" onBack={() => navigation.goBack()} />
     <View style={styles.ringContainer}>
       <Svg width={size} height={size}>
         {/* Track */}

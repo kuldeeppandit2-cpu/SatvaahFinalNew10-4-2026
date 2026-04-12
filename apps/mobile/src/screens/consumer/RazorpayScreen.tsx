@@ -18,6 +18,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
  ActivityIndicator,
@@ -90,6 +91,7 @@ export default function RazorpayScreen({ route, navigation }: Props) {
   useEffect(() => {
     return () => {
       <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
+      <ScreenHeader title="Checkout" onBack={() => navigation.goBack()} />
       if (upiTimeoutRef.current) clearTimeout(upiTimeoutRef.current);
     };
   }, []);

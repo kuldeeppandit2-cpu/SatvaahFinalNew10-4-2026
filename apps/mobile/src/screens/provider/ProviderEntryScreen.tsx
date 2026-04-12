@@ -9,6 +9,7 @@
  */
 
 import React, { useState } from 'react';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   ActivityIndicator, StatusBar, Animated,
@@ -56,6 +57,7 @@ export default function ProviderEntryScreen({
 
       {/* Dark top */}
       <SafeAreaView style={s.top} edges={['top']}>
+      <ScreenHeader title="Provider Setup" onBack={() => navigation.goBack()} />
       <TouchableOpacity
         onPress={() => navigation.goBack()}
         style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 }}

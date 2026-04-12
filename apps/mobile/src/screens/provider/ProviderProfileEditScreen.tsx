@@ -15,6 +15,7 @@
  *      is_claimed, all verification boolean flags
  */
 
+import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
@@ -586,8 +587,13 @@ export const ProviderProfileEditScreen: React.FC = () => {
 
       {/* Nav */}
       <View style={styles.navBar}>
-        <TouchableOpacity onPress={handleBack}>
-          <Text style={styles.navBack}>Cancel</Text>
+        <TouchableOpacity 
+          onPress={handleBack}
+          style={styles.navBackBtn}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityLabel="Go back"
+        >
+          <Ionicons name="chevron-back" size={24} color="#1C1C2E" />
         </TouchableOpacity>
         <Text style={styles.navTitle}>Edit Profile</Text>
         <TouchableOpacity
@@ -899,6 +905,7 @@ const styles = StyleSheet.create({
     color: '#8888A0',
   },
   navTitle: { fontFamily: FONTS.bold, fontSize: 17, color: COLORS.deepInk },
+  navBackBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   navSaveBtn: {
     backgroundColor: COLORS.verdigris,
     borderRadius: RADIUS.sm,

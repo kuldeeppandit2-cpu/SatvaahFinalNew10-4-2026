@@ -17,6 +17,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import {
   View,
   Text,
@@ -437,6 +438,7 @@ export const ProviderSubscriptionScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.ivory} />
+<ScreenHeader title="Subscription" onBack={() => navigation.goBack()} />
 
       {/* Nav */}
       <View style={styles.navBar}>

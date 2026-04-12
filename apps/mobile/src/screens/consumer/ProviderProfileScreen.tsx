@@ -22,6 +22,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
  View, Text, ScrollView, StyleSheet, TouchableOpacity,
@@ -291,6 +292,7 @@ export function ProviderProfileScreen(): React.ReactElement {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScreenHeader title="Provider Profile" onBack={() => navigation.goBack()} />
       <TouchableOpacity
         style={{ padding: 16, paddingBottom: 0 }}
         onPress={() => navigation.goBack()}

@@ -21,6 +21,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import {
   View,
   Text,
@@ -410,6 +411,7 @@ export const ProviderRatesConsumerScreen: React.FC = () => {
   if (eligibilityLoading) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ScreenHeader title="Rate Consumer" onBack={() => navigation.goBack()} />
         <View style={styles.loadingCenter}>
           <ActivityIndicator size="large" color={COLORS.verdigris} />
         </View>

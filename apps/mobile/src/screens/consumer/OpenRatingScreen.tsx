@@ -12,6 +12,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
  ActivityIndicator,
@@ -72,6 +73,7 @@ function StarRow({
 }) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
+    <ScreenHeader title="Rate Your Experience" onBack={() => navigation.goBack()} />
     <View style={styles.starRow}>
       {[1, 2, 3, 4, 5].map((s) => (
         <TouchableOpacity

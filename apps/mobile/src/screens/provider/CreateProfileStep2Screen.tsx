@@ -11,6 +11,7 @@
  */
 
 import React, { useEffect, useState, useRef } from 'react';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
  View,
@@ -188,6 +189,7 @@ export default function CreateProfileStep2Screen({
 
     return (
       <SafeAreaView style={styles.heroSafe}>
+      <ScreenHeader title="Your Location" onBack={() => navigation.goBack()} />
       <TouchableOpacity
         onPress={() => navigation.goBack()}
         style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 }}

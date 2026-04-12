@@ -15,6 +15,7 @@
  * returns new filters via navigation.navigate('SearchResults', { filters })
  */
 
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -203,8 +204,9 @@ const SearchFilterScreen: React.FC = () => {
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => navigation.goBack()}
+          hitSlop={{ top:12, bottom:12, left:12, right:12 }}
         >
-          <Text style={styles.backIcon}>✕</Text>
+          <Ionicons name="chevron-back" size={24} color="#1C1C2E" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
           Filters

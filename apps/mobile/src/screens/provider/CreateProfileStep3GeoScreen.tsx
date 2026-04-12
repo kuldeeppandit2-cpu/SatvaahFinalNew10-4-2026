@@ -13,6 +13,7 @@
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
  View,
@@ -197,6 +198,7 @@ export default function CreateProfileStep3GeoScreen({
   if (confirmed) {
     return (
       <SafeAreaView style={styles.heroSafe}>
+      <ScreenHeader title="Service Area" onBack={() => navigation.goBack()} />
       <TouchableOpacity
         onPress={() => navigation.goBack()}
         style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 }}

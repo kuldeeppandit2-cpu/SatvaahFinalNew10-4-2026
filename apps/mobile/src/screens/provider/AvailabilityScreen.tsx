@@ -11,6 +11,7 @@
  */
 
 import React, {
+import { ScreenHeader } from '../../components/ScreenHeader';
   useCallback,
   useEffect,
   useMemo,
@@ -455,6 +456,7 @@ export default function AvailabilityScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.screen}>
+        <ScreenHeader title="Availability" onBack={() => navigation.goBack()} />
         <ActivityIndicator
           size="large"
           color={COLORS.saffron}

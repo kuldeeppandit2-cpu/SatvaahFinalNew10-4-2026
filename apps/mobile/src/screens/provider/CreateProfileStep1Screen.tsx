@@ -9,6 +9,7 @@
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
  View,
@@ -164,6 +165,7 @@ export default function CreateProfileStep1Screen({ route, navigation }: Props) {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
+      <ScreenHeader title="Create Profile" onBack={() => navigation.goBack()} />
       <TouchableOpacity
         style={{ padding: 16, paddingBottom: 0 }}
         onPress={() => navigation.goBack()}

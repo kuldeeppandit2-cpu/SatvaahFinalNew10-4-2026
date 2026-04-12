@@ -1,4 +1,5 @@
 import React from 'react';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -8,6 +9,7 @@ export function TrustHistoryScreen() {
   const navigation = useNavigation();
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
+    <ScreenHeader title="Trust History" onBack={() => navigation.goBack()} />
     <View style={styles.container}>
       <Text style={styles.title}>Trust History</Text>
       <Text style={styles.subtitle}>Coming soon</Text>

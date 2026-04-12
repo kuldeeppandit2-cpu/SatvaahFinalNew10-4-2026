@@ -10,6 +10,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
  ActivityIndicator,
@@ -74,6 +75,7 @@ function PlanCard({ plan, isCurrentTier, onSelect }: PlanCardProps) {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
+    <ScreenHeader title="My Subscription" onBack={() => navigation.goBack()} />
     <View style={[styles.planCard, isCurrentTier && styles.planCardActive]}>
       {/* Popular badge */}
       {cfg.popular && (

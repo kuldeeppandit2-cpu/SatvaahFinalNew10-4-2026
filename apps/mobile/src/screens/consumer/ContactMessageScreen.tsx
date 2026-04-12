@@ -14,6 +14,7 @@
  */
 
 import React, { useCallback, useRef, useEffect, useState } from 'react';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
  View, Text, StyleSheet, TouchableOpacity,
@@ -117,6 +118,7 @@ export function ContactMessageScreen(): React.ReactElement {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
+    <ScreenHeader title="Send Message" onBack={() => navigation.goBack()} />
     <BottomSheet
       ref={sheetRef}
       index={0}

@@ -12,6 +12,7 @@
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import {
   View,
   Text,
@@ -363,6 +364,7 @@ export const AnalyticsScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.ivory} />
+<ScreenHeader title="Analytics" onBack={() => navigation.goBack()} />
 
       {/* Nav */}
       <View style={styles.navBar}>

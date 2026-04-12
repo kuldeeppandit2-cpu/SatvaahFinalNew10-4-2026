@@ -11,6 +11,7 @@
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import {
   View,
   Text,
@@ -282,6 +283,7 @@ export const TrustBiographyScreen: React.FC = () => {
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ScreenHeader title="Trust Biography" onBack={() => navigation.goBack()} />
         <View style={styles.loadingState}>
           <View style={styles.loadingPulse} />
           <View style={[styles.loadingPulse, { width: '80%', marginTop: SPACING.sm }]} />

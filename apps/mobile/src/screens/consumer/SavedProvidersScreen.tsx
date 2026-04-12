@@ -22,6 +22,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
  ActivityIndicator,
@@ -84,6 +85,7 @@ function ScoreDeltaBadge({
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
+    <ScreenHeader title="Saved Providers" onBack={() => navigation.goBack()} />
     <View style={[styles.deltaBadge, { backgroundColor: isUp ? '#E8F5E9' : '#FDECEA' }]}>
       <Text style={[styles.deltaText, { color: colour }]}>
         {arrow} {sign}{delta.delta} since you saved · Now {tierLabel}

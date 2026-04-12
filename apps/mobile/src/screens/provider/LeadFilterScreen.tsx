@@ -7,6 +7,7 @@
  * Stateless — receives current filters as route params.
  */
 
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
   ScrollView,
@@ -147,7 +148,7 @@ export default function LeadFilterScreen() {
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Text style={styles.backText}>← Back</Text>
+          <Ionicons name="chevron-back" size={24} color="#1C1C2E" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Filter Leads</Text>
         <TouchableOpacity onPress={resetFilters}>

@@ -19,6 +19,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import {
   View,
   Text,
@@ -522,6 +523,7 @@ export const CertificateScreen: React.FC = () => {
       edges={['top', 'bottom']}
     >
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.ivory} />
+<ScreenHeader title="Certificates" onBack={() => navigation.goBack()} />
 
       {/* Nav — hidden on first show */}
       {!isFirstShow && (
