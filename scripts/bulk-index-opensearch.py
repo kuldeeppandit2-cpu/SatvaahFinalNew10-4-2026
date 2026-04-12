@@ -178,15 +178,43 @@ def parse_row(row):
     if len(parts) < 22:
         return None
     
-    provider_id, display_name, listing_type, tab, city_id, city_name, \
-    area_id, taxonomy_node_id, taxonomy_name, l1, l2, l3, l4, \
-    lat, lng, trust_score, trust_tier, is_phone_verified, \
-    is_aadhaar_verified, is_geo_verified, is_active, \
-    is_claimed, is_scrape_record, contact_count, \
-    availability_mode, is_available_str, profile_photo_s3_key, \
-    years_experience_str, tagline, avg_rating_str, review_count_str, \
-    home_visit_str, area_name, languages_spoken_str, has_certificate_str = \
-        parts[:36] if len(parts) >= 36 else (parts + [''] * 36)[:36]
+    # Pad to at least 35 to avoid index errors
+    p = (parts + [''] * 35)
+    provider_id         = p[0]
+    display_name        = p[1]
+    listing_type        = p[2]
+    tab                 = p[3]
+    city_id             = p[4]
+    city_name           = p[5]
+    area_id             = p[6]
+    taxonomy_node_id    = p[7]
+    taxonomy_name       = p[8]
+    l1                  = p[9]
+    l2                  = p[10]
+    l3                  = p[11]
+    l4                  = p[12]
+    lat                 = p[13]
+    lng                 = p[14]
+    trust_score         = p[15]
+    trust_tier          = p[16]
+    is_phone_verified   = p[17]
+    is_aadhaar_verified = p[18]
+    is_geo_verified     = p[19]
+    is_active           = p[20]
+    is_claimed          = p[21]
+    is_scrape_record    = p[22]
+    contact_count       = p[23]
+    availability_mode   = p[24]
+    is_available_str    = p[25]
+    profile_photo_s3_key = p[26]
+    years_experience_str = p[27]
+    tagline             = p[28]
+    avg_rating_str      = p[29]
+    review_count_str    = p[30]
+    home_visit_str      = p[31]
+    area_name           = p[32]
+    languages_spoken_str = p[33]
+    has_certificate_str = p[34]
 
     # Build geo_point only if both lat and lng are present and valid
     geo_point = None

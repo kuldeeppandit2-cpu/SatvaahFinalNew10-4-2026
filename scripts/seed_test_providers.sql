@@ -115,7 +115,7 @@ BEGIN
     'individual_service'::"ListingType",
     '9876543212',
     true, true, false, true,
-    'unavailable'::"Availability",
+    'offline'::"Availability",
     'test_seed', 'test_bd06deeb',
     ST_SetSRID(ST_MakePoint(78.468, 17.408), 4326),
     NOW(), NOW()
