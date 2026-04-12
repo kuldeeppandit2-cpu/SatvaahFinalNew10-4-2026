@@ -64,17 +64,22 @@ export async function getMyConsumerProfile(req: Request, res: Response): Promise
 
 /**
  * POST /api/v1/consumers/profile
- * Body: { display_name, city_id, avatar_url? }
+ * Body: { display_name, city_id?, place_type?, avatar_url? }
  * Idempotent — returns existing profile if already created.
+ *
+ * city_id is optional — consumer_profiles.city_id is nullable.
+ * place_type (Home|Work|Other) is stored via future field — accepted but not
+ * currently persisted (no schema column yet). display_name is the only required field.
  */
 export async function createConsumerProfile(req: Request, res: Response): Promise<void> {
   const userId = req.user!.userId;
   const correlationId = req.headers['x-correlation-id'] as string;
 
-  const { display_name, city_id, avatar_url } = req.body;
+  const { display_name, city_id, place_type, avatar_url } = req.body;
 
-  if (!display_name || !city_id) {
-    throw new ValidationError('MISSING_FIELDS', 'display_name and city_id are required');
+  // Only display_name is required — city_id is optional (nullable in schema)
+  if (!display_name) {
+    throw new ValidationError('MISSING_FIELDS', 'display_name is required');
   }
 
   if (display_name.trim().length < 2 || display_name.trim().length > 80) {
@@ -87,12 +92,12 @@ export async function createConsumerProfile(req: Request, res: Response): Promis
   const { profile, created } = await consumerService.upsertProfile({
     user_id: userId,
     displayName: display_name.trim(),
-    city_id,
+    city_id: city_id ?? null,    // nullable — consumer may not have selected a city
     avatar_url,
     correlationId,
   });
 
-  logger.info('Consumer profile upserted', { user_id: userId, created, correlationId });
+  logger.info('Consumer profile upserted', { user_id: userId, created, place_type, correlationId });
 
   res.status(created ? 201 : 200).json({
     success: true,
