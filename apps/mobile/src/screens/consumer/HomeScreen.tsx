@@ -106,6 +106,10 @@ const SEARCH_PLACEHOLDERS: Record<Tab, string> = {
   expertise:      'Search doctors, lawyers…',
 };
 
+// Defined outside component — stable reference prevents re-render of 3 placeholder circles
+// on every HomeScreen render cycle (PERF-06 fix: was [0,1,2] inline → new array each render)
+const PLACEHOLDER_INDICES = [0, 1, 2] as const;
+
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CATEGORY_COLS = 3;
 const CATEGORY_ITEM_SIZE = (SCREEN_WIDTH - 48) / CATEGORY_COLS;
@@ -460,7 +464,7 @@ const HomeScreen: React.FC = () => {
               Connect with {3 - (consumerProfile?.contactCount ?? 0)} more provider{(3 - (consumerProfile?.contactCount ?? 0)) !== 1 ? 's' : ''} to build your circle
             </Text>
             <View style={styles.placeholderRow}>
-              {[0, 1, 2].map((i) => {
+              {PLACEHOLDER_INDICES.map((i) => {
                 const filled = i < (consumerProfile?.contactCount ?? 0);
                 return (
                   <View
