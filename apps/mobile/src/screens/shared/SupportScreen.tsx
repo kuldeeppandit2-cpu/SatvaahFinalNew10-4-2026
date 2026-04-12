@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScreenHeader } from '../components/ScreenHeader';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
