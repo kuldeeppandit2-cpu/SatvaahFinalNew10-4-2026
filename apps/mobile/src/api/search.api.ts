@@ -66,13 +66,20 @@ export interface SearchParams {
   lat: number;
   lng: number;            // longitude FIRST — PostGIS convention
   page?: number;          // 1-based, default 1
+  ring_km?: number;       // locked ring for page > 1 pagination
   min_trust?: number;     // filter: minimum trust_score (0–100)
   max_distance?: number;  // filter: max km radius override
   availability?: boolean; // filter: show only available-now providers
-  homeVisit?: boolean;   // filter: show only home-visit providers
+  homeVisit?: boolean;    // filter: show only home-visit providers
   sort?: SortOrder;       // default: trust_score
   languages?: string;     // comma-separated BCP-47 e.g. "en-IN,te-IN,hi-IN"
   min_rating?: number;    // filter: min rating_avg (1.0–5.0)
+  // Taxonomy anchor — set by CategoryBrowseScreen (S1) and SearchScreen (S2 post-select)
+  taxonomy_node_id?: string;   // L4 UUID — primary relevance constraint
+  taxonomy_l4?: string;        // L4 label
+  taxonomy_l3?: string;        // L3 label
+  taxonomy_l2?: string;        // L2 label
+  taxonomy_l1?: string;        // L1 label
 }
 
 // ─── Search Response ──────────────────────────────────────────────────────────
@@ -98,20 +105,24 @@ export interface ProviderCardData {
   languages: string[];            // BCP-47 codes
   is_saved: boolean;              // consumer has saved this provider
   certificate_id: string | null;  // non-null → Highly Trusted, shows verified badge
+  isScrapeRecord: boolean;        // true → unverified scraped provider, show Unverified path
 }
 
 /**
  * Pagination + ring metadata on search response.
  *
- * ring_km reflects actual ring used: 3 → 7 → 15 → 50 → 150.
- * narration is set by search service when ring expanded beyond 3km.
+ * ring_km reflects actual ring used: 3 → 7 → 15 → 50 → 150 → 1000.
+ * narration is set by the search service for ring expansion or taxonomy fallback.
+ * taxonomy_level_used: 'l4'|'l3'|'l2'|'l1'|null — which taxonomy level produced results.
  */
 export interface SearchMeta {
   total: number;
   page: number;
-  pages: number;
+  has_more: boolean;
   ring_km: number;
+  ring_label: string;
   narration: string | null;
+  taxonomy_level_used: string | null;
 }
 
 export interface SearchResponse {
@@ -223,7 +234,7 @@ export async function searchProviders(
       listingType:       h.listingType ?? h.listing_type ?? '',
       tab:               h.tab,
       taxonomy_node_id:  h.category_id ?? '',
-      taxonomy_name:     h.category ?? '',
+      taxonomy_name:     h.taxonomy_name ?? h.category ?? '',
       trustScore:        h.trustScore ?? h.trust_score ?? 0,
       trustTier:         h.trustTier ?? h.trust_tier ?? 'basic',
       distance_km:       h.distance_km ?? 0,
@@ -237,13 +248,16 @@ export async function searchProviders(
       languages:         h.languages ?? [],
       is_saved:          h.is_saved ?? false,
       certificate_id:    h.certificate_id ?? null,
+      isScrapeRecord:    h.isScrapeRecord ?? h.is_scrape_record ?? false,
     })),
     meta: {
-      total:    inner.total ?? 0,
-      page:     inner.page ?? 1,
-      has_more: inner.has_more ?? false,
-      ring_km:  inner.ring_km ?? 0,
-      narration: inner.narration ?? null,
+      total:                inner.total ?? 0,
+      page:                 inner.page ?? 1,
+      has_more:             inner.has_more ?? false,
+      ring_km:              inner.ring_km ?? 0,
+      ring_label:           inner.ring_label ?? '',
+      narration:            inner.narration ?? null,
+      taxonomy_level_used:  inner.taxonomy_level_used ?? null,
     },
   };
 }
