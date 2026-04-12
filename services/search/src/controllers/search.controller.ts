@@ -367,15 +367,42 @@ export const getCategories = async (
     hex_color: string | null;
   };
 
-  const nodes = await prisma.$queryRaw<NodeRow[]>`
-    SELECT id, l1, l2, l3, l4, sort_order, icon_emoji, icon_emoji_l3, hex_color
-    FROM taxonomy_nodes
-    WHERE tab::text = ${tab}
-      AND is_active = true
-    ORDER BY sort_order ASC, l1 ASC, l4 ASC
-  `;
+  // ── Run DB query + OpenSearch agg IN PARALLEL (PERF-02 fix) ───────────────
+  // Previously sequential: DB → await OS → res.json (~200-400ms blocked).
+  // Now parallel: both fire simultaneously, response is built when both resolve.
+  // OS agg is non-fatal — categories still serve without provider_count if OS fails.
+  const [nodes, osCountMap] = await Promise.all([
+    prisma.$queryRaw<NodeRow[]>`
+      SELECT id, l1, l2, l3, l4, sort_order, icon_emoji, icon_emoji_l3, hex_color
+      FROM taxonomy_nodes
+      WHERE tab::text = ${tab}
+        AND is_active = true
+      ORDER BY sort_order ASC, l1 ASC, l4 ASC
+    `,
+    (async (): Promise<Record<string, number>> => {
+      try {
+        const osClient = getOpenSearchClient();
+        const aggResponse = await osClient.search({
+          index: OPENSEARCH_INDEX,
+          body: {
+            size: 0,
+            query: { bool: { filter: [{ term: { is_active: true } }, { term: { tab } }] } },
+            aggs: { by_l1: { terms: { field: 'taxonomy_l1', size: 100 } } },
+          },
+        });
+        const buckets: Array<{ key: string; doc_count: number }> =
+          aggResponse.body.aggregations?.by_l1?.buckets ?? [];
+        const map: Record<string, number> = {};
+        for (const b of buckets) map[b.key] = b.doc_count;
+        return map;
+      } catch (osErr) {
+        logger.warn('categories.opensearch.agg.failed', { error: (osErr as Error).message });
+        return {};
+      }
+    })(),
+  ]);
 
-  // Group by l1. hex_color is consistent across all rows with same l1.
+  // Group taxonomy nodes by l1
   const grouped: Record<string, {
     color: string | null;
     children: Array<{ id: string; l2: string | null; l3: string | null; l4: string | null; icon: string | null; }>;
@@ -397,58 +424,12 @@ export const getCategories = async (
     tab,
     groups: Object.entries(grouped).map(([l1, { color, children }]) => ({
       l1,
-      icon:     L1_ICONS[l1] ?? '📦',
-      color:    color ?? '#6B6560',
+      icon:           L1_ICONS[l1] ?? '📦',
+      color:          color ?? '#6B6560',
       children,
+      provider_count: osCountMap[l1] ?? 0,
     })),
   };
-
-  // ── Enrich with real provider_count from OpenSearch ───────────────────────
-  // OpenSearch terms aggregation on taxonomy_l1 for active providers in this tab.
-  // Runs after DB query so cache miss only incurs this cost once per TTL (24h).
-  try {
-    const osClient = getOpenSearchClient();
-    const aggResponse = await osClient.search({
-      index: OPENSEARCH_INDEX,
-      body: {
-        size: 0,
-        query: {
-          bool: {
-            filter: [
-              { term: { is_active: true } },
-              { term: { tab } },
-            ],
-          },
-        },
-        aggs: {
-          by_l1: {
-            terms: {
-              field: 'taxonomy_l1',
-              size: 100,   // max distinct L1 categories per tab
-            },
-          },
-        },
-      },
-    });
-
-    const buckets: Array<{ key: string; doc_count: number }> =
-      aggResponse.body.aggregations?.by_l1?.buckets ?? [];
-
-    const countMap: Record<string, number> = {};
-    for (const bucket of buckets) {
-      countMap[bucket.key] = bucket.doc_count;
-    }
-
-    // Attach real provider_count to each group
-    (data.groups as any[]).forEach((group) => {
-      group.provider_count = countMap[group.l1] ?? 0;
-    });
-  } catch (osErr) {
-    // Non-fatal: OpenSearch unavailable → provider_count stays absent (mobile falls back to 0)
-    logger.warn('categories.opensearch.agg.failed', {
-      error: (osErr as Error).message,
-    });
-  }
 
   void redisSet(cacheKey, data, CATEGORIES_CACHE_TTL_SECONDS);
 
