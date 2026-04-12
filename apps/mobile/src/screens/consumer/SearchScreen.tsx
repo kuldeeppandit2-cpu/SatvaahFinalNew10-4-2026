@@ -1,46 +1,30 @@
 /**
- * apps/mobile/src/screens/consumer/SearchScreen.tsx
- * SatvAAh Phase 18 — Taxonomy-Constrained Search
+ * SearchScreen — S2 Free Text Search
  *
- * Rules (from spec):
- *   • Taxonomy-constrained ONLY — never open free-text search
- *   • Min 2 chars to show suggestions
- *   • Max 8 results from taxonomy_nodes
- *   • Voice search: English (en-IN) / Telugu (te-IN) / Hindi (hi-IN)
- *   • storeSearchIntent is async, fire-and-forget, never fails UI
- *   • Selection required to proceed — search button disabled on free text
+ * Two inputs:
+ *   1. What are you looking for? (taxonomy search with autocomplete)
+ *   2. Where? (location — taps into LocationPickerScreen)
  *
  * Flow:
- *   1. User types ≥2 chars → getSearchSuggestions() → show max 8 nodes
- *   2. User taps node → storeSearchIntent() (fire-and-forget) → navigate to Results
- *   3. Voice: record → transcribe → search taxonomy → auto-select if 1 result
+ *   1. User types ≥2 chars → getSearchSuggestions() → max 8 taxonomy nodes
+ *   2. User taps suggestion → storeSearchIntent (fire-and-forget)
+ *      → if location set: navigate to SearchResults
+ *      → if no location: navigate to LocationPickerScreen first
+ *   3. Voice: record → transcribe → auto-select if 1 match
  */
 
 import React, {
-  useState,
-  useRef,
-  useCallback,
-  useEffect,
-  useMemo,
+  useState, useRef, useCallback, useEffect,
 } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  FlatList,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  Animated,
-  StatusBar,
-  Pressable,
-  Alert,
+  View, Text, TextInput, TouchableOpacity, FlatList,
+  StyleSheet, KeyboardAvoidingView, Platform,
+  ActivityIndicator, Animated, StatusBar, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp, RouteProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useLocationStore } from '../../stores/location.store';
@@ -50,744 +34,414 @@ import {
   type Tab,
   type SearchSuggestion,
 } from '../../api/search.api';
+import { COLORS } from '../../constants/colors';
 
-// ─── Navigation Types ──────────────────────────────────────────────────────────
+// ─── Nav types ────────────────────────────────────────────────────────────────
 
-type ConsumerStackParamList = {
-  Home: undefined;
-  Search: { tab: Tab; initialQuery?: string };
-  SearchResults: {
-    query: string;
-    taxonomyNodeId?: string;
-    taxonomyL4?: string;
-    taxonomyL3?: string;
-    taxonomyL2?: string;
-    taxonomyL1?: string;
-    tab: Tab;
-    locationName?: string;
+type Stack = {
+  Search:         { tab?: Tab; initialQuery?: string };
+  SearchResults:  {
+    query: string; tab: Tab; locationName?: string;
+    taxonomyNodeId?: string; taxonomyL4?: string;
+    taxonomyL3?: string; taxonomyL2?: string; taxonomyL1?: string;
+  };
+  LocationPicker: {
+    query: string; tab: string; locationName?: string;
+    taxonomyNodeId?: string; taxonomyL4?: string;
+    taxonomyL3?: string; taxonomyL2?: string; taxonomyL1?: string;
   };
 };
 
-type Nav  = NativeStackNavigationProp<ConsumerStackParamList>;
-type Route = RouteProp<ConsumerStackParamList, 'Search'>;
+type Nav   = NativeStackNavigationProp<Stack>;
+type Route = RouteProp<Stack, 'Search'>;
 
-// ─── Voice Search ──────────────────────────────────────────────────────────────
+// ─── Recent searches ──────────────────────────────────────────────────────────
 
-type VoiceLang = { code: string; label: string; short: string };
+const RECENT_KEY = 'satvaaah_recent_s2_';
+const MAX_RECENT = 5;
 
-const VOICE_LANGS: VoiceLang[] = [
+async function saveRecent(tab: Tab, node: SearchSuggestion) {
+  try {
+    const raw = await AsyncStorage.getItem(RECENT_KEY + tab);
+    const existing: SearchSuggestion[] = raw ? JSON.parse(raw) : [];
+    const updated = [node, ...existing.filter(n => n.id !== node.id)].slice(0, MAX_RECENT);
+    await AsyncStorage.setItem(RECENT_KEY + tab, JSON.stringify(updated));
+  } catch {}
+}
+
+async function loadRecent(tab: Tab): Promise<SearchSuggestion[]> {
+  try {
+    const raw = await AsyncStorage.getItem(RECENT_KEY + tab);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+// ─── Voice (optional) ─────────────────────────────────────────────────────────
+
+let Voice: any = null;
+try { Voice = require('@react-native-voice/voice').default; } catch {}
+
+const VOICE_LANGS = [
   { code: 'en-IN', label: 'English', short: 'EN' },
   { code: 'te-IN', label: 'Telugu',  short: 'TE' },
   { code: 'hi-IN', label: 'Hindi',   short: 'HI' },
 ];
 
-// Lazy-load @react-native-voice/voice to avoid crash if not linked
-let Voice: any = null;
-try {
-  Voice = require('@react-native-voice/voice').default;
-} catch {
-  // Voice module not available — voice search gracefully disabled
-}
-
-// ─── Recent Searches Persistence ─────────────────────────────────────────────
-
-const RECENT_KEY_PREFIX = 'satvaaah_recent_searches_';
-const MAX_RECENT = 5;
-
-async function saveRecentSearch(tab: Tab, node: SearchSuggestion): Promise<void> {
-  try {
-    const key = `${RECENT_KEY_PREFIX}${tab}`;
-    const raw = await AsyncStorage.getItem(key);
-    const existing: SearchSuggestion[] = raw ? JSON.parse(raw) : [];
-    const filtered = existing.filter((n) => n.id !== node.id);
-    const updated = [node, ...filtered].slice(0, MAX_RECENT);
-    await AsyncStorage.setItem(key, JSON.stringify(updated));
-  } catch {
-    // Non-critical
-  }
-}
-
-async function loadRecentSearches(tab: Tab): Promise<SearchSuggestion[]> {
-  try {
-    const key = `${RECENT_KEY_PREFIX}${tab}`;
-    const raw = await AsyncStorage.getItem(key);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-// ─── Main Screen ──────────────────────────────────────────────────────────────
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 const SearchScreen: React.FC = () => {
-  const navigation = useNavigation<Nav>();
-  const route = useRoute<Route>();
-  const { tab = "services", initialQuery } = route.params ?? {};
+  const navigation  = useNavigation<Nav>();
+  const route       = useRoute<Route>();
+  const { tab = 'services', initialQuery } = route.params ?? {};
+
+  const { lat, lng } = useLocationStore();
+  const locationName  = useLocationStore(s => {
+    // Derive a display name from coords — Hyderabad default shows as "Hyderabad"
+    if (s.lat === 17.385 && s.lng === 78.4867) return 'Hyderabad';
+    return `${s.lat.toFixed(2)}°N, ${s.lng.toFixed(2)}°E`;
+  });
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const [inputText, setInputText]                 = useState(initialQuery ?? '');
-  const [selectedNode, setSelectedNode]           = useState<SearchSuggestion | null>(null);
-  const [suggestions, setSuggestions]             = useState<SearchSuggestion[]>([]);
-  const [recentSearches, setRecentSearches]       = useState<SearchSuggestion[]>([]);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
-  const [voiceActive, setVoiceActive]             = useState(false);
-  const [voiceLang, setVoiceLang]                 = useState<VoiceLang>(VOICE_LANGS[0]);
-  const [showLangPicker, setShowLangPicker]       = useState(false);
+  const [query,        setQuery]        = useState(initialQuery ?? '');
+  const [selected,     setSelected]     = useState<SearchSuggestion | null>(null);
+  const [suggestions,  setSuggestions]  = useState<SearchSuggestion[]>([]);
+  const [recents,      setRecents]      = useState<SearchSuggestion[]>([]);
+  const [loading,      setLoading]      = useState(false);
+  const [voiceActive,  setVoiceActive]  = useState(false);
+  const [voiceLang,    setVoiceLang]    = useState(VOICE_LANGS[0]);
+  const [showLangMenu, setShowLangMenu] = useState(false);
 
-  const inputRef     = useRef<TextInput>(null);
-  const debounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const micPulse     = useRef(new Animated.Value(1)).current;
+  const inputRef    = useRef<TextInput>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const micPulse    = useRef(new Animated.Value(1)).current;
 
-  // ── Load recent searches on mount ─────────────────────────────────────────
+  // ── Load recents on focus ─────────────────────────────────────────────────
+  useFocusEffect(useCallback(() => {
+    loadRecent(tab as Tab).then(setRecents);
+    setTimeout(() => inputRef.current?.focus(), 150);
+  }, [tab]));
+
+  // ── Mic animation ─────────────────────────────────────────────────────────
   useEffect(() => {
-    loadRecentSearches(tab).then(setRecentSearches);
-    // Auto-focus input
-    const t = setTimeout(() => inputRef.current?.focus(), 100);
-    return () => clearTimeout(t);
-  }, [tab]);
-
-  // ── Mic pulse animation ───────────────────────────────────────────────────
-  useEffect(() => {
-    let anim: Animated.CompositeAnimation | null = null;
-    if (voiceActive) {
-      anim = Animated.loop(
-        Animated.sequence([
-          Animated.timing(micPulse, { toValue: 1.3, duration: 600, useNativeDriver: true }),
-          Animated.timing(micPulse, { toValue: 1.0, duration: 600, useNativeDriver: true }),
-        ]),
-      );
-      anim.start();
-    } else {
-      micPulse.setValue(1);
-    }
-    return () => anim?.stop();
+    if (!voiceActive) { micPulse.setValue(1); return; }
+    const anim = Animated.loop(Animated.sequence([
+      Animated.timing(micPulse, { toValue: 1.3, duration: 600, useNativeDriver: true }),
+      Animated.timing(micPulse, { toValue: 1.0, duration: 600, useNativeDriver: true }),
+    ]));
+    anim.start();
+    return () => anim.stop();
   }, [voiceActive, micPulse]);
 
-  // ── Setup Voice listeners ─────────────────────────────────────────────────
+  // ── Voice setup ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (!Voice) return;
     Voice.onSpeechResults = (e: any) => {
-      const transcript: string = e.value?.[0] ?? '';
-      if (transcript) {
-        setInputText(transcript);
-        setVoiceActive(false);
-        // Immediately search taxonomy for the transcript
-        fetchSuggestions(transcript);
-      }
+      const t = e.value?.[0] ?? '';
+      if (t) { setQuery(t); setVoiceActive(false); fetchSuggestions(t); }
     };
-    Voice.onSpeechError = () => {
-      setVoiceActive(false);
-    };
-    Voice.onSpeechEnd = () => {
-      setVoiceActive(false);
-    };
-    return () => {
-      Voice?.destroy().catch(() => {});
-    };
+    Voice.onSpeechError = () => setVoiceActive(false);
+    Voice.onSpeechEnd   = () => setVoiceActive(false);
+    return () => { Voice?.destroy().catch(() => {}); };
   }, []);
 
-  // ── Taxonomy suggestions fetch ────────────────────────────────────────────
-
-  const fetchSuggestions = useCallback(
-    async (text: string) => {
-      if (text.trim().length < 2) {
-        setSuggestions([]);
-        setLoadingSuggestions(false);
-        return;
-      }
-      setLoadingSuggestions(true);
-      try {
-        const filtered = (results ?? []).filter(r => r && r.id && r.name);
-        setSuggestions(filtered);
-        // Auto-select if exactly 1 result — whether typing or voice
-        // User doesn't need to see a dropdown with 1 option — just fire the search
-        if (filtered.length === 1) {
-          handleNodeSelect(filtered[0]);
-        }
-      } catch {
-        setSuggestions([]);
-      } finally {
-        setLoadingSuggestions(false);
-      }
-    },
-    [tab, voiceActive],
-  );
-
-  const onInputChange = useCallback(
-    (text: string) => {
-      setInputText(text);
-      setSelectedNode(null); // Clear selection on new input
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      if (text.trim().length < 2) {
-        setSuggestions([]);
-        return;
-      }
-      debounceRef.current = setTimeout(() => {
-        fetchSuggestions(text);
-      }, 300);
-    },
-    [fetchSuggestions],
-  );
-
-  // ── Node selection ────────────────────────────────────────────────────────
-
-  const handleNodeSelect = useCallback(
-    (node: SearchSuggestion) => {
-      setSelectedNode(node);
-      setInputText(node.name);
-      setSuggestions([]);
-      // Fire-and-forget intent (V012) — NEVER blocks navigation
-      storeSearchIntent({
-        taxonomy_node_id: node.id,
-        lat: useLocationStore.getState().lat,
-        lng: useLocationStore.getState().lng,
-      });
-      // Save to recent
-      saveRecentSearch(tab, node);
-      // Navigate — use node.tab (the taxonomy node's correct tab, not the route param)
-      // Pass full taxonomy anchor so backend can apply the most specific filter
-      navigation.navigate('SearchResults', {
-        query:          node.name,
-        taxonomyNodeId: node.id,
-        taxonomyL4:     node.l4  ?? node.name,
-        taxonomyL3:     node.l3  ?? undefined,
-        taxonomyL2:     node.l2  ?? undefined,
-        taxonomyL1:     node.l1,
-        tab:            node.tab as Tab,
-      });
-    },
-    [tab, navigation],
-  );
-
-  // ── Voice Search ──────────────────────────────────────────────────────────
-
-  const startVoice = useCallback(async () => {
-    if (!Voice) {
-      Alert.alert('Voice search', 'Voice search is not available on this device.');
-      return;
-    }
+  // ── Fetch taxonomy suggestions ────────────────────────────────────────────
+  const fetchSuggestions = useCallback(async (text: string) => {
+    if (text.trim().length < 2) { setSuggestions([]); return; }
+    setLoading(true);
     try {
-      setVoiceActive(true);
-      setInputText('');
+      const results = await getSearchSuggestions(text, tab);
+      const filtered = (results ?? []).filter(r => r?.id && r?.name);
+      setSuggestions(filtered);
+      // Auto-select single match
+      if (filtered.length === 1) handleNodeSelect(filtered[0]);
+    } catch {
       setSuggestions([]);
-      await Voice.start(voiceLang.code);
-    } catch {
-      setVoiceActive(false);
+    } finally {
+      setLoading(false);
     }
-  }, [voiceLang]);
+  }, [tab]);
 
-  const stopVoice = useCallback(async () => {
-    try {
-      await Voice?.stop();
-    } catch {
-      // Ignore
-    }
-    setVoiceActive(false);
-  }, []);
+  const onQueryChange = useCallback((text: string) => {
+    setQuery(text);
+    setSelected(null);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (text.trim().length < 2) { setSuggestions([]); return; }
+    debounceRef.current = setTimeout(() => fetchSuggestions(text), 300);
+  }, [fetchSuggestions]);
 
-  const onVoicePress = useCallback(() => {
-    if (voiceActive) {
-      stopVoice();
-    } else {
-      startVoice();
-    }
-  }, [voiceActive, startVoice, stopVoice]);
-
-  // ── Clear input ───────────────────────────────────────────────────────────
-
-  const clearInput = useCallback(() => {
-    setInputText('');
-    setSelectedNode(null);
+  // ── Node select → go to LocationPicker if no location, else SearchResults ──
+  const handleNodeSelect = useCallback((node: SearchSuggestion) => {
+    setSelected(node);
+    setQuery(node.name);
     setSuggestions([]);
-    inputRef.current?.focus();
-  }, []);
+    saveRecent(tab as Tab, node);
+    storeSearchIntent({
+      taxonomy_node_id: node.id,
+      lat: useLocationStore.getState().lat,
+      lng: useLocationStore.getState().lng,
+    });
 
-  // ── Suggestion row render ─────────────────────────────────────────────────
+    const params = {
+      query:          node.name,
+      taxonomyNodeId: node.id,
+      taxonomyL4:     node.l4  ?? node.name,
+      taxonomyL3:     node.l3  ?? undefined,
+      taxonomyL2:     node.l2  ?? undefined,
+      taxonomyL1:     node.l1,
+      tab:            (node.tab ?? tab) as Tab,
+      locationName,
+    };
 
-  const renderSuggestion = useCallback(
-    ({ item }: { item: SearchSuggestion }) => {
-      const breadcrumb = [item.l1, item.l2, item.l3, item.l4]
-        .filter(Boolean)
-        .join(' › ');
-      return (
-        <TouchableOpacity
-          style={styles.suggestionRow}
-          onPress={() => handleNodeSelect(item)}
-          activeOpacity={0.75}
-        >
-          <View style={styles.suggestionIcon}>
-            <Text style={styles.suggestionIconText}>🔎</Text>
-          </View>
-          <View style={styles.suggestionText}>
-            <Text style={styles.suggestionName}>{item.name ?? ''}</Text>
-            {item.name && breadcrumb.length > item.name.length + 2 && (
-              <Text style={styles.suggestionBreadcrumb} numberOfLines={1}>
-                {breadcrumb}
-              </Text>
-            )}
-          </View>
-          {item.homeVisit && (
-            <Text style={styles.homeVisitBadge}>🏠</Text>
-          )}
-        </TouchableOpacity>
-      );
-    },
-    [handleNodeSelect],
-  );
+    // Always go via LocationPicker so user confirms / changes location
+    navigation.navigate('LocationPicker', { ...params, tab: params.tab });
+  }, [tab, navigation, locationName]);
 
-  const renderRecentItem = useCallback(
-    ({ item }: { item: SearchSuggestion }) => (
-      <TouchableOpacity
-        style={styles.recentRow}
-        onPress={() => handleNodeSelect(item)}
-        activeOpacity={0.75}
-      >
-        <Text style={styles.recentIcon}>🕐</Text>
-        <Text style={styles.recentName}>{item.name}</Text>
-        <Text style={styles.recentTab}>{item.tab}</Text>
-      </TouchableOpacity>
-    ),
-    [handleNodeSelect],
-  );
+  // ── Voice handlers ────────────────────────────────────────────────────────
+  const onVoicePress = useCallback(async () => {
+    if (voiceActive) { await Voice?.stop(); setVoiceActive(false); return; }
+    if (!Voice) { Alert.alert('Voice search not available on this device.'); return; }
+    try {
+      setVoiceActive(true); setQuery(''); setSuggestions([]);
+      await Voice.start(voiceLang.code);
+    } catch { setVoiceActive(false); }
+  }, [voiceActive, voiceLang]);
 
-  // ── Determine what to show in body ────────────────────────────────────────
-  const showSuggestions = inputText.trim().length >= 2;
-  const showRecents     = !showSuggestions && recentSearches.length > 0;
-  const showEmptyHint   = !showSuggestions && !showRecents;
+  // ── Location row press ────────────────────────────────────────────────────
+  const onLocationPress = useCallback(() => {
+    // Navigate to LocationPicker with current taxonomy selection preserved
+    const base = selected ? {
+      query:          selected.name,
+      taxonomyNodeId: selected.id,
+      taxonomyL4:     selected.l4 ?? selected.name,
+      taxonomyL3:     selected.l3 ?? undefined,
+      taxonomyL2:     selected.l2 ?? undefined,
+      taxonomyL1:     selected.l1,
+      tab:            (selected.tab ?? tab) as string,
+    } : { query: query || '', tab };
+
+    navigation.navigate('LocationPicker', { ...base, tab: base.tab as string });
+  }, [selected, query, tab, navigation]);
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  const showSuggestions = query.trim().length >= 2;
+  const showRecents     = !showSuggestions && recents.length > 0 && !selected;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        {/* ── Search Header ── */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Text style={styles.backIcon}>←</Text>
+    <SafeAreaView style={s.safe} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.ivory} />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+
+        {/* ── Header row ── */}
+        <View style={s.headerRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top:10,bottom:10,left:10,right:10 }}>
+            <Ionicons name="chevron-back" size={24} color={COLORS.deepInk} />
           </TouchableOpacity>
+          <Text style={s.headerTitle}>Search</Text>
+          <View style={{ width: 24 }} />
+        </View>
 
-          <View style={styles.inputWrapper}>
-            <TextInput
-              ref={inputRef}
-              style={styles.input}
-              value={inputText}
-              onChangeText={onInputChange}
-              placeholder={`Search ${tab}…`}
-              placeholderTextColor="#9B8E7C"
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="search"
-              // Prevent return key from submitting free text — must select from taxonomy
-              onSubmitEditing={() => {
-                if (suggestions.length === 1) handleNodeSelect(suggestions[0]);
-              }}
-            />
-            {inputText.length > 0 && (
-              <TouchableOpacity onPress={clearInput} style={styles.clearBtn}>
-                <Text style={styles.clearIcon}>✕</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
+        {/* ── BOX 1: What are you looking for? ── */}
+        <View style={s.boxLabel}>
+          <Ionicons name="search-outline" size={14} color={COLORS.muted} />
+          <Text style={s.boxLabelText}>What are you looking for?</Text>
+        </View>
+        <View style={s.inputRow}>
+          <TextInput
+            ref={inputRef}
+            style={s.input}
+            value={query}
+            onChangeText={onQueryChange}
+            placeholder="e.g. AC repair, cook, lawyer…"
+            placeholderTextColor={COLORS.muted}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+            onSubmitEditing={() => { if (suggestions.length === 1) handleNodeSelect(suggestions[0]); }}
+          />
+          {query.length > 0 && (
+            <TouchableOpacity onPress={() => { setQuery(''); setSelected(null); setSuggestions([]); inputRef.current?.focus(); }} style={s.clearBtn}>
+              <Ionicons name="close-circle" size={18} color={COLORS.muted} />
+            </TouchableOpacity>
+          )}
           {/* Voice button */}
           <Animated.View style={{ transform: [{ scale: voiceActive ? micPulse : 1 }] }}>
             <TouchableOpacity
-              style={[styles.voiceBtn, voiceActive && styles.voiceBtnActive]}
+              style={[s.voiceBtn, voiceActive && s.voiceBtnActive]}
               onPress={onVoicePress}
-              onLongPress={() => setShowLangPicker(true)}
-              accessibilityLabel={voiceActive ? 'Stop voice search' : `Voice search in ${voiceLang.label}`}
+              onLongPress={() => setShowLangMenu(true)}
             >
-              <Text style={styles.voiceIcon}>🎤</Text>
-              <Text style={styles.voiceLangLabel}>{voiceLang.short}</Text>
+              <Ionicons name="mic" size={18} color={voiceActive ? COLORS.ivory : COLORS.deepInk} />
             </TouchableOpacity>
           </Animated.View>
         </View>
 
-        {/* ── Voice language picker ── */}
-        {showLangPicker && (
-          <View style={styles.langPicker}>
-            <Text style={styles.langPickerTitle}>Search language</Text>
-            {VOICE_LANGS.map((lang) => (
-              <TouchableOpacity
-                key={lang.code}
-                style={[styles.langRow, voiceLang.code === lang.code && styles.langRowSelected]}
-                onPress={() => {
-                  setVoiceLang(lang);
-                  setShowLangPicker(false);
-                }}
-              >
-                <Text style={[
-                  styles.langRowText,
-                  voiceLang.code === lang.code && styles.langRowTextSelected,
-                ]}>
-                  {lang.label}
-                </Text>
-                {voiceLang.code === lang.code && <Text>✓</Text>}
+        {/* Selected node chip */}
+        {selected && (
+          <View style={s.selectedChip}>
+            <Ionicons name="checkmark-circle" size={16} color={COLORS.verdigris} />
+            <Text style={s.selectedChipText} numberOfLines={1}>{selected.name}</Text>
+            <Text style={s.selectedBreadcrumb} numberOfLines={1}>
+              {[selected.l1, selected.l2, selected.l3].filter(Boolean).join(' › ')}
+            </Text>
+          </View>
+        )}
+
+        {/* ── BOX 2: Where? ── */}
+        <View style={s.boxLabel}>
+          <Ionicons name="location-outline" size={14} color={COLORS.muted} />
+          <Text style={s.boxLabelText}>Where?</Text>
+        </View>
+        <TouchableOpacity style={s.locationRow} onPress={onLocationPress} activeOpacity={0.75}>
+          <Ionicons name="location" size={18} color={COLORS.saffron} style={{ marginRight: 10 }} />
+          <Text style={s.locationText} numberOfLines={1}>{locationName}</Text>
+          <Text style={s.changeText}>Change</Text>
+          <Ionicons name="chevron-forward" size={16} color={COLORS.muted} />
+        </TouchableOpacity>
+
+        {/* Voice lang picker */}
+        {showLangMenu && (
+          <View style={s.langMenu}>
+            <Text style={s.langMenuTitle}>Voice language</Text>
+            {VOICE_LANGS.map(lang => (
+              <TouchableOpacity key={lang.code} style={[s.langRow, voiceLang.code === lang.code && s.langRowActive]}
+                onPress={() => { setVoiceLang(lang); setShowLangMenu(false); }}>
+                <Text style={[s.langRowText, voiceLang.code === lang.code && s.langRowTextActive]}>{lang.label}</Text>
+                {voiceLang.code === lang.code && <Ionicons name="checkmark" size={16} color={COLORS.saffron} />}
               </TouchableOpacity>
             ))}
           </View>
         )}
 
-        {/* ── Taxonomy constraint notice ── */}
-        <View style={styles.constraintBar}>
-          <Text style={styles.constraintText}>
-            Select from categories — free text search is not supported
-          </Text>
-        </View>
-
-        {/* ── Body: suggestions / recent / hint ── */}
+        {/* ── Suggestions list ── */}
         {showSuggestions && (
+          loading
+            ? <ActivityIndicator color={COLORS.saffron} style={{ marginTop: 24 }} />
+            : suggestions.length > 0
+              ? <FlatList
+                  data={suggestions}
+                  keyExtractor={item => item.id}
+                  keyboardShouldPersistTaps="always"
+                  style={s.list}
+                  ItemSeparatorComponent={() => <View style={s.sep} />}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity style={s.suggRow} onPress={() => handleNodeSelect(item)} activeOpacity={0.75}>
+                      <View style={s.suggIcon}><Text style={{ fontSize: 16 }}>🔎</Text></View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.suggName}>{item.name ?? ''}</Text>
+                        <Text style={s.suggCrumb} numberOfLines={1}>
+                          {[item.l1, item.l2, item.l3].filter(Boolean).join(' › ')}
+                        </Text>
+                      </View>
+                      {item.homeVisit && <Text style={{ fontSize: 14 }}>🏠</Text>}
+                    </TouchableOpacity>
+                  )}
+                />
+              : <View style={s.empty}>
+                  <Text style={s.emptyIcon}>🔍</Text>
+                  <Text style={s.emptyTitle}>No categories found</Text>
+                  <Text style={s.emptyBody}>Try a different term — e.g. "nai", "bai", "bijli wala"</Text>
+                </View>
+        )}
+
+        {/* ── Recent searches ── */}
+        {showRecents && (
           <>
-            {loadingSuggestions ? (
-              <ActivityIndicator
-                color="#C8691A"
-                style={{ marginTop: 24 }}
-              />
-            ) : suggestions.length > 0 ? (
-              <FlatList
-                data={suggestions}
-                keyExtractor={(item) => item.id}
-                renderItem={renderSuggestion}
-                keyboardShouldPersistTaps="always"
-                style={styles.list}
-                ItemSeparatorComponent={() => <View style={styles.separator} />}
-              />
-            ) : (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyIcon}>🔍</Text>
-                <Text style={styles.emptyTitle}>No categories found</Text>
-                <Text style={styles.emptyBody}>
-                  Try a different term — SatvAAh searches within our
-                  trusted taxonomy only.
-                </Text>
-              </View>
-            )}
+            <Text style={s.recentHeading}>Recent searches</Text>
+            <FlatList
+              data={recents}
+              keyExtractor={item => item.id}
+              keyboardShouldPersistTaps="always"
+              style={s.list}
+              ItemSeparatorComponent={() => <View style={s.sep} />}
+              renderItem={({ item }) => (
+                <TouchableOpacity style={s.suggRow} onPress={() => handleNodeSelect(item)} activeOpacity={0.75}>
+                  <Ionicons name="time-outline" size={20} color={COLORS.muted} style={{ marginRight: 12 }} />
+                  <Text style={[s.suggName, { flex: 1 }]}>{item.name}</Text>
+                  <Text style={s.suggCrumb}>{item.tab}</Text>
+                </TouchableOpacity>
+              )}
+            />
           </>
         )}
 
-        {showRecents && (
-          <View>
-            <Text style={styles.recentHeading}>Recent searches</Text>
-            <FlatList
-              data={recentSearches}
-              keyExtractor={(item) => item.id}
-              renderItem={renderRecentItem}
-              keyboardShouldPersistTaps="always"
-              style={styles.list}
-              ItemSeparatorComponent={() => <View style={styles.separator} />}
-            />
+        {/* ── Hint when nothing typed ── */}
+        {!showSuggestions && !showRecents && (
+          <View style={s.empty}>
+            <Text style={s.emptyIcon}>💡</Text>
+            <Text style={s.emptyTitle}>What are you looking for?</Text>
+            <Text style={s.emptyBody}>Type at least 2 characters — try "cook", "plumber", "lawyer"</Text>
           </View>
         )}
 
-        {showEmptyHint && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>💡</Text>
-            <Text style={styles.emptyTitle}>What are you looking for?</Text>
-            <Text style={styles.emptyBody}>
-              Type at least 2 characters to see matching categories,
-              or tap the mic for voice search.
-            </Text>
-          </View>
-        )}
-
-        {/* Voice active overlay */}
+        {/* ── Voice overlay ── */}
         {voiceActive && (
-          <View style={styles.voiceOverlay}>
-            <Animated.View style={[styles.voicePulseRing, {
+          <View style={s.voiceOverlay}>
+            <Animated.View style={[s.voiceRing, {
               transform: [{ scale: micPulse }],
               opacity: micPulse.interpolate({ inputRange: [1, 1.3], outputRange: [0.6, 0] }),
             }]} />
-            <Text style={styles.voiceOverlayIcon}>🎤</Text>
-            <Text style={styles.voiceOverlayLang}>Listening in {voiceLang.label}…</Text>
-            <TouchableOpacity onPress={stopVoice} style={styles.voiceStopBtn}>
-              <Text style={styles.voiceStopText}>Stop</Text>
+            <Ionicons name="mic" size={56} color={COLORS.ivory} style={{ marginBottom: 16 }} />
+            <Text style={s.voiceOverlayLang}>Listening in {voiceLang.label}…</Text>
+            <TouchableOpacity onPress={onVoicePress} style={s.voiceStopBtn}>
+              <Text style={s.voiceStopText}>Stop</Text>
             </TouchableOpacity>
           </View>
         )}
+
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
-// ─── Styles ────────────────────────────────────────────────────────────────────
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: '#FAF7F0',
-  },
+const s = StyleSheet.create({
+  safe:             { flex: 1, backgroundColor: COLORS.ivory },
+  headerRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
+  headerTitle:      { fontSize: 17, fontWeight: '700', color: COLORS.deepInk },
 
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E8E0D0',
-    backgroundColor: '#FAF7F0',
-  },
-  backBtn: {
-    padding: 8,
-    marginRight: 4,
-  },
-  backIcon: {
-    fontSize: 20,
-    color: '#1C1C2E',
-  },
-  inputWrapper: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0E4CC',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: Platform.OS === 'ios' ? 8 : 4,
-    marginRight: 8,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: 'PlusJakartaSans-Regular',
-    color: '#1C1C2E',
-    padding: 0,
-  },
-  clearBtn: {
-    padding: 4,
-  },
-  clearIcon: {
-    fontSize: 14,
-    color: '#9B8E7C',
-  },
+  boxLabel:         { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 6 },
+  boxLabelText:     { fontSize: 12, fontWeight: '600', color: COLORS.muted, textTransform: 'uppercase', letterSpacing: 0.4 },
 
-  // Voice
-  voiceBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F0E4CC',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  voiceBtnActive: {
-    backgroundColor: '#C8691A',
-  },
-  voiceIcon: {
-    fontSize: 18,
-  },
-  voiceLangLabel: {
-    fontSize: 8,
-    fontFamily: 'PlusJakartaSans-SemiBold',
-    color: '#1C1C2E',
-    marginTop: -2,
-  },
+  inputRow:         { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.white, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, marginHorizontal: 16, paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 10 : 6, gap: 8 },
+  input:            { flex: 1, fontSize: 15, color: COLORS.deepInk },
+  clearBtn:         { padding: 2 },
+  voiceBtn:         { width: 34, height: 34, borderRadius: 17, backgroundColor: COLORS.warmSand, justifyContent: 'center', alignItems: 'center' },
+  voiceBtnActive:   { backgroundColor: COLORS.saffron },
 
-  // Language picker
-  langPicker: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginTop: 4,
-    borderRadius: 12,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-    zIndex: 10,
-  },
-  langPickerTitle: {
-    fontSize: 12,
-    fontFamily: 'PlusJakartaSans-SemiBold',
-    color: '#1C1C2E',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  langRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    borderRadius: 8,
-  },
-  langRowSelected: {
-    backgroundColor: '#FFF5EC',
-  },
-  langRowText: {
-    fontSize: 14,
-    fontFamily: 'PlusJakartaSans-Medium',
-    color: '#1C1C2E',
-  },
-  langRowTextSelected: {
-    color: '#C8691A',
-    fontFamily: 'PlusJakartaSans-SemiBold',
-  },
+  selectedChip:     { flexDirection: 'row', alignItems: 'center', gap: 6, marginHorizontal: 16, marginTop: 6, backgroundColor: '#EAF5F0', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  selectedChipText: { fontSize: 13, fontWeight: '600', color: COLORS.verdigris, flex: 1 },
+  selectedBreadcrumb: { fontSize: 11, color: COLORS.muted },
 
-  // Constraint bar
-  constraintBar: {
-    backgroundColor: '#FFF5EC',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-  },
-  constraintText: {
-    fontSize: 11,
-    fontFamily: 'PlusJakartaSans-Regular',
-    color: '#C8691A',
-    textAlign: 'center',
-  },
+  locationRow:      { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.white, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, marginHorizontal: 16, paddingHorizontal: 12, paddingVertical: 14 },
+  locationText:     { flex: 1, fontSize: 15, color: COLORS.deepInk, fontWeight: '500' },
+  changeText:       { fontSize: 13, color: COLORS.saffron, fontWeight: '600', marginRight: 4 },
 
-  // Lists
-  list: {
-    flex: 1,
-    backgroundColor: '#FAF7F0',
-  },
-  separator: {
-    height: 1,
-    backgroundColor: '#EDE6D8',
-    marginLeft: 56,
-  },
+  langMenu:         { backgroundColor: COLORS.white, marginHorizontal: 16, marginTop: 4, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: COLORS.border, zIndex: 10 },
+  langMenuTitle:    { fontSize: 11, fontWeight: '600', color: COLORS.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  langRow:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 4, borderRadius: 8 },
+  langRowActive:    { backgroundColor: '#FFF5EC' },
+  langRowText:      { fontSize: 14, color: COLORS.deepInk },
+  langRowTextActive:{ color: COLORS.saffron, fontWeight: '600' },
 
-  // Suggestion row
-  suggestionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FAF7F0',
-  },
-  suggestionIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#F0E4CC',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  suggestionIconText: {
-    fontSize: 16,
-  },
-  suggestionText: {
-    flex: 1,
-  },
-  suggestionName: {
-    fontSize: 14,
-    fontFamily: 'PlusJakartaSans-SemiBold',
-    color: '#1C1C2E',
-  },
-  suggestionBreadcrumb: {
-    fontSize: 11,
-    fontFamily: 'PlusJakartaSans-Regular',
-    color: '#9B8E7C',
-    marginTop: 1,
-  },
-  homeVisitBadge: {
-    fontSize: 16,
-    marginLeft: 8,
-  },
+  list:             { flex: 1 },
+  sep:              { height: 1, backgroundColor: COLORS.border, marginLeft: 52 },
+  suggRow:          { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 },
+  suggIcon:         { width: 36, height: 36, borderRadius: 10, backgroundColor: COLORS.warmSand, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  suggName:         { fontSize: 14, fontWeight: '600', color: COLORS.deepInk },
+  suggCrumb:        { fontSize: 11, color: COLORS.muted, marginTop: 1 },
+  recentHeading:    { fontSize: 11, fontWeight: '600', color: COLORS.muted, textTransform: 'uppercase', letterSpacing: 0.5, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
 
-  // Recent searches
-  recentHeading: {
-    fontSize: 12,
-    fontFamily: 'PlusJakartaSans-SemiBold',
-    color: '#1C1C2E',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#FAF7F0',
-  },
-  recentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  recentIcon: {
-    fontSize: 16,
-    marginRight: 12,
-    opacity: 0.5,
-  },
-  recentName: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: 'PlusJakartaSans-Medium',
-    color: '#1C1C2E',
-  },
-  recentTab: {
-    fontSize: 11,
-    fontFamily: 'PlusJakartaSans-Regular',
-    color: '#9B8E7C',
-    textTransform: 'capitalize',
-  },
+  empty:            { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, paddingBottom: 80 },
+  emptyIcon:        { fontSize: 40, marginBottom: 12 },
+  emptyTitle:       { fontSize: 16, fontWeight: '600', color: COLORS.deepInk, textAlign: 'center', marginBottom: 8 },
+  emptyBody:        { fontSize: 13, color: COLORS.muted, textAlign: 'center', lineHeight: 20 },
 
-  // Empty / hint states
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-    paddingBottom: 80,
-  },
-  emptyIcon: {
-    fontSize: 40,
-    marginBottom: 12,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontFamily: 'PlusJakartaSans-SemiBold',
-    color: '#1C1C2E',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  emptyBody: {
-    fontSize: 13,
-    fontFamily: 'PlusJakartaSans-Regular',
-    color: '#1C1C2E',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-
-  // Voice overlay
-  voiceOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(28, 28, 46, 0.92)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  voicePulseRing: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 2,
-    borderColor: '#C8691A',
-  },
-  voiceOverlayIcon: {
-    fontSize: 56,
-    marginBottom: 16,
-  },
-  voiceOverlayLang: {
-    fontSize: 16,
-    fontFamily: 'PlusJakartaSans-Medium',
-    color: '#FAF7F0',
-    marginBottom: 32,
-  },
-  voiceStopBtn: {
-    paddingHorizontal: 28,
-    paddingVertical: 12,
-    backgroundColor: '#C4502A',
-    borderRadius: 24,
-  },
-  voiceStopText: {
-    fontSize: 14,
-    fontFamily: 'PlusJakartaSans-SemiBold',
-    color: '#FAF7F0',
-  },
+  voiceOverlay:     { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(28,28,46,0.92)', justifyContent: 'center', alignItems: 'center' },
+  voiceRing:        { position: 'absolute', width: 120, height: 120, borderRadius: 60, borderWidth: 2, borderColor: COLORS.saffron },
+  voiceOverlayLang: { fontSize: 16, color: COLORS.ivory, marginBottom: 32 },
+  voiceStopBtn:     { paddingHorizontal: 28, paddingVertical: 12, backgroundColor: COLORS.saffron, borderRadius: 24 },
+  voiceStopText:    { fontSize: 14, fontWeight: '600', color: COLORS.ivory },
 });
 
 export default SearchScreen;
