@@ -131,8 +131,8 @@ function getBuckets(tab: string | undefined): Bucket[] {
     .split(',').map(s => s.trim()).filter(Boolean);
 
   const all: Bucket[] = [
-    { id: 1, label: 'Verified vendors near you',                   minKm: 0,     maxKm: b1max, verifiedOnly: true,  useL3Fallback: false, tabsAllowed: [] },
-    { id: 2, label: 'Verified vendors in your city',               minKm: b2min, maxKm: b2max, verifiedOnly: true,  useL3Fallback: false, tabsAllowed: [] },
+    { id: 1, label: 'Verified vendors near you',                   minKm: 0,     maxKm: b1max, verifiedOnly: false, useL3Fallback: false, tabsAllowed: [] },
+    { id: 2, label: 'Verified vendors in your city',               minKm: b2min, maxKm: b2max, verifiedOnly: false, useL3Fallback: false, tabsAllowed: [] },
     { id: 3, label: 'Verified vendors in related categories',       minKm: 0,     maxKm: b3max, verifiedOnly: true,  useL3Fallback: true,  tabsAllowed: [] },
     { id: 4, label: 'Other vendors near you',                      minKm: 0,     maxKm: b4max, verifiedOnly: false, useL3Fallback: false, tabsAllowed: [] },
     { id: 5, label: 'Other vendors in your city',                  minKm: b5min, maxKm: b5max, verifiedOnly: false, useL3Fallback: false, tabsAllowed: [] },
@@ -245,6 +245,7 @@ function buildOsQuery(
     size,
     query: { bool: { must: mustClauses, filter: filterClauses } },
     sort: [
+      { is_claimed: { order: 'desc' } },
       { trust_score: { order: 'desc' } },
       { _geo_distance: { geo_point: { lat, lon: lng }, order: 'asc', unit: 'km', distance_type: 'arc' } },
     ],
@@ -302,7 +303,7 @@ function buildNarration(
 function mapHit(hit: any): ProviderHit {
   const s = hit._source ?? {};
   const distanceKm: number | null =
-    hit.sort && hit.sort[1] != null ? Number(hit.sort[1]) : null;
+    hit.sort && hit.sort[2] != null ? Number(hit.sort[2]) : null;
   const categoryId = s.category_id ?? s.taxonomy_node_id ?? '';
   const contactCount: number = typeof s.contact_count === 'number'
     ? s.contact_count
