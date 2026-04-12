@@ -31,6 +31,7 @@ import ConsumerTrustScreen from '../screens/consumer/ConsumerTrustScreen';
 import RazorpayScreen from '../screens/consumer/RazorpayScreen';
 import SearchFilterScreen from '../screens/consumer/SearchFilterScreen';
 import { CategoryBrowseScreen } from '../screens/consumer/CategoryBrowseScreen';
+import OpenRatingScreen from '../screens/consumer/OpenRatingScreen';
 import { DataRightsScreen } from '../screens/shared/DataRightsScreen';
 import { NotificationSettingsScreen } from '../screens/shared/NotificationSettingsScreen';
 import { SupportScreen } from '../screens/shared/SupportScreen';
@@ -75,6 +76,7 @@ function HomeStack(): React.ReactElement {
       <Stack.Screen name="SlotBookingScreen" component={SlotBookingScreen} />
       <Stack.Screen name="CategoryBrowse" component={CategoryBrowseScreen} />
       <Stack.Screen name="SearchResults" component={SearchResultsScreen} />
+      <Stack.Screen name="OpenRating" component={OpenRatingScreen} />
     </Stack.Navigator>
   );
 }
@@ -91,6 +93,7 @@ function SearchStack(): React.ReactElement {
       <Stack.Screen name="Conversation" component={ConversationScreen} />
       <Stack.Screen name="RateProvider" component={RateProviderScreen} />
       <Stack.Screen name="SlotBookingScreen" component={SlotBookingScreen} />
+      <Stack.Screen name="OpenRating" component={OpenRatingScreen} />
     </Stack.Navigator>
   );
 }
@@ -101,6 +104,9 @@ function MessagesStack(): React.ReactElement {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MessagesList" component={MessagesListScreen} />
       <Stack.Screen name="Conversation" component={ConversationScreen} />
+      <Stack.Screen name="ProviderProfile" component={ProviderProfileScreen} />
+      <Stack.Screen name="ContactCall" component={ContactCallScreen} />
+      <Stack.Screen name="OpenRating" component={OpenRatingScreen} />
     </Stack.Navigator>
   );
 }
@@ -112,6 +118,12 @@ function ProfileStack(): React.ReactElement {
       <Stack.Screen name="ConsumerProfile" component={ConsumerProfileScreen} />
       <Stack.Screen name="ConsumerSubscription" component={SubscriptionScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
+      {/* ConsumerTrust in ProfileStack (item 22) — was missing, caused nav crash */}
+      <Stack.Screen name="ConsumerTrust" component={ConsumerTrustScreen} />
+      <Stack.Screen name="DataRights" component={DataRightsScreen} />
+      <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
+      <Stack.Screen name="Support" component={SupportScreen} />
+      <Stack.Screen name="OpenRating" component={OpenRatingScreen} />
     </Stack.Navigator>
   );
 }
