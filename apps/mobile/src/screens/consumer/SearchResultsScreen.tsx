@@ -272,12 +272,17 @@ const SearchResultsScreen: React.FC = () => {
           pageNum === 1 ? res.data : [...prev, ...res.data],
         );
 
-        // Capture city_id for WS room join — use first result's cityId
+        // Capture city_id for WS room join — use first result's cityId.
+        // Emit join_city here if socket is already connected (most common case).
+        // The socket.on('connect') handler also emits if cityIdRef is populated first.
         if (pageNum === 1 && res.data.length > 0 && !cityIdRef.current) {
           const cityId = res.data[0].cityId;
           if (cityId) {
             cityIdRef.current = cityId;
-            socketRef.current?.emit('join_city', cityId);
+            // Emit immediately if socket connected, otherwise socket.on('connect') will retry
+            if (socketRef.current?.connected) {
+              socketRef.current.emit('join_city', cityId);
+            }
           }
         }
       } catch {
@@ -313,8 +318,20 @@ const SearchResultsScreen: React.FC = () => {
 
     socket.on('connect', () => {
       wsConnected.current = true;
+      // Emit join_city immediately if cityId already resolved from search results
       if (cityIdRef.current) {
         socket.emit('join_city', cityIdRef.current);
+      } else {
+        // cityId not yet available — search results may still be in-flight.
+        // Retry once after 3s. fetchResults() also emits if socket is connected
+        // by the time the first results arrive, so this covers the opposite race.
+        const retryTimer = setTimeout(() => {
+          if (cityIdRef.current && socket.connected) {
+            socket.emit('join_city', cityIdRef.current);
+          }
+        }, 3000);
+        // Store cleanup on socket ref so it can be cleared if socket disconnects
+        (socket as any)._cityJoinRetry = retryTimer;
       }
       const since = lastAvailTs.current;
       getAvailabilityChanges(since)
@@ -343,7 +360,13 @@ const SearchResultsScreen: React.FC = () => {
       lastAvailTs.current = payload.updatedAt;
     });
 
-    socket.on('disconnect', () => { wsConnected.current = false; });
+    socket.on('disconnect', () => {
+      wsConnected.current = false;
+      // Clear pending join_city retry if socket disconnects before it fires
+      if ((socket as any)._cityJoinRetry) {
+        clearTimeout((socket as any)._cityJoinRetry);
+      }
+    });
 
     return () => {
       socket.disconnect();
