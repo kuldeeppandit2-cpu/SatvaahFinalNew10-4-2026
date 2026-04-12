@@ -211,6 +211,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      installer:
+        condition: service_completed_successfully
 
 
   # ---------------------------------------------------------------------------
@@ -360,6 +362,13 @@ services:
       LAMBDA_SEARCH_INDEXER_ARN: ${LAMBDA_SEARCH_INDEXER_ARN}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       CORS_ORIGINS: ${CORS_ORIGINS}
+    depends_on:
+      satvaaah-redis:
+        condition: service_healthy
+      installer:
+        condition: service_completed_successfully
+      opensearch:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3003/health || exit 1"]
       <<: *node-healthcheck
@@ -687,6 +696,10 @@ services:
       auth:
         condition: service_healthy
       user:
+        condition: service_healthy
+      search:
+        condition: service_healthy
+      notification:
         condition: service_healthy
       trust:
         condition: service_healthy
