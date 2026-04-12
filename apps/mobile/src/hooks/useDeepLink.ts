@@ -124,11 +124,6 @@ export function useDeepLink(): void {
 function handleDeepLinkRoute(navigation: NavigationProp, route: DeepLinkRoute): void {
   switch (route.type) {
     case 'provider_profile':
-      /**
-       * satvaaah://provider/{providerId}
-       * Navigate to public provider profile screen (consumer side).
-       * Works when consumer is logged in or as guest browse.
-       */
       navigation.navigate('ProviderProfile', {
         providerId: route.providerId,
         fromDeepLink: true,
@@ -136,19 +131,40 @@ function handleDeepLinkRoute(navigation: NavigationProp, route: DeepLinkRoute): 
       break;
 
     case 'referral_join':
-      /**
-       * satvaaah://join/{referralCode}
-       * Navigate to onboarding with pre-filled referral code.
-       * If user is already authenticated, apply referral via payment service.
-       */
       navigation.navigate('Onboarding', {
         referralCode: route.referralCode,
       });
       break;
 
+    case 'rating_reminder':
+      /**
+       * satvaaah://rate/{contactEventId}?provider_id={uuid}
+       * FCM rating_reminder — sent 24h after accepted contact_event.
+       * Opens RateProvider screen so consumer can rate the provider.
+       */
+      navigation.navigate('RateProvider', {
+        contactEventId: route.contactEventId,
+        providerId:     route.providerId,
+        fromNotification: true,
+      });
+      break;
+
+    case 'contact_declined':
+      /**
+       * satvaaah://search/{taxonomyNodeId}?tab={tab}&l4={label}
+       * FCM contact_declined — provider declined the lead.
+       * Opens SearchResults for the same category so consumer can find alternatives.
+       */
+      navigation.navigate('SearchResults', {
+        query:          route.taxonomyL4 ?? 'providers',
+        taxonomyNodeId: route.taxonomyNodeId,
+        taxonomyL4:     route.taxonomyL4,
+        tab:            (route.tab as any) ?? 'services',
+      });
+      break;
+
     case 'unknown':
     default:
-      // Unrecognised route — navigate to home rather than crashing
       console.warn('[useDeepLink] Unknown route type — falling back to Home');
       navigation.navigate('Home');
       break;

@@ -34,12 +34,32 @@ export interface ReferralJoinRoute {
   referralCode: string;
 }
 
+/** FCM rating_reminder: open RateProvider screen for a specific contact event */
+export interface RatingReminderRoute {
+  type: 'rating_reminder';
+  contactEventId: string;
+  providerId: string;
+}
+
+/** FCM contact_declined: open SearchResults for same category as the declined lead */
+export interface ContactDeclinedRoute {
+  type: 'contact_declined';
+  taxonomyNodeId: string;
+  taxonomyL4?: string;
+  tab?: string;
+}
+
 export interface UnknownRoute {
   type: 'unknown';
   rawUrl: string;
 }
 
-export type DeepLinkRoute = ProviderProfileRoute | ReferralJoinRoute | UnknownRoute;
+export type DeepLinkRoute =
+  | ProviderProfileRoute
+  | ReferralJoinRoute
+  | RatingReminderRoute
+  | ContactDeclinedRoute
+  | UnknownRoute;
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -128,6 +148,31 @@ function parseNativePath(path: string, params: BranchParams): DeepLinkRoute {
       return { type: 'referral_join', referralCode: code };
     }
     console.warn('[deepLink.utils] Invalid referral code in deep link:', joinMatch[1]);
+    return { type: 'unknown', rawUrl: `satvaaah://${path}` };
+  }
+
+  // satvaaah://rate/{contactEventId}?provider_id={uuid}
+  // FCM rating_reminder action — opens RateProvider screen
+  const rateMatch = path.match(/^rate\/([^/?#]+)/);
+  if (rateMatch) {
+    const contactEventId = rateMatch[1];
+    const providerId = (params['provider_id'] as string) ?? '';
+    if (isValidUuid(contactEventId)) {
+      return { type: 'rating_reminder', contactEventId, providerId };
+    }
+    return { type: 'unknown', rawUrl: `satvaaah://${path}` };
+  }
+
+  // satvaaah://search/{taxonomyNodeId}?tab={tab}&l4={label}
+  // FCM contact_declined action — opens SearchResults for same category
+  const searchMatch = path.match(/^search\/([^/?#]+)/);
+  if (searchMatch) {
+    const taxonomyNodeId = searchMatch[1];
+    const tab = (params['tab'] as string) ?? 'services';
+    const taxonomyL4 = (params['l4'] as string) ?? undefined;
+    if (isValidUuid(taxonomyNodeId)) {
+      return { type: 'contact_declined', taxonomyNodeId, tab, taxonomyL4 };
+    }
     return { type: 'unknown', rawUrl: `satvaaah://${path}` };
   }
 

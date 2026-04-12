@@ -86,8 +86,10 @@ export const linking: LinkingOptions<RootStackParamList> = {
           ProviderProfile: 'provider/:providerId',
           // Referral join: satvaaah://join/:code
           DeepLinkResolver: 'join/:referralCode',
-          // Certificate verify: satvaaah://verify/:certId
-          // (also served publicly at satvaaah.com/verify/:certId)
+          // Rating reminder: satvaaah://rate/:contactEventId (FCM action — item 28)
+          RateProvider: 'rate/:contactEventId',
+          // Contact declined alternatives: satvaaah://search/:taxonomyNodeId (FCM action — item 28)
+          SearchResults: 'search/:taxonomyNodeId',
         },
       },
       ProviderApp: {
