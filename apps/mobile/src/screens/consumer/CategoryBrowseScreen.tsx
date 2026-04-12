@@ -150,7 +150,8 @@ export function CategoryBrowseScreen(): React.ReactElement {
   const onPressL4 = useCallback((leaf: L4Leaf) => {
     // title at l4 level = the L3 label (set by onPressL3 → title: g.l3)
     const l3Label = level === 'l4' ? title : undefined;
-    navigation.navigate('SearchResults', {
+    // Go to LocationPicker first — user picks city before search fires
+    navigation.navigate('LocationPicker' as any, {
       query:          leaf.l4,
       taxonomyNodeId: leaf.id,
       taxonomyL4:     leaf.l4,

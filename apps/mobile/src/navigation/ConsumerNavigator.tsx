@@ -31,6 +31,7 @@ import ConsumerTrustScreen from '../screens/consumer/ConsumerTrustScreen';
 import RazorpayScreen from '../screens/consumer/RazorpayScreen';
 import SearchFilterScreen from '../screens/consumer/SearchFilterScreen';
 import { CategoryBrowseScreen } from '../screens/consumer/CategoryBrowseScreen';
+import { LocationPickerScreen } from '../screens/consumer/LocationPickerScreen';
 import OpenRatingScreen from '../screens/consumer/OpenRatingScreen';
 import { DataRightsScreen } from '../screens/shared/DataRightsScreen';
 import { NotificationSettingsScreen } from '../screens/shared/NotificationSettingsScreen';
@@ -75,6 +76,7 @@ function HomeStack(): React.ReactElement {
       <Stack.Screen name="DeepLinkResolver" component={DeepLinkResolver} />
       <Stack.Screen name="SlotBookingScreen" component={SlotBookingScreen} />
       <Stack.Screen name="CategoryBrowse" component={CategoryBrowseScreen} />
+      <Stack.Screen name="LocationPicker" component={LocationPickerScreen} />
       <Stack.Screen name="SearchResults" component={SearchResultsScreen} />
       <Stack.Screen name="OpenRating" component={OpenRatingScreen} />
     </Stack.Navigator>
@@ -86,6 +88,7 @@ function SearchStack(): React.ReactElement {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Search" component={SearchScreen} />
+      <Stack.Screen name="LocationPicker" component={LocationPickerScreen} />
       <Stack.Screen name="SearchResults" component={SearchResultsScreen} />
       <Stack.Screen name="ProviderProfile" component={ProviderProfileScreen} />
       <Stack.Screen name="ContactCall" component={ContactCallScreen} />

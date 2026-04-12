@@ -29,9 +29,6 @@ import {
   ActivityIndicator,
   StatusBar,
   Pressable,
-  Modal,
-  TextInput,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -50,7 +47,6 @@ import {
   type SearchMeta,
 } from '../../api/search.api';
 import { useLocationStore } from '../../stores/location.store';
-import * as Location from 'expo-location';
 import { ENV } from '../../config/env';
 
 // ─── Navigation ────────────────────────────────────────────────────────────────
@@ -213,55 +209,13 @@ const SearchResultsScreen: React.FC = () => {
 
   // Read GPS from locationStore (populated at login by ModeSelectionScreen — Step 8)
   const { lat, lng } = useLocationStore();
-  const setLocation = useLocationStore((s) => s.setLocation);
   const locationName = routeLocationName ?? 'your location';
-
-  // ── Location picker handlers ──────────────────────────────────────────────
-  const handleUseCurrentLocation = async () => {
-    setLocatingGPS(true);
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Allow location access to search near you.');
-        return;
-      }
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
-      setShowLocationPicker(false);
-    } catch {
-      Alert.alert('Error', 'Could not get your location. Try entering a city name.');
-    } finally {
-      setLocatingGPS(false);
-    }
-  };
-
-  const handleManualCitySearch = async () => {
-    if (!manualCity.trim()) return;
-    setLocatingGPS(true);
-    try {
-      const results = await Location.geocodeAsync(manualCity.trim() + ', India');
-      if (results.length > 0) {
-        setLocation({ lat: results[0].latitude, lng: results[0].longitude });
-        setShowLocationPicker(false);
-        setManualCity('');
-      } else {
-        Alert.alert('Not found', `Could not find "${manualCity}". Try a different city name.`);
-      }
-    } catch {
-      Alert.alert('Error', 'Could not search for that location. Please try again.');
-    } finally {
-      setLocatingGPS(false);
-    }
-  };
 
   // ── Track coords used in the last search — re-fire only if moved > 5km (BUG-13 fix)
   const lastSearchCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [results, setResults]           = useState<ProviderCardData[]>([]);
-  const [showLocationPicker, setShowLocationPicker] = useState(false);
-  const [manualCity, setManualCity]     = useState('');
-  const [locatingGPS, setLocatingGPS]  = useState(false);
   const [meta, setMeta]                 = useState<SearchMeta | null>(null);
   const [page, setPage]                 = useState(1);
   const [loading, setLoading]           = useState(true);
@@ -580,7 +534,16 @@ const SearchResultsScreen: React.FC = () => {
         {/* Near X · Change location chip (item 11) */}
         <TouchableOpacity
           style={styles.locationChip}
-          onPress={() => setShowLocationPicker(true)}
+          onPress={() => navigation.navigate('LocationPicker' as any, {
+            query: query ?? '',
+            taxonomyNodeId,
+            taxonomyL4,
+            taxonomyL3,
+            taxonomyL2,
+            taxonomyL1,
+            tab,
+            returnToSearch: true,
+          })}
           accessibilityLabel="Change search location"
         >
           <Text style={styles.locationChipText} numberOfLines={1}>
@@ -641,58 +604,6 @@ const SearchResultsScreen: React.FC = () => {
           ) : null
         }
       />
-      {/* ── Location Picker Modal ── */}
-      <Modal
-        visible={showLocationPicker}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowLocationPicker(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.locationModal}>
-            <Text style={styles.locationModalTitle}>Change location</Text>
-
-            <TouchableOpacity
-              style={styles.locationOptionBtn}
-              onPress={handleUseCurrentLocation}
-              disabled={locatingGPS}
-            >
-              {locatingGPS
-                ? <ActivityIndicator color="#C8691A" />
-                : <Text style={styles.locationOptionText}>📍 Use my current location</Text>
-              }
-            </TouchableOpacity>
-
-            <Text style={styles.locationOrText}>or enter a city</Text>
-
-            <TextInput
-              style={styles.locationInput}
-              placeholder="e.g. Hyderabad, Mumbai, Delhi"
-              placeholderTextColor="#9E9589"
-              value={manualCity}
-              onChangeText={setManualCity}
-              onSubmitEditing={handleManualCitySearch}
-              returnKeyType="search"
-              autoFocus
-            />
-
-            <TouchableOpacity
-              style={[styles.locationSearchBtn, !manualCity.trim() && { opacity: 0.4 }]}
-              onPress={handleManualCitySearch}
-              disabled={!manualCity.trim() || locatingGPS}
-            >
-              <Text style={styles.locationSearchBtnText}>Search this city</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.locationCancelBtn}
-              onPress={() => { setShowLocationPicker(false); setManualCity(''); }}
-            >
-              <Text style={styles.locationCancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };
@@ -938,80 +849,17 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 16, fontFamily: 'PlusJakartaSans-SemiBold', color: '#1C1C2E', textAlign: 'center', marginBottom: 8 },
   emptyBody: { fontSize: 13, fontFamily: 'PlusJakartaSans-Regular', color: '#1C1C2E', textAlign: 'center', lineHeight: 20 },
   // Location picker modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  locationModal: {
-    backgroundColor: '#FAF7F0',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: 40,
-  },
-  locationModalTitle: {
-    fontSize: 18,
-    fontFamily: 'PlusJakartaSans-Bold',
-    color: '#1C1C2E',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  locationOptionBtn: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E8E0D5',
-    marginBottom: 16,
-    minHeight: 50,
-    justifyContent: 'center',
-  },
-  locationOptionText: {
-    fontSize: 15,
-    fontFamily: 'PlusJakartaSans-SemiBold',
-    color: '#1C1C2E',
-  },
-  locationOrText: {
-    textAlign: 'center',
-    fontSize: 13,
-    color: '#9E9589',
-    marginBottom: 12,
-    fontFamily: 'PlusJakartaSans-Regular',
-  },
-  locationInput: {
-    borderWidth: 1.5,
-    borderColor: '#E8E0D5',
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 15,
-    color: '#1C1C2E',
-    fontFamily: 'PlusJakartaSans-Regular',
-    backgroundColor: '#fff',
-    marginBottom: 12,
-  },
-  locationSearchBtn: {
-    backgroundColor: '#C8691A',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  locationSearchBtnText: {
-    fontSize: 15,
-    fontFamily: 'PlusJakartaSans-Bold',
-    color: '#FAF7F0',
-  },
-  locationCancelBtn: {
-    alignItems: 'center',
-    padding: 10,
-  },
-  locationCancelText: {
-    fontSize: 14,
-    color: '#9E9589',
-    fontFamily: 'PlusJakartaSans-Regular',
-  },
+
+
+
+
+
+
+
+
+
+
+
 });
 
 export default SearchResultsScreen;
