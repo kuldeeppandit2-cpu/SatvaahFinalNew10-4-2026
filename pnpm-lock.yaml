@@ -243,6 +243,9 @@ importers:
 
   lambdas/anonymisation:
     dependencies:
+      '@aws-sdk/client-s3':
+        specifier: ^3.540.0
+        version: 3.1024.0
       '@prisma/client':
         specifier: ^5.13.0
         version: 5.22.0(prisma@5.22.0)
@@ -352,6 +355,9 @@ importers:
 
   lambdas/outreach-scheduler:
     dependencies:
+      '@aws-sdk/client-sqs':
+        specifier: ^3.540.0
+        version: 3.1024.0
       '@prisma/client':
         specifier: ^5.13.0
         version: 5.22.0(prisma@5.22.0)
