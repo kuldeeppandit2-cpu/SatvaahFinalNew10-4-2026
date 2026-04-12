@@ -226,8 +226,8 @@ def insert_provider(city_id, city_key, place, search_term, taxonomy_node_id, tab
     
     node_sql = f"'{taxonomy_node_id}'::uuid" if taxonomy_node_id else 'NULL'
     
-    # phone is NOT NULL in schema — use placeholder if no phone found
-    phone_val = phone_clean if phone_clean else '0000000000'
+    # phone: use empty string if no phone found (schema allows empty but not NULL)
+    phone_val = phone_clean if phone_clean else ''
     
     sql = f"""
 INSERT INTO provider_profiles (
@@ -235,7 +235,7 @@ INSERT INTO provider_profiles (
     is_active, is_scrape_record, is_claimed, is_phone_verified,
     listing_type, scrape_source, scrape_external_id,
     address_line, phone, website_url,
-    geo_point, taxonomy_node_id,
+    geo_point, taxonomy_node_id, scrape_source_url,
     created_at, updated_at
 ) VALUES (
     '{pid}',
@@ -244,7 +244,10 @@ INSERT INTO provider_profiles (
     '{city_id}',
     '{tab_val}',
     true, true, false, false,
-    'individual_service',
+    CASE '{tab_val}' WHEN 'services' THEN 'individual_service'
+        WHEN 'expertise' THEN 'expertise'
+        WHEN 'establishments' THEN 'establishment'
+        ELSE 'individual_service' END::"ListingType",
     'google_maps',
     {esc(place.get("place_id", "") or "")},
     {esc(address)},
@@ -252,6 +255,7 @@ INSERT INTO provider_profiles (
     {esc(website) if website else 'NULL'},
     {geo_sql},
     {node_sql},
+    {esc(f'https://maps.google.com/maps/place/?q=place_id:{place.get("place_id","")}')},
     NOW(), NOW()
 )
 ON CONFLICT (scrape_source, scrape_external_id) DO NOTHING;

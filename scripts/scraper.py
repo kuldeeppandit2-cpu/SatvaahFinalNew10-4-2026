@@ -202,8 +202,8 @@ def rec(city_key, source, name, **kw):
         'email':None,'website_url':None,
         'address':None,'area':None,
         'city_name':c['name'],'state':c['state'],'pincode':None,
-        'lat':c['lat']+random.uniform(-0.08,0.08),
-        'lng':c['lng']+random.uniform(-0.08,0.08),
+        'lat':c['lat']+random.uniform(-0.025,0.025),  # ≈±2.5km — tighter jitter
+        'lng':c['lng']+random.uniform(-0.025,0.025),
         'home_visit':None,'online_service':None,'visit_premises':None,
         'gst_number':None,'fssai_license':None,
         'shop_estab_number':None,'trade_license_number':None,
@@ -293,11 +293,22 @@ def load_tax():
     print(f"  {len(nodes)} nodes ✅")
     return nodes,idx
 
-def best_node(text,nodes,idx):
+def best_node(text, nodes, idx, tab_hint=None):
+    """Match a scrape record to the closest taxonomy node.
+    tab_hint: if provided, nodes from this tab get a +5 bonus score.
+    Prevents services matching products nodes on word overlap.
+    """
     if not text or not nodes: return nodes[0]['id'] if nodes else None
-    scores=Counter()
-    for w in re.findall(r'[a-z]{3,}',text.lower()):
-        for nid in idx.get(w,[]): scores[nid]+=1
+    node_map = {n['id']: n for n in nodes}
+    scores = Counter()
+    for w in re.findall(r'[a-z]{3,}', text.lower()):
+        for nid in idx.get(w, []):
+            scores[nid] += 1
+    # Apply tab preference bonus — strong enough to break ties but not override clear matches
+    if tab_hint:
+        for nid in list(scores.keys()):
+            if node_map.get(nid, {}).get('tab') == tab_hint:
+                scores[nid] += 5
     return scores.most_common(1)[0][0] if scores else nodes[0]['id']
 
 def load_areas(city_ids):
@@ -1480,7 +1491,18 @@ def promote(records, nodes, idx, city_ids, areas, dry_run=False):
     for r in records:
         name=(r.get('display_name') or '').strip()
         if not name or len(name)<3: skipped+=1; continue
-        nid=best_node(f"{name} {r.get('search_term','')} {r.get('address','')}",nodes,idx)
+        # Tab hint: infer from source to avoid cross-tab mismatch
+        tab_hint_map = {
+            'practo':'expertise','nmc':'expertise','lybrate':'expertise',
+            '1mg':'expertise','apollo247':'expertise','healthgrades':'expertise',
+            'icai':'expertise','bar_council':'expertise','sebi':'expertise',
+            'irdai':'expertise','rci':'expertise','ayush':'expertise','ima':'expertise',
+            'ida':'expertise',
+            'zomato':'establishments','swiggy':'establishments','fhrai':'establishments',
+            'nrai':'establishments','zomato_v2':'establishments',
+        }
+        tab_hint = tab_hint_map.get(r.get('source_key',''), 'services')
+        nid=best_node(f"{name} {r.get('search_term','')} {r.get('address','')}",nodes,idx,tab_hint)
         if not nid: skipped+=1; continue
         node=node_map.get(nid,{})
         tab=node.get('tab','services')
@@ -1523,30 +1545,65 @@ def promote(records, nodes, idx, city_ids, areas, dry_run=False):
         # nmc/icai/bar_council/ayush/rci/irdai/sebi verify the professional via official records
         GOVT_VERIFIED_SOURCES = {'nmc','icai','bar_council','ayush','rci','irdai','sebi'}
         is_pv = source in GOVT_VERIFIED_SOURCES
+        # home_visit: read from rec() field — only True for sources/categories where
+        # the provider explicitly offers home visits (e.g. beautician, physio, plumber)
+        # NOT for restaurants, shops, hardware stores, hospitals etc.
+        home_visit = bool(r.get('home_visit'))
         tax[node.get('l1','?')]+=1; src[source]+=1
 
-        signal=json.dumps({'has_phone':bool(phone),'has_gst':bool(r.get('gst_number')),
-            'has_fssai':bool(r.get('fssai_license')),'has_nmc':bool(r.get('nmc_registration')),
-            'has_icai':bool(r.get('icai_membership')),'has_bar':bool(r.get('bar_enrollment')),
-            'has_shop_estab':bool(r.get('shop_estab_number')),
-            'has_trade_license':bool(r.get('trade_license_number')),
-            'has_msme':bool(r.get('msme_number')),'has_website':bool(r.get('website_url')),
-            'external_rating':r.get('external_rating'),
-            'external_review_count':r.get('external_review_count'),
-            'trust_field_count':tc,'source':source})
+        signal=json.dumps({
+            'has_phone':         bool(phone),
+            'has_gst':           bool(r.get('gst_number')),
+            'has_fssai':         bool(r.get('fssai_license')),
+            'has_nmc':           bool(r.get('nmc_registration')),
+            'has_icai':          bool(r.get('icai_membership')),
+            'has_bar':           bool(r.get('bar_enrollment')),
+            'has_shop_estab':    bool(r.get('shop_estab_number')),
+            'has_trade_license': bool(r.get('trade_license_number')),
+            'has_msme':          bool(r.get('msme_number')),
+            'has_website':       bool(r.get('website_url')),
+            'has_address':       bool(r.get('address')),
+            'external_rating':          r.get('external_rating'),
+            'external_review_count':    r.get('external_review_count'),
+            'nmc_reg':           r.get('nmc_registration'),
+            'icai_membership':   r.get('icai_membership'),
+            'bar_enrollment':    r.get('bar_enrollment'),
+            'gst_number':        r.get('gst_number'),
+            'fssai_license':     r.get('fssai_license'),
+            'trust_field_count': tc,
+            'source':            source,
+        })
 
         # scrape_external_id = md5(source+phone+name) — unique dedup key per record
         ext_id=f"{source}_{esc(phone) or esc(name)}_{city_id}"[:200]
         sql.append(f"""
 INSERT INTO provider_profiles(id,display_name,business_name,taxonomy_node_id,
     city_id,area_id,tab,listing_type,phone,website_url,
+    address_line,email,pincode,
+    gst_number,fssai_license_number,shop_establishment_no,
+    years_experience,phone_2,landline,facebook_url,instagram_url,
     is_phone_verified,is_aadhaar_verified,is_geo_verified,has_credentials,
-    is_claimed,is_scrape_record,is_active,home_visit_available,scrape_source,scrape_external_id,geo_point)
+    is_claimed,is_scrape_record,is_active,home_visit_available,
+    scrape_source,scrape_external_id,scrape_source_url,geo_point)
 VALUES('{pid}','{esc(name)}','{esc(bname)}','{nid}',
     '{city_id}',{area_sql},'{tab}'::"Tab",'{lt}'::"ListingType",
-    '{esc(phone)}','{esc(website)}',{str(is_pv).lower()},false,false,
-    false,false,true,true,{str(bool(r.get('home_visit'))).lower()},
-    '{source}','{esc(ext_id)}',ST_SetSRID(ST_MakePoint({lng},{lat}),4326))
+    '{esc(phone)}','{esc(website)}',
+    {("'" + esc(r.get('address') or '') + "'") if r.get('address') else 'NULL'},
+    {("'" + esc(r.get('email') or '') + "'") if r.get('email') else 'NULL'},
+    {("'" + str(r.get('pincode',''))[:10] + "'") if r.get('pincode') else 'NULL'},
+    {("'" + esc(r.get('gst_number',''))[:30] + "'") if r.get('gst_number') else 'NULL'},
+    {("'" + esc(r.get('fssai_license',''))[:30] + "'") if r.get('fssai_license') else 'NULL'},
+    {("'" + esc(r.get('shop_estab_number',''))[:30] + "'") if r.get('shop_estab_number') else 'NULL'},
+    {int(r['years_in_business']) if r.get('years_in_business') and str(r['years_in_business']).isdigit() else 'NULL'},
+    {("'" + esc(cphone(r.get('phone_2','')) or '') + "'") if r.get('phone_2') else 'NULL'},
+    {("'" + esc(r.get('landline',''))[:20] + "'") if r.get('landline') else 'NULL'},
+    {("'" + esc(r.get('facebook_url',''))[:499] + "'") if r.get('facebook_url') else 'NULL'},
+    {("'" + esc(r.get('instagram_url',''))[:499] + "'") if r.get('instagram_url') else 'NULL'},
+    {str(is_pv).lower()},false,false,false,false,true,
+    {str(home_visit).lower()},
+    '{source}','{esc(ext_id)}',
+    {("'" + esc(r.get('source_url',''))[:499] + "'") if r.get('source_url') else 'NULL'},
+    ST_SetSRID(ST_MakePoint({lng},{lat}),4326))
 ON CONFLICT(scrape_source,scrape_external_id) DO NOTHING;""")
 
         # trust_scores intentionally NOT inserted here.
