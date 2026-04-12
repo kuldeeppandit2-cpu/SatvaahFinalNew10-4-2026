@@ -246,12 +246,31 @@ const HomeScreen: React.FC = () => {
 
   const fetchConsumerProfile = useCallback(async () => {
     try {
-      const { data } = await apiClient.get<{ success: true; data: ConsumerProfile }>(
-        '/api/v1/consumers/me',
-      );
-      setConsumerProfile(data.data);
+      // Fetch profile + live trust score in parallel (DEAD-03 fix).
+      // Trust score is written by Lambda:trust-recalculate and lives in
+      // consumer_profiles.trust_score — but the dedicated endpoint in the
+      // rating service (GET /api/v1/consumers/me/trust) returns it enriched
+      // with trustTier computation. The user service returns trust_score: 75
+      // default which is only updated by the Lambda.
+      const [profileRes, trustRes] = await Promise.allSettled([
+        apiClient.get<{ success: true; data: ConsumerProfile }>('/api/v1/consumers/me'),
+        apiClient.get<{ success: true; data: { trustScore: number; trustTier: string } }>(
+          '/api/v1/consumers/me/trust',
+        ),
+      ]);
+
+      if (profileRes.status === 'fulfilled' && profileRes.value.data.success) {
+        const profile = { ...profileRes.value.data.data };
+        // Merge live trust score if available — overrides the default 75
+        if (trustRes.status === 'fulfilled' && trustRes.value.data.success) {
+          const trust = trustRes.value.data.data;
+          if (trust.trustScore != null) profile.trustScore = trust.trustScore;
+          if (trust.trustTier)          profile.trustTier  = trust.trustTier;
+        }
+        setConsumerProfile(profile);
+      }
     } catch {
-      // Non-critical — pill just won't show
+      // Non-critical — lead pill and trust badge just won't show
     }
   }, []);
 
