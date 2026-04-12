@@ -421,6 +421,9 @@ export default function NotificationsScreen() {
     <View style={styles.container}>
       {/* Header controls */}
       <View style={styles.headerBar}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Ionicons name="chevron-back" size={24} color={DEEP_INK} />
+        </TouchableOpacity>
         <View style={styles.headerLeft}>
           <Text style={styles.headerTitle}>Notifications</Text>
           {unreadCount > 0 && (
@@ -501,6 +504,10 @@ const styles = StyleSheet.create({
   loader: { flex: 1, backgroundColor: IVORY, justifyContent: 'center', alignItems: 'center' },
   listContent: { paddingBottom: 32 },
 
+  backBtn: {
+    padding: 4,
+    marginRight: 4,
+  },
   headerBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',

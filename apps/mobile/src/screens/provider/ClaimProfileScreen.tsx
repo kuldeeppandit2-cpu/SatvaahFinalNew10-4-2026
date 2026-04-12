@@ -8,6 +8,8 @@
  *   "No, this isn't me" → CreateProfileStep1 (create new)
  */
 
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   View,
@@ -49,7 +51,8 @@ const PLATFORM_COLORS: Record<string, string> = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function ClaimProfileScreen({ route, navigation }: Props) {
+export default function ClaimProfileScreen({
+  const navigation = useNavigation(); route, navigation }: Props) {
   const { profile: scraped } = route.params as { profile: ScrapedProfile };
 
   const setProfile = useProviderStore((s) => s.setProfile);
@@ -99,6 +102,11 @@ export default function ClaimProfileScreen({ route, navigation }: Props) {
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
+        {/* Back button */}
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top:10, bottom:10, left:10, right:10 }}>
+          <Ionicons name="chevron-back" size={24} color={'#1C1C2E'} />
+        </TouchableOpacity>
+
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.eyebrow}>WE FOUND YOUR PROFILE</Text>
@@ -231,6 +239,7 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingBottom: 48,
   },
+  backBtn: { padding: 4, marginBottom: 8 },
   header: {
     marginBottom: 24,
   },

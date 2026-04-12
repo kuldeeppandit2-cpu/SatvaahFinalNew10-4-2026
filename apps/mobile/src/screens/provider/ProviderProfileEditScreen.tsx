@@ -468,7 +468,50 @@ export const ProviderProfileEditScreen: React.FC = () => {
 
   // ── Save ──────────────────────────────────────────────────────────────────
 
-  const handleSave = async () => {
+
+  // ── Mode switch & logout ────────────────────────────────────────────────────
+
+  const handleSwitchToConsumer = () => {
+    Alert.alert(
+      'Switch to Consumer Mode',
+      'You will be switched to Consumer Mode to browse services. Switch now?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Switch',
+          style: 'default',
+          onPress: async () => {
+            try {
+              await apiClient.patch('/api/v1/users/me/mode', { mode: 'consumer' });
+              useAuthStore.getState().setMode('consumer');
+              navigation.reset({ index: 0, routes: [{ name: 'ConsumerApp' as any }] });
+            } catch {
+              Alert.alert('Error', 'Could not switch modes. Please try again.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Log Out',
+      'Are you sure you want to log out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Log Out',
+          style: 'destructive',
+          onPress: () => {
+            useAuthStore.getState().logout();
+          },
+        },
+      ],
+    );
+  };
+
+    const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
 
@@ -805,6 +848,31 @@ export const ProviderProfileEditScreen: React.FC = () => {
               ))}
             </View>
           </View>
+          {/* ── Switch mode & Logout ──────────────────────────────── */}
+          <View style={styles.accountSection}>
+            <TouchableOpacity
+              style={styles.switchConsumerBtn}
+              onPress={handleSwitchToConsumer}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.switchConsumerIcon}>🛒</Text>
+              <View style={styles.switchConsumerText}>
+                <Text style={styles.switchConsumerLabel}>Switch to Consumer Mode</Text>
+                <Text style={styles.switchConsumerSub}>Browse &amp; hire service providers</Text>
+              </View>
+              <Text style={styles.switchConsumerArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.logoutBtn}
+              onPress={handleLogout}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.logoutText}>Log Out</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.accountFooter}>SatvAAh Technologies · Truth that travels.</Text>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -968,6 +1036,62 @@ const styles = StyleSheet.create({
   trustPointPts: {
     fontFamily: FONTS.bold,
     fontSize: 13,
+  },
+
+  // ── Account section styles ─────────────────────────────────────────────────
+  accountSection: {
+    marginTop: 8,
+    marginBottom: 24,
+    paddingHorizontal: SPACING.lg,
+  },
+  switchConsumerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F7F6',
+    borderWidth: 1.5,
+    borderColor: COLORS.verdigris,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.sm,
+    gap: SPACING.sm,
+  },
+  switchConsumerIcon: { fontSize: 16, width: 22, textAlign: 'center' },
+  switchConsumerText: { flex: 1 },
+  switchConsumerLabel: {
+    fontFamily: FONTS.semiBold,
+    fontSize: 14,
+    color: COLORS.verdigris,
+  },
+  switchConsumerSub: {
+    fontFamily: FONTS.regular,
+    fontSize: 12,
+    color: '#4A9E96',
+    marginTop: 1,
+  },
+  switchConsumerArrow: {
+    fontSize: 18,
+    color: COLORS.verdigris,
+  },
+  logoutBtn: {
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    borderWidth: 1,
+    borderColor: '#C0392B',
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  logoutText: {
+    fontFamily: FONTS.semiBold,
+    fontSize: 14,
+    color: '#B00020',
+  },
+  accountFooter: {
+    fontFamily: FONTS.regular,
+    fontSize: 11,
+    color: '#9E9589',
+    textAlign: 'center',
+    marginTop: SPACING.sm,
   },
 });
 

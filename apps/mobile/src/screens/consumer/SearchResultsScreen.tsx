@@ -542,6 +542,14 @@ const SearchResultsScreen: React.FC = () => {
           </Text>
           <Text style={styles.locationChipChange}> · Change</Text>
         </TouchableOpacity>
+        {/* 🏠 Jump to Home — skip back through L1→L4 drill-down */}
+        <TouchableOpacity
+          style={styles.homeBtn}
+          onPress={() => navigation.navigate('HomeTab' as any)}
+          accessibilityLabel="Go to Home"
+        >
+          <Text style={styles.homeBtnIcon}>🏠</Text>
+        </TouchableOpacity>
       </View>
 
       {/* ── Ring / taxonomy narration banner ── */}
@@ -685,6 +693,15 @@ const styles = StyleSheet.create({
   sortChipActive: { borderColor: '#C8691A', backgroundColor: '#FFF5EC' },
   sortLabel: { fontSize: 12, fontFamily: 'PlusJakartaSans-Medium', color: '#1C1C2E' },
   sortLabelActive: { color: '#C8691A', fontFamily: 'PlusJakartaSans-SemiBold' },
+  homeBtn: {
+    padding: 6,
+    marginLeft: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  homeBtnIcon: {
+    fontSize: 16,
+  },
   filterBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, backgroundColor: '#1C1C2E' },
   filterBtnText: { fontSize: 12, fontFamily: 'PlusJakartaSans-SemiBold', color: '#FAF7F0' },
 
