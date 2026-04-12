@@ -298,7 +298,9 @@ export async function getCategories(tab: Tab): Promise<Category[]> {
     icon:           g.icon ?? '📦',
     color:          g.color ?? '#6B6560',
     icon_url:       null,
-    provider_count: g.children?.length ?? 0,
+    // Use real provider_count from OpenSearch aggregation (item 25).
+    // Falls back to children?.length when agg not available (e.g. dev mode).
+    provider_count: g.provider_count ?? g.children?.length ?? 0,
   }));
 }
 

@@ -403,6 +403,53 @@ export const getCategories = async (
     })),
   };
 
+  // ── Enrich with real provider_count from OpenSearch ───────────────────────
+  // OpenSearch terms aggregation on taxonomy_l1 for active providers in this tab.
+  // Runs after DB query so cache miss only incurs this cost once per TTL (24h).
+  try {
+    const osClient = getOpenSearchClient();
+    const aggResponse = await osClient.search({
+      index: OPENSEARCH_INDEX,
+      body: {
+        size: 0,
+        query: {
+          bool: {
+            filter: [
+              { term: { is_active: true } },
+              { term: { tab } },
+            ],
+          },
+        },
+        aggs: {
+          by_l1: {
+            terms: {
+              field: 'taxonomy_l1',
+              size: 100,   // max distinct L1 categories per tab
+            },
+          },
+        },
+      },
+    });
+
+    const buckets: Array<{ key: string; doc_count: number }> =
+      aggResponse.body.aggregations?.by_l1?.buckets ?? [];
+
+    const countMap: Record<string, number> = {};
+    for (const bucket of buckets) {
+      countMap[bucket.key] = bucket.doc_count;
+    }
+
+    // Attach real provider_count to each group
+    (data.groups as any[]).forEach((group) => {
+      group.provider_count = countMap[group.l1] ?? 0;
+    });
+  } catch (osErr) {
+    // Non-fatal: OpenSearch unavailable → provider_count stays absent (mobile falls back to 0)
+    logger.warn('categories.opensearch.agg.failed', {
+      error: (osErr as Error).message,
+    });
+  }
+
   void redisSet(cacheKey, data, CATEGORIES_CACHE_TTL_SECONDS);
 
   res.status(200).json({ success: true, data, meta: { from_cache: false } });
