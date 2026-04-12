@@ -624,7 +624,7 @@ const styles = StyleSheet.create({
   // Surface Tabs
   tabsRow: {
     flexDirection: 'row',
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E8E0D0',
     backgroundColor: '#FAF7F0',

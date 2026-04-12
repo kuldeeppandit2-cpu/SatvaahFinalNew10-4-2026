@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
   headerIcon:  { fontSize: 20, marginRight: 8 },
   headerTitle: { flex: 1, fontSize: 17, fontFamily: 'PlusJakartaSans-SemiBold', color: '#1C1C2E' },
 
-  grid: { paddingHorizontal: 10, paddingTop: 14 },
+  grid: { paddingHorizontal: 16, paddingTop: 14 },
 
   // ── Tile — same for all levels ─────────────────────────────────────────────
   tile: {

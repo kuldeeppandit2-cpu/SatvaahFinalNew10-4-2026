@@ -755,7 +755,7 @@ const styles = StyleSheet.create({
   // Filter Tabs
   tabsRow: {
     flexDirection:    'row',
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     marginBottom:     8,
   },
   tab: {

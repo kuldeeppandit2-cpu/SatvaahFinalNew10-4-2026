@@ -651,7 +651,7 @@ const styles = StyleSheet.create({
   certBanner:      { marginTop: 12, backgroundColor: '#E8F5F3', borderRadius: 8, padding: 10 },
   certText:        { fontFamily: 'PlusJakartaSans-Medium', fontSize: 12, color: VERDIGRIS },
 
-  section:         { margin: 12, backgroundColor: '#fff', borderRadius: 12, padding: 16, shadowColor: DEEP_INK, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
+  section:         { marginHorizontal: 16, marginBottom: 12, backgroundColor: '#fff', borderRadius: 12, padding: 16, shadowColor: DEEP_INK, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
   sectionTitle:    { fontFamily: 'PlusJakartaSans-Bold', fontSize: 14, color: DEEP_INK, marginBottom: 8 },
   bodyText:        { fontFamily: 'PlusJakartaSans-Regular', fontSize: 14, color: DEEP_INK, lineHeight: 20, marginBottom: 4 },
 
