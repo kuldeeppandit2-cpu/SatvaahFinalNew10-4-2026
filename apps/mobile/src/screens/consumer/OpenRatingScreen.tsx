@@ -219,6 +219,7 @@ export default function OpenRatingScreen({ route, navigation }: Props) {
   const charLeft = 500 - reviewText.length;
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
     <ScreenHeader title="Rate Your Experience" onBack={() => navigation.goBack()} />
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: IVORY }}
@@ -368,6 +369,7 @@ export default function OpenRatingScreen({ route, navigation }: Props) {
       </ScrollView>
     </KeyboardAvoidingView>
             </SafeAreaView>
+    </SafeAreaView>
   );
 }
 

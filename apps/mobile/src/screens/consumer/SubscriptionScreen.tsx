@@ -221,6 +221,7 @@ export default function SubscriptionScreen({
   }
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
     <ScreenHeader title="My Subscription" onBack={() => navigation.goBack()} />
     <ScrollView
       style={{ backgroundColor: IVORY }}
@@ -283,6 +284,7 @@ export default function SubscriptionScreen({
       </View>
     </ScrollView>
         </SafeAreaView>
+    </SafeAreaView>
   );
 }
 

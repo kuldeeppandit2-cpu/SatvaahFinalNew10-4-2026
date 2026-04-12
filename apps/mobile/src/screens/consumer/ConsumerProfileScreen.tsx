@@ -517,6 +517,7 @@ export default function ConsumerProfileScreen() {
 
       <Text style={styles.footer}>SatvAAh Technologies · Truth that travels.</Text>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -553,7 +554,6 @@ function SettingsRow({
         <Ionicons name="chevron-forward" size={16} color={GREY} />
       )}
     </TouchableOpacity>
-    </SafeAreaView>
   );
 }
 

@@ -274,8 +274,9 @@ export default function RateProviderScreen({ route, navigation }: Props) {
   const charLeft = 500 - reviewText.length;
 
   return (
-    <ScreenHeader title="Rate Provider" onBack={() => navigation.goBack()} />
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
+    <ScreenHeader title="Rate Provider" onBack={() => navigation.goBack()} />
+
 
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: IVORY }}

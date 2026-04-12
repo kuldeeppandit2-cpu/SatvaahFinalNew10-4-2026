@@ -325,8 +325,9 @@ export default function SavedProvidersScreen() {
   }
 
   return (
-    <ScreenHeader title="Saved Providers" onBack={() => navigation.goBack()} />
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
+    <ScreenHeader title="Saved Providers" onBack={() => navigation.goBack()} />
+
 
     <View style={styles.container}>
       {/* Swipe hint */}
