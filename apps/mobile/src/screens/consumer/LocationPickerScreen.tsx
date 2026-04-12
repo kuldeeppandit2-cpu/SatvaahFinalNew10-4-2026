@@ -14,7 +14,9 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, FlatList,
+  View,
+  KeyboardAvoidingView,
+  Platform, Text, TextInput, TouchableOpacity, FlatList,
   StyleSheet, ActivityIndicator, Alert,,
   StatusBar,} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -160,6 +162,10 @@ export function LocationPickerScreen() {
 
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
       {/* Header */}
       <View style={s.header}>
@@ -231,7 +237,8 @@ export function LocationPickerScreen() {
         ItemSeparatorComponent={() => <View style={s.sep} />}
         contentContainerStyle={{ paddingBottom: 24 }}
       />
-    </SafeAreaView>
+    
+      </KeyboardAvoidingView></SafeAreaView>
   );
 }
 

@@ -274,6 +274,6 @@ const styles = StyleSheet.create({
     color: '#9B8E7C',
     lineHeight: 18,
     textAlign: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 16,
   },
 });

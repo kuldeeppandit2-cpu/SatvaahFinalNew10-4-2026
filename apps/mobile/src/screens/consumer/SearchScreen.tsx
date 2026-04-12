@@ -419,7 +419,7 @@ const s = StyleSheet.create({
 
   langMenu:         { backgroundColor: COLORS.white, marginHorizontal: 16, marginTop: 4, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: COLORS.border, zIndex: 10 },
   langMenuTitle:    { fontSize: 11, fontWeight: '600', color: COLORS.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
-  langRow:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 4, borderRadius: 8 },
+  langRow:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8 },
   langRowActive:    { backgroundColor: '#FFF5EC' },
   langRowText:      { fontSize: 14, color: COLORS.deepInk },
   langRowTextActive:{ color: COLORS.saffron, fontWeight: '600' },

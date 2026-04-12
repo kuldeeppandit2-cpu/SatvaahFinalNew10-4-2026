@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
 
   footer: {
     marginTop: 8,
-    paddingHorizontal: 4,
+    paddingHorizontal: 16,
   },
   footerText: {
     fontSize: 12,

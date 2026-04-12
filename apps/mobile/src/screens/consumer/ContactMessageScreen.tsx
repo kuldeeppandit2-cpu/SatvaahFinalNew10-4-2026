@@ -118,6 +118,10 @@ export function ContactMessageScreen(): React.ReactElement {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
     <ScreenHeader title="Send Message" onBack={() => navigation.goBack()} />
     <BottomSheet
@@ -200,7 +204,8 @@ export function ContactMessageScreen(): React.ReactElement {
         </TouchableOpacity>
       </BottomSheetView>
     </BottomSheet>
-    </SafeAreaView>
+    
+      </KeyboardAvoidingView></SafeAreaView>
   );
 }
 

@@ -42,6 +42,10 @@ export function SupportScreen() {
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
       <ScreenHeader title="Help & Support" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
@@ -85,7 +89,8 @@ export function SupportScreen() {
           <Text style={s.emailText}>support@satvaaah.com</Text>
         </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+    
+      </KeyboardAvoidingView></SafeAreaView>
   );
 }
 
