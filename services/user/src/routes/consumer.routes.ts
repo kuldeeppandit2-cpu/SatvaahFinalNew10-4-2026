@@ -49,13 +49,20 @@ router.get(
   requireAuth,
   asyncHandler(async (req: Request, res: Response) => {
     const userId = (req as any).user.userId;
-    const profile = await prisma.consumerProfile.findFirst({
-      where: { user_id: userId },
-      select: { id: true },
+    const user = await prisma.user.findUnique({
+      where:  { id: userId },
+      select: { wa_opted_out: true },
     });
-    if (!profile) throw new AppError('NOT_FOUND', 'Consumer profile not found', 404);
-    // notification_prefs stored in user record or defaults
-    res.json({ success: true, data: { notification_prefs: { fcm: true, whatsapp: false } } });
+    if (!user) throw new AppError('NOT_FOUND', 'User not found', 404);
+    res.json({
+      success: true,
+      data: {
+        notification_prefs: {
+          push_enabled:      true,          // default on; overridden by client MMKV
+          whatsapp_enabled:  !user.wa_opted_out,
+        },
+      },
+    });
   }),
 );
 
@@ -64,8 +71,22 @@ router.patch(
   '/me/settings',
   requireAuth,
   asyncHandler(async (req: Request, res: Response) => {
-    // Settings are lightweight — just return success (prefs stored client-side via MMKV)
-    res.json({ success: true, data: { updated: true } });
+    const userId = (req as any).user.userId;
+    const { whatsapp_enabled, push_enabled } = req.body as {
+      whatsapp_enabled?: boolean;
+      push_enabled?: boolean;
+    };
+
+    // wa_opted_out is the only persisted pref (User model has this column).
+    // push_enabled is stored client-side via MMKV — backend just acknowledges it.
+    if (typeof whatsapp_enabled === 'boolean') {
+      await prisma.user.update({
+        where: { id: userId },
+        data:  { wa_opted_out: !whatsapp_enabled },
+      });
+    }
+
+    res.json({ success: true, data: { updated: true, whatsapp_enabled, push_enabled } });
   }),
 );
 
