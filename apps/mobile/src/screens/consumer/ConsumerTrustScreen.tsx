@@ -309,9 +309,6 @@ export default function ConsumerTrustScreen() {
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
-      <TouchableOpacity onPress={() => navigation.goBack()} style={{flexDirection:'row',alignItems:'center',paddingHorizontal:16,paddingVertical:12}}>
-        <Text style={{fontSize:16,color:'#C8691A',fontFamily:'PlusJakartaSans-SemiBold'}}>← Back</Text>
-      </TouchableOpacity>
 
       {/* Ring + visibility notice */}
       <View style={styles.heroSection}>

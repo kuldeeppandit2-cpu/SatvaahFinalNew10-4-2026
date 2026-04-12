@@ -431,9 +431,6 @@ export const ProviderRatesConsumerScreen: React.FC = () => {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.navBar}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.navBack}>←</Text>
-          </TouchableOpacity>
           <Text style={styles.navTitle}>Rate Provider</Text>
           <View style={{ width: 40 }} />
         </View>
@@ -503,9 +500,6 @@ export const ProviderRatesConsumerScreen: React.FC = () => {
 
       {/* Nav */}
       <View style={styles.navBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.navBack}>←</Text>
-        </TouchableOpacity>
         <Text style={styles.navTitle}>Rate Provider</Text>
         <View style={{ width: 40 }} />
       </View>

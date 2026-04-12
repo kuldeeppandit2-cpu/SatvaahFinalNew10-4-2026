@@ -166,12 +166,6 @@ export default function CreateProfileStep1Screen({ route, navigation }: Props) {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
       <ScreenHeader title="Create Profile" onBack={() => navigation.goBack()} />
-      <TouchableOpacity
-        style={{ padding: 16, paddingBottom: 0 }}
-        onPress={() => navigation.goBack()}
-      >
-        <Text style={{ fontSize: 16, color: '#C8691A', fontFamily: 'PlusJakartaSans-SemiBold' }}>← Back</Text>
-      </TouchableOpacity>
 
       {/* Progress bar */}
       <View style={styles.progressBar}>

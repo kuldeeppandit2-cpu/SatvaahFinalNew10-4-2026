@@ -528,9 +528,6 @@ export const CertificateScreen: React.FC = () => {
       {/* Nav — hidden on first show */}
       {!isFirstShow && (
         <View style={styles.navBar}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.navBack}>←</Text>
-          </TouchableOpacity>
           <Text style={styles.navTitle}>Your Certificate</Text>
           <View style={{ width: 40 }} />
         </View>

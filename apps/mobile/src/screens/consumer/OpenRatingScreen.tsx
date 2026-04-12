@@ -213,9 +213,6 @@ export default function OpenRatingScreen({ route, navigation }: Props) {
         <Text style={styles.limitBody}>
           You've rated {dailyUsed} of {dailyLimit} {tabLabel} today.{'\n'}Come back tomorrow!
         </Text>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.backBtnText}>Go Back</Text>
-        </TouchableOpacity>
       </View>
     );
   }

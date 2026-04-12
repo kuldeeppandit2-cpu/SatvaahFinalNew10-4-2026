@@ -368,9 +368,6 @@ export const AnalyticsScreen: React.FC = () => {
 
       {/* Nav */}
       <View style={styles.navBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.navBack}>←</Text>
-        </TouchableOpacity>
         <Text style={styles.navTitle}>Analytics</Text>
         <View style={styles.tierPill}>
           <Text style={styles.tierPillText}>

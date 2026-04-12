@@ -13,9 +13,6 @@ export function DataRightsScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Data Rights</Text>
       <Text style={styles.subtitle}>Coming soon</Text>
-      <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
-        <Text style={styles.backText}>← Go Back</Text>
-      </TouchableOpacity>
     </View>
     </SafeAreaView>
   );

@@ -301,12 +301,6 @@ export const TrustBiographyScreen: React.FC = () => {
 
       {/* Nav bar */}
       <View style={styles.navBar}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
-          <Text style={styles.navBack}>←</Text>
-        </TouchableOpacity>
         <Text style={styles.navTitle}>Trust Biography</Text>
         <TouchableOpacity onPress={handleShare} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Text style={styles.navShare}>Share</Text>

@@ -199,12 +199,6 @@ export default function CreateProfileStep3GeoScreen({
     return (
       <SafeAreaView style={styles.heroSafe}>
       <ScreenHeader title="Service Area" onBack={() => navigation.goBack()} />
-      <TouchableOpacity
-        onPress={() => navigation.goBack()}
-        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 }}
-      >
-        <Text style={{ fontSize: 16, color: '#C8691A', fontFamily: 'PlusJakartaSans-SemiBold' }}>← Back</Text>
-      </TouchableOpacity>
         <StatusBar barStyle="light-content" backgroundColor="#1C1C2E" />
         <Animated.View style={[styles.heroContainer, { opacity: heroFade }]}>
           {/* Trust Ring */}

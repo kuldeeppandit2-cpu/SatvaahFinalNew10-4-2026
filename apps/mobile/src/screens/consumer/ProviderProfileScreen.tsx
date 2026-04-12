@@ -293,12 +293,6 @@ export function ProviderProfileScreen(): React.ReactElement {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScreenHeader title="Provider Profile" onBack={() => navigation.goBack()} />
-      <TouchableOpacity
-        style={{ padding: 16, paddingBottom: 0 }}
-        onPress={() => navigation.goBack()}
-      >
-        <Text style={{ fontSize: 16, color: '#C8691A', fontFamily: 'PlusJakartaSans-SemiBold' }}>← Back</Text>
-      </TouchableOpacity>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}

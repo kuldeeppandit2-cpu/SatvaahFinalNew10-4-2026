@@ -265,9 +265,6 @@ export default function RateProviderScreen({ route, navigation }: Props) {
       <View style={[styles.center, { backgroundColor: IVORY, paddingHorizontal: 32 }]}>
         <Text style={styles.ineligibleTitle}>Rating Unavailable</Text>
         <Text style={styles.ineligibleBody}>{ineligibleReason}</Text>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.backBtnText}>Go Back</Text>
-        </TouchableOpacity>
       </View>
     );
   }

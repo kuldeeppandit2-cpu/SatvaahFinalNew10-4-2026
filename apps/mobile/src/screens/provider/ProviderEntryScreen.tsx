@@ -58,12 +58,6 @@ export default function ProviderEntryScreen({
       {/* Dark top */}
       <SafeAreaView style={s.top} edges={['top']}>
       <ScreenHeader title="Provider Setup" onBack={() => navigation.goBack()} />
-      <TouchableOpacity
-        onPress={() => navigation.goBack()}
-        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 }}
-      >
-        <Text style={{ fontSize: 16, color: '#C8691A', fontFamily: 'PlusJakartaSans-SemiBold' }}>← Back</Text>
-      </TouchableOpacity>
         <Text style={s.logo}>SatvAAh</Text>
         <Text style={s.headline}>Join as a Provider</Text>
         <Text style={s.sub}>

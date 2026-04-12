@@ -329,13 +329,6 @@ export default function SavedProvidersScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
 
     <View style={styles.container}>
-
-      <TouchableOpacity
-        onPress={() => navigation.goBack()}
-        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 }}
-      >
-        <Text style={{ fontSize: 16, color: '#C8691A', fontFamily: 'PlusJakartaSans-SemiBold' }}>← Back</Text>
-      </TouchableOpacity>
       {/* Swipe hint */}
       {providers.length > 0 && (
         <View style={styles.hintBar}>

@@ -190,12 +190,6 @@ export default function CreateProfileStep2Screen({
     return (
       <SafeAreaView style={styles.heroSafe}>
       <ScreenHeader title="Your Location" onBack={() => navigation.goBack()} />
-      <TouchableOpacity
-        onPress={() => navigation.goBack()}
-        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 }}
-      >
-        <Text style={{ fontSize: 16, color: '#C8691A', fontFamily: 'PlusJakartaSans-SemiBold' }}>← Back</Text>
-      </TouchableOpacity>
         <StatusBar barStyle="light-content" backgroundColor="#1C1C2E" />
         <ScrollView
           contentContainerStyle={styles.heroContainer}

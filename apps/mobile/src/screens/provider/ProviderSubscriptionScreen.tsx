@@ -442,9 +442,6 @@ export const ProviderSubscriptionScreen: React.FC = () => {
 
       {/* Nav */}
       <View style={styles.navBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.navBack}>←</Text>
-        </TouchableOpacity>
         <Text style={styles.navTitle}>Choose your plan</Text>
         <View style={{ width: 40 }} />
       </View>
