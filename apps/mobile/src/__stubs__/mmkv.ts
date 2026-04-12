@@ -127,5 +127,7 @@ export async function preloadAllMmkvStores(): Promise<void> {
   await Promise.all([
     getAuthStorage().preload(),
     getConsumerStorage().preload(),
+    // Location store has its own MMKV instance — preload it too
+    new MMKV({ id: 'satvaaah-location' }).preload(),
   ]);
 }

@@ -50,6 +50,8 @@ export default function App(): React.ReactElement {
       // Without this, every cold start loses the auth session (BUG-01 fix).
       try {
         await preloadAllMmkvStores();
+        // Hydrate location store from persisted last-known coords (BUG-04 fix)
+        await useLocationStore.getState().preload();
       } catch {
         // Non-fatal — stores fall back to defaults (fresh login required)
       }
