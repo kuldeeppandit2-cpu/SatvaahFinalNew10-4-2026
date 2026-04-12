@@ -12,19 +12,20 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+ ActivityIndicator,
+ Alert,
+ Image,
+ KeyboardAvoidingView,
+ Platform,
+ Pressable,
+ ScrollView,
+ StyleSheet,
+ Text,
+ TextInput,
+ TouchableOpacity,
+ View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -70,6 +71,7 @@ function StarRow({
   onChange?: (v: number) => void;
 }) {
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
     <View style={styles.starRow}>
       {[1, 2, 3, 4, 5].map((s) => (
         <TouchableOpacity
@@ -366,6 +368,7 @@ export default function OpenRatingScreen({ route, navigation }: Props) {
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 

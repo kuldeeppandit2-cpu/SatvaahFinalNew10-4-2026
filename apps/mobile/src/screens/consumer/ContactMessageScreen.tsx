@@ -14,9 +14,10 @@
  */
 
 import React, { useCallback, useRef, useEffect, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  View, Text, StyleSheet, TouchableOpacity,
-  ActivityIndicator, Alert,
+ View, Text, StyleSheet, TouchableOpacity,
+ ActivityIndicator, Alert,
 } from 'react-native';
 import BottomSheet, { BottomSheetView, BottomSheetTextInput, BottomSheetBackdrop } from '../../__stubs__/bottom-sheet';
 import type { BottomSheetBackdropProps } from '../../__stubs__/bottom-sheet';
@@ -115,6 +116,7 @@ export function ContactMessageScreen(): React.ReactElement {
   }
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
     <BottomSheet
       ref={sheetRef}
       index={0}
@@ -195,6 +197,7 @@ export function ContactMessageScreen(): React.ReactElement {
         </TouchableOpacity>
       </BottomSheetView>
     </BottomSheet>
+    </SafeAreaView>
   );
 }
 

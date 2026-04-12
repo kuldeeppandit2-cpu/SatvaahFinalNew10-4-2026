@@ -19,10 +19,11 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  View, Text, StyleSheet, TouchableOpacity,
-  TextInput, SafeAreaView, Animated, Alert,
-  KeyboardAvoidingView, Platform, ActivityIndicator,
+ View, Text, StyleSheet, TouchableOpacity,
+ TextInput, Animated, Alert,
+ KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { FlashList } from '../../__stubs__/flash-list';
 import * as ImagePicker from 'expo-image-picker';
@@ -276,7 +277,7 @@ export function ConversationScreen(): React.ReactElement {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>

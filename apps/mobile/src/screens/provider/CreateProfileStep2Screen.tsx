@@ -11,22 +11,23 @@
  */
 
 import React, { useEffect, useState, useRef } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-  StatusBar,
-  SafeAreaView,
-  KeyboardAvoidingView,
-  Platform,
-  Animated,
-  Easing,
-  Alert,
-  FlatList,
+ View,
+ Text,
+ StyleSheet,
+ TextInput,
+ TouchableOpacity,
+ ScrollView,
+ ActivityIndicator,
+ StatusBar,
+ 
+ KeyboardAvoidingView,
+ Platform,
+ Animated,
+ Easing,
+ Alert,
+ FlatList,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ProviderOnboardingParamList } from '../../navigation/provider.navigator';
@@ -287,7 +288,7 @@ export default function CreateProfileStep2Screen({
   // ─── Form ────────────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
 
       {/* Progress bar */}

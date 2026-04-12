@@ -22,10 +22,11 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  Animated, RefreshControl, Alert, SafeAreaView,
-  Modal, TextInput, KeyboardAvoidingView, Platform,
+ View, Text, ScrollView, StyleSheet, TouchableOpacity,
+ Animated, RefreshControl, Alert,
+ Modal, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -289,7 +290,7 @@ export function ProviderProfileScreen(): React.ReactElement {
   ];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <TouchableOpacity
         style={{ padding: 16, paddingBottom: 0 }}
         onPress={() => navigation.goBack()}

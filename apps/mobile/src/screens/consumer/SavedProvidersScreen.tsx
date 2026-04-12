@@ -22,15 +22,16 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ActivityIndicator,
-  Animated,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+ ActivityIndicator,
+ Animated,
+ RefreshControl,
+ ScrollView,
+ StyleSheet,
+ Text,
+ TouchableOpacity,
+ View,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
@@ -82,6 +83,7 @@ function ScoreDeltaBadge({
   const tierLabel = trustTierLabel(currentTier);
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
     <View style={[styles.deltaBadge, { backgroundColor: isUp ? '#E8F5E9' : '#FDECEA' }]}>
       <Text style={[styles.deltaText, { color: colour }]}>
         {arrow} {sign}{delta.delta} since you saved · Now {tierLabel}
@@ -375,6 +377,7 @@ export default function SavedProvidersScreen() {
         </View>
       )}
     </View>
+    </SafeAreaView>
   );
 }
 

@@ -22,9 +22,10 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  View, Text, StyleSheet, TouchableOpacity, FlatList,
-  ActivityIndicator, Alert, SafeAreaView, ScrollView,
+ View, Text, StyleSheet, TouchableOpacity, FlatList,
+ ActivityIndicator, Alert, ScrollView,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -85,7 +86,7 @@ function buildDateStrip(): Date[] {
 // ─── GoldGate — shown to non-Gold consumers ───────────────────────────────────
 function GoldGate({ onBack }: { onBack: () => void }): React.ReactElement {
   return (
-    <SafeAreaView style={styles.gateContainer}>
+    <SafeAreaView style={styles.gateContainer} edges={['top', 'bottom']}>
       <View style={styles.gateLockBox}>
         <Text style={styles.gateLock}>🔒</Text>
         <Text style={styles.gateTitle}>Gold tier required</Text>

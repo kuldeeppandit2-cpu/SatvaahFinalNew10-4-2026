@@ -13,18 +13,19 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  StatusBar,
-  SafeAreaView,
-  Platform,
-  Linking,
-  NativeModules,
-  Alert,
+ View,
+ Text,
+ StyleSheet,
+ TouchableOpacity,
+ ScrollView,
+ StatusBar,
+ 
+ Platform,
+ Linking,
+ NativeModules,
+ Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Device from 'expo-device';
@@ -180,7 +181,7 @@ export default function FCMPermissionScreen({
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <TouchableOpacity
         onPress={() => navigation.goBack()}
         style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 }}

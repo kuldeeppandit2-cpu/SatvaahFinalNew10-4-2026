@@ -3,9 +3,10 @@
  * Matches approved onboarding slide 4 design exactly
  */
 import React, { useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  View, Text, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, StatusBar, Dimensions,
+ View, Text, TouchableOpacity, StyleSheet,
+ ActivityIndicator, Alert, StatusBar, Dimensions,
 } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import type { AuthScreenProps } from '../../navigation/types';
@@ -21,6 +22,7 @@ const { height: H } = Dimensions.get('window');
 
 function Brand() {
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top', 'bottom']}>
     <View style={b.wrap}>
       <View style={b.row}>
         <Text style={b.ink}>Satv</Text>
@@ -168,6 +170,7 @@ export function ModeSelectionScreen(): React.ReactElement {
         <Text style={s.footTxt}>Let the world know about you with your Trust Score.</Text>
       </View>
     </View>
+    </SafeAreaView>
   );
 }
 

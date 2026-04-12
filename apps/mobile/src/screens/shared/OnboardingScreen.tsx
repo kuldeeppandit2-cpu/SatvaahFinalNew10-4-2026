@@ -3,9 +3,10 @@
  * Screen 4 (Two Identities) is ModeSelectionScreen — shown AFTER OTP
  */
 import React, { useRef, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  View, Text, TouchableOpacity, StyleSheet,
-  Dimensions, ScrollView, StatusBar,
+ View, Text, TouchableOpacity, StyleSheet,
+ Dimensions, ScrollView, StatusBar,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -19,6 +20,7 @@ const BRAND_H = SLIDE_H * 0.56;
 
 function Brand() {
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top', 'bottom']}>
     <View style={b.wrap}>
       <View style={b.row}>
         <Text style={b.ink}>Satv</Text>
@@ -143,6 +145,7 @@ export function OnboardingScreen(): React.ReactElement {
         )}
       </View>
     </View>
+    </SafeAreaView>
   );
 }
 

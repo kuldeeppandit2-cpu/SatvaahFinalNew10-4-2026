@@ -2,10 +2,11 @@
  * SatvAAh OTP — Ivory bg, Deep Ink text, Saffron CTA, 6 boxes
  */
 import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  StatusBar, KeyboardAvoidingView, Platform, Alert,
-  ActivityIndicator, Animated,
+ View, Text, TextInput, TouchableOpacity, StyleSheet,
+ StatusBar, KeyboardAvoidingView, Platform, Alert,
+ ActivityIndicator, Animated,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -31,6 +32,7 @@ export function OtpScreen(): React.ReactElement {
     if (countdown <= 0) return;
     const t = setTimeout(() => setCountdown(c => c - 1), 1000);
     return () => clearTimeout(t);
+  <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top', 'bottom']}>
   }, [countdown]);
 
   function shake() {
@@ -134,6 +136,7 @@ export function OtpScreen(): React.ReactElement {
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
+  </SafeAreaView>
   );
 }
 

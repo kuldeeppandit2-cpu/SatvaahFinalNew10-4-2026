@@ -9,17 +9,18 @@
  */
 
 import React, { useRef } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Animated,
-  StatusBar,
-  SafeAreaView,
-  Dimensions,
-  Image,
+ View,
+ Text,
+ StyleSheet,
+ TouchableOpacity,
+ ScrollView,
+ Animated,
+ StatusBar,
+ 
+ Dimensions,
+ Image,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ProviderOnboardingParamList } from '../../navigation/provider.navigator';
@@ -109,7 +110,7 @@ export default function EntityTypeScreen({
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <TouchableOpacity
         onPress={() => navigation.goBack()}
         style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 }}

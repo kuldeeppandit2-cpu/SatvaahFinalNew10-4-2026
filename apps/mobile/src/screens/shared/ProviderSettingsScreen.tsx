@@ -1,11 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../constants/colors';
 
 export function ProviderSettingsScreen() {
   const navigation = useNavigation();
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top', 'bottom']}>
     <View style={styles.container}>
       <Text style={styles.title}>Settings</Text>
       <Text style={styles.subtitle}>Coming soon</Text>
@@ -13,6 +15,7 @@ export function ProviderSettingsScreen() {
         <Text style={styles.backText}>← Go Back</Text>
       </TouchableOpacity>
     </View>
+    </SafeAreaView>
   );
 }
 

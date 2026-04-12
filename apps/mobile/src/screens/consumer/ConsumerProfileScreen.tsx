@@ -19,16 +19,17 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  ScrollView,
-  Share,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+ ActivityIndicator,
+ Alert,
+ RefreshControl,
+ ScrollView,
+ Share,
+ StyleSheet,
+ Text,
+ TouchableOpacity,
+ View,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -155,6 +156,7 @@ function AvatarBlock({
     : '';
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
     <View style={styles.avatarBlock}>
       {/* Avatar */}
       <View style={styles.avatarCircle}>
@@ -549,6 +551,7 @@ function SettingsRow({
         <Ionicons name="chevron-forward" size={16} color={GREY} />
       )}
     </TouchableOpacity>
+    </SafeAreaView>
   );
 }
 

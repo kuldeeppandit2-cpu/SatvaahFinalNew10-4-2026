@@ -24,18 +24,19 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  FlatList,
-  Modal,
-  RefreshControl,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
+ ActivityIndicator,
+ Alert,
+ Animated,
+ FlatList,
+ Modal,
+ RefreshControl,
+ StyleSheet,
+ Switch,
+ Text,
+ TouchableOpacity,
+ View,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
@@ -151,6 +152,7 @@ function NotificationCard({
       extrapolate: 'clamp',
     });
     return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
       <TouchableOpacity style={styles.swipeDismiss} onPress={handleDismiss}>
         <Animated.View style={{ transform: [{ scale }], alignItems: 'center' }}>
           <Ionicons name="checkmark-done-outline" size={22} color="#fff" />
@@ -494,6 +496,7 @@ export default function NotificationsScreen() {
         onToggle={handlePrefToggle}
       />
     </View>
+      </SafeAreaView>
   );
 }
 

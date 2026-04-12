@@ -13,19 +13,20 @@
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-  StatusBar,
-  SafeAreaView,
-  Animated,
-  Easing,
-  Alert,
-  Platform,
-  Dimensions,
+ View,
+ Text,
+ StyleSheet,
+ TouchableOpacity,
+ ActivityIndicator,
+ StatusBar,
+ 
+ Animated,
+ Easing,
+ Alert,
+ Platform,
+ Dimensions,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from '../../__stubs__/maps';
 import * as Location from 'expo-location';
@@ -281,7 +282,7 @@ export default function CreateProfileStep3GeoScreen({
   // ─── Map Screen ──────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
 
       {/* Progress */}

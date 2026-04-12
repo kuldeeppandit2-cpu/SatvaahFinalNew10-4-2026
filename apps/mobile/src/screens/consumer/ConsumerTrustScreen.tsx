@@ -18,13 +18,14 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+ ActivityIndicator,
+ ScrollView,
+ StyleSheet,
+ Text,
+ TouchableOpacity,
+ View,
 } from 'react-native';
 import Svg, { Circle, Text as SvgText } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
@@ -139,6 +140,7 @@ function TrustRing({
   const centre = size / 2;
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
     <View style={styles.ringContainer}>
       <Svg width={size} height={size}>
         {/* Track */}
@@ -381,6 +383,7 @@ export default function ConsumerTrustScreen() {
         <Ionicons name="chevron-forward" size={14} color={GREY} />
       </TouchableOpacity>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

@@ -10,13 +10,14 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+ ActivityIndicator,
+ ScrollView,
+ StyleSheet,
+ Text,
+ TouchableOpacity,
+ View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -72,6 +73,7 @@ function PlanCard({ plan, isCurrentTier, onSelect }: PlanCardProps) {
   const isFree = plan.tier === 'free';
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
     <View style={[styles.planCard, isCurrentTier && styles.planCardActive]}>
       {/* Popular badge */}
       {cfg.popular && (
@@ -281,6 +283,7 @@ export default function SubscriptionScreen({
         </Text>
       </View>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

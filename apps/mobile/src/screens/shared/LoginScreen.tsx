@@ -2,9 +2,10 @@
  * SatvAAh Login — Ivory background, Deep Ink text, Saffron CTA
  */
 import React, { useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  StatusBar, KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
+ View, Text, TextInput, TouchableOpacity, StyleSheet,
+ StatusBar, KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -36,6 +37,7 @@ export function LoginScreen(): React.ReactElement {
   }
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top', 'bottom']}>
     <KeyboardAvoidingView style={s.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
 
@@ -81,6 +83,7 @@ export function LoginScreen(): React.ReactElement {
         <Text style={s.legal}>Zero commission. Always. By continuing you agree to our Terms & Privacy Policy.</Text>
       </View>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 

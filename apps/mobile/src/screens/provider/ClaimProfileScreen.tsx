@@ -11,17 +11,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-  StatusBar,
-  SafeAreaView,
-  Image,
-  Alert,
+ View,
+ Text,
+ StyleSheet,
+ TouchableOpacity,
+ ScrollView,
+ ActivityIndicator,
+ StatusBar,
+ 
+ Image,
+ Alert,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ProviderOnboardingParamList } from '../../navigation/provider.navigator';
@@ -96,7 +97,7 @@ export default function ClaimProfileScreen({
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
       <ScrollView
         contentContainerStyle={styles.container}

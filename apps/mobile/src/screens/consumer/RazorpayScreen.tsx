@@ -18,12 +18,13 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+ ActivityIndicator,
+ StyleSheet,
+ Text,
+ TouchableOpacity,
+ View,
 } from 'react-native';
 import RazorpayCheckout from '../../__stubs__/razorpay';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -88,6 +89,7 @@ export default function RazorpayScreen({ route, navigation }: Props) {
   // ── Cleanup ──
   useEffect(() => {
     return () => {
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#FAF7F0' }} edges={['top']}>
       if (upiTimeoutRef.current) clearTimeout(upiTimeoutRef.current);
     };
   }, []);
@@ -313,6 +315,7 @@ export default function RazorpayScreen({ route, navigation }: Props) {
         </View>
       )}
     </View>
+      </SafeAreaView>
   );
 }
 

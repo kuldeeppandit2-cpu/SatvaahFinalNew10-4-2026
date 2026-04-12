@@ -9,16 +9,17 @@
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  ActivityIndicator,
-  StatusBar,
-  SafeAreaView,
-  ScrollView,
+ View,
+ Text,
+ StyleSheet,
+ TouchableOpacity,
+ FlatList,
+ ActivityIndicator,
+ StatusBar,
+ 
+ ScrollView,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ProviderOnboardingParamList } from '../../navigation/provider.navigator';
@@ -161,7 +162,7 @@ export default function CreateProfileStep1Screen({ route, navigation }: Props) {
   const canProceed = !!draft.taxonomyNodeId;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF7F0" />
       <TouchableOpacity
         style={{ padding: 16, paddingBottom: 0 }}
