@@ -51,11 +51,6 @@ function createApiClient(): AxiosInstance {
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
-      // Prevent iOS NSURLCache from caching ANY API response.
-      // Without these, iOS caches error/empty responses when server is down,
-      // then serves stale cache even after server recovers.
-      'Cache-Control': 'no-store, no-cache',
-      Pragma: 'no-cache',
     },
   });
 
