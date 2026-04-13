@@ -11,12 +11,7 @@ const projectRoot = __dirname;
 
 const config = getDefaultConfig(projectRoot);
 
-// Only watch packages/types — the only workspace package mobile imports.
-// Watching the full workspaceRoot causes ts-node-dev (Docker services) to
-// trigger spurious Metro hot reloads that break the expo-font singleton.
-config.watchFolders = [
-  path.resolve(workspaceRoot, 'packages/types'),
-];
+config.watchFolders = [workspaceRoot];
 
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
@@ -65,6 +60,7 @@ const DEDUPE = [
                                    // "Cannot read property 'set' of undefined" crash
   'expo-modules-core',             // core native module registry — must be singleton
   '@react-native-async-storage',   // async storage singleton for MMKV stub persistence
+  '@babel/runtime',                // pnpm symlink fix — resolve from mobile node_modules
 ];
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
