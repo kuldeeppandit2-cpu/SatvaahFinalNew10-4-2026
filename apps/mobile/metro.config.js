@@ -11,15 +11,11 @@ const projectRoot = __dirname;
 
 const config = getDefaultConfig(projectRoot);
 
-config.watchFolders = [workspaceRoot];
-
-// Prevent Metro from watching Docker service files (services/, packages/)
-// ts-node-dev touching these files causes spurious hot reloads that break
-// the expo-font singleton deduplication
-config.resolver.blockList = [
-  /.*\/services\/.*/,
-  /.*\/packages\/.*/,
-  /.*\/scripts\/.*/,
+// Only watch packages/types — the only workspace package mobile imports.
+// Watching the full workspaceRoot causes ts-node-dev (Docker services) to
+// trigger spurious Metro hot reloads that break the expo-font singleton.
+config.watchFolders = [
+  path.resolve(workspaceRoot, 'packages/types'),
 ];
 
 config.resolver.nodeModulesPaths = [
