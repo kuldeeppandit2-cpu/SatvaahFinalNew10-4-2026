@@ -9,6 +9,15 @@ DECLARE
   v_provider_id UUID;
   v_trust_id UUID;
 BEGIN
+  -- Wipe previous test-seed data so re-runs are fully idempotent
+  -- trust_scores must be deleted first (FK child), then provider_profiles (FK parent)
+  DELETE FROM trust_scores
+    WHERE provider_id IN (
+      SELECT id FROM provider_profiles WHERE scrape_source = 'test_seed'
+    );
+  DELETE FROM provider_profiles WHERE scrape_source = 'test_seed';
+  RAISE NOTICE 'Cleared previous test_seed providers';
+
   -- Get Hyderabad city ID
   SELECT id INTO v_city_id FROM cities WHERE slug='hyderabad' LIMIT 1;
   IF v_city_id IS NULL THEN
