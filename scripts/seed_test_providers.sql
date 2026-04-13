@@ -761,3 +761,235 @@ BEGIN
 END $$;
 
 COMMIT;
+  -- ── Products tab providers ─────────────────────────────────────────────────
+
+  -- Lakshmi Dairy Fresh
+  SELECT id INTO v_node_id FROM taxonomy_nodes
+  WHERE l4 = 'A2 Cow Milk' AND tab::text = 'products' LIMIT 1;
+  v_provider_id := gen_random_uuid();
+  v_trust_id    := gen_random_uuid();
+  INSERT INTO provider_profiles(
+    id, display_name, business_name, taxonomy_node_id,
+    city_id, tab, listing_type, phone,
+    is_active, is_claimed, is_scrape_record,
+    is_phone_verified, availability,
+    scrape_source, scrape_external_id,
+    geo_point, created_at, updated_at
+  ) VALUES (
+    v_provider_id, 'Lakshmi Dairy Fresh', 'Lakshmi Dairy Fresh', v_node_id,
+    v_city_id, 'products'::"Tab", 'individual_product'::"ListingType", '9876501001',
+    true, true, false, true, 'available'::"Availability",
+    'test_seed', 'test_prod_001',
+    ST_SetSRID(ST_MakePoint(78.477, 17.395), 4326), NOW(), NOW()
+  ) ON CONFLICT (scrape_source, scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id, provider_id, display_score, raw_score, trust_tier)
+  VALUES (v_trust_id, v_provider_id, 78, 78, 'trusted'::"TrustTier")
+  ON CONFLICT (provider_id) DO NOTHING;
+
+  -- Gopal Organic Dairy
+  SELECT id INTO v_node_id FROM taxonomy_nodes
+  WHERE l4 = 'Cow Milk (packaged)' AND tab::text = 'products' LIMIT 1;
+  v_provider_id := gen_random_uuid();
+  v_trust_id    := gen_random_uuid();
+  INSERT INTO provider_profiles(
+    id, display_name, business_name, taxonomy_node_id,
+    city_id, tab, listing_type, phone,
+    is_active, is_claimed, is_scrape_record,
+    is_phone_verified, availability,
+    scrape_source, scrape_external_id,
+    geo_point, created_at, updated_at
+  ) VALUES (
+    v_provider_id, 'Gopal Organic Dairy', 'Gopal Organic Dairy', v_node_id,
+    v_city_id, 'products'::"Tab", 'individual_product'::"ListingType", '9876501002',
+    true, true, false, true, 'available'::"Availability",
+    'test_seed', 'test_prod_002',
+    ST_SetSRID(ST_MakePoint(78.492, 17.375), 4326), NOW(), NOW()
+  ) ON CONFLICT (scrape_source, scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id, provider_id, display_score, raw_score, trust_tier)
+  VALUES (v_trust_id, v_provider_id, 65, 65, 'trusted'::"TrustTier")
+  ON CONFLICT (provider_id) DO NOTHING;
+
+  -- Krishna Vegetables
+  SELECT id INTO v_node_id FROM taxonomy_nodes
+  WHERE l4 = 'Spinach (Palak)' AND tab::text = 'products' LIMIT 1;
+  v_provider_id := gen_random_uuid();
+  v_trust_id    := gen_random_uuid();
+  INSERT INTO provider_profiles(
+    id, display_name, business_name, taxonomy_node_id,
+    city_id, tab, listing_type, phone,
+    is_active, is_claimed, is_scrape_record,
+    is_phone_verified, availability,
+    scrape_source, scrape_external_id,
+    geo_point, created_at, updated_at
+  ) VALUES (
+    v_provider_id, 'Krishna Fresh Vegetables', 'Krishna Fresh Vegetables', v_node_id,
+    v_city_id, 'products'::"Tab", 'individual_product'::"ListingType", '9876501003',
+    true, false, false, true, 'available'::"Availability",
+    'test_seed', 'test_prod_003',
+    ST_SetSRID(ST_MakePoint(78.468, 17.408), 4326), NOW(), NOW()
+  ) ON CONFLICT (scrape_source, scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id, provider_id, display_score, raw_score, trust_tier)
+  VALUES (v_trust_id, v_provider_id, 42, 42, 'basic'::"TrustTier")
+  ON CONFLICT (provider_id) DO NOTHING;
+
+  -- Annapurna Rice Store
+  SELECT id INTO v_node_id FROM taxonomy_nodes
+  WHERE l4 = 'Basmati Long Grain' AND tab::text = 'products' LIMIT 1;
+  v_provider_id := gen_random_uuid();
+  v_trust_id    := gen_random_uuid();
+  INSERT INTO provider_profiles(
+    id, display_name, business_name, taxonomy_node_id,
+    city_id, tab, listing_type, phone,
+    is_active, is_claimed, is_scrape_record,
+    is_phone_verified, availability,
+    scrape_source, scrape_external_id,
+    geo_point, created_at, updated_at
+  ) VALUES (
+    v_provider_id, 'Annapurna Rice & Grains', 'Annapurna Rice & Grains', v_node_id,
+    v_city_id, 'products'::"Tab", 'individual_product'::"ListingType", '9876501004',
+    true, true, false, true, 'available'::"Availability",
+    'test_seed', 'test_prod_004',
+    ST_SetSRID(ST_MakePoint(78.501, 17.382), 4326), NOW(), NOW()
+  ) ON CONFLICT (scrape_source, scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id, provider_id, display_score, raw_score, trust_tier)
+  VALUES (v_trust_id, v_provider_id, 71, 71, 'trusted'::"TrustTier")
+  ON CONFLICT (provider_id) DO NOTHING;
+
+  -- Hyderabad Dry Fruits
+  SELECT id INTO v_node_id FROM taxonomy_nodes
+  WHERE l4 = 'Cashew W240' AND tab::text = 'products' LIMIT 1;
+  v_provider_id := gen_random_uuid();
+  v_trust_id    := gen_random_uuid();
+  INSERT INTO provider_profiles(
+    id, display_name, business_name, taxonomy_node_id,
+    city_id, tab, listing_type, phone,
+    is_active, is_claimed, is_scrape_record,
+    is_phone_verified, availability,
+    scrape_source, scrape_external_id,
+    geo_point, created_at, updated_at
+  ) VALUES (
+    v_provider_id, 'Hyderabad Dry Fruits Hub', 'Hyderabad Dry Fruits Hub', v_node_id,
+    v_city_id, 'products'::"Tab", 'individual_product'::"ListingType", '9876501005',
+    true, true, false, true, 'available'::"Availability",
+    'test_seed', 'test_prod_005',
+    ST_SetSRID(ST_MakePoint(78.456, 17.398), 4326), NOW(), NOW()
+  ) ON CONFLICT (scrape_source, scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id, provider_id, display_score, raw_score, trust_tier)
+  VALUES (v_trust_id, v_provider_id, 85, 85, 'highly_trusted'::"TrustTier")
+  ON CONFLICT (provider_id) DO NOTHING;
+
+  -- Spice Garden
+  SELECT id INTO v_node_id FROM taxonomy_nodes
+  WHERE l4 = 'Turmeric Powder' AND tab::text = 'products' LIMIT 1;
+  v_provider_id := gen_random_uuid();
+  v_trust_id    := gen_random_uuid();
+  INSERT INTO provider_profiles(
+    id, display_name, business_name, taxonomy_node_id,
+    city_id, tab, listing_type, phone,
+    is_active, is_claimed, is_scrape_record,
+    is_phone_verified, availability,
+    scrape_source, scrape_external_id,
+    geo_point, created_at, updated_at
+  ) VALUES (
+    v_provider_id, 'Spice Garden Hyderabad', 'Spice Garden Hyderabad', v_node_id,
+    v_city_id, 'products'::"Tab", 'individual_product'::"ListingType", '9876501006',
+    true, false, false, true, 'available'::"Availability",
+    'test_seed', 'test_prod_006',
+    ST_SetSRID(ST_MakePoint(78.488, 17.371), 4326), NOW(), NOW()
+  ) ON CONFLICT (scrape_source, scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id, provider_id, display_score, raw_score, trust_tier)
+  VALUES (v_trust_id, v_provider_id, 38, 38, 'basic'::"TrustTier")
+  ON CONFLICT (provider_id) DO NOTHING;
+
+  -- Chicken Corner
+  SELECT id INTO v_node_id FROM taxonomy_nodes
+  WHERE l4 = 'Chicken (curry cut)' AND tab::text = 'products' LIMIT 1;
+  v_provider_id := gen_random_uuid();
+  v_trust_id    := gen_random_uuid();
+  INSERT INTO provider_profiles(
+    id, display_name, business_name, taxonomy_node_id,
+    city_id, tab, listing_type, phone,
+    is_active, is_claimed, is_scrape_record,
+    is_phone_verified, availability,
+    scrape_source, scrape_external_id,
+    geo_point, created_at, updated_at
+  ) VALUES (
+    v_provider_id, 'Chicken Corner Tolichowki', 'Chicken Corner Tolichowki', v_node_id,
+    v_city_id, 'products'::"Tab", 'individual_product'::"ListingType", '9876501007',
+    true, true, false, true, 'available'::"Availability",
+    'test_seed', 'test_prod_007',
+    ST_SetSRID(ST_MakePoint(78.475, 17.415), 4326), NOW(), NOW()
+  ) ON CONFLICT (scrape_source, scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id, provider_id, display_score, raw_score, trust_tier)
+  VALUES (v_trust_id, v_provider_id, 55, 55, 'trusted'::"TrustTier")
+  ON CONFLICT (provider_id) DO NOTHING;
+
+  -- Fresh Eggs Direct
+  SELECT id INTO v_node_id FROM taxonomy_nodes
+  WHERE l4 = 'Egg (white, desi)' AND tab::text = 'products' LIMIT 1;
+  v_provider_id := gen_random_uuid();
+  v_trust_id    := gen_random_uuid();
+  INSERT INTO provider_profiles(
+    id, display_name, business_name, taxonomy_node_id,
+    city_id, tab, listing_type, phone,
+    is_active, is_claimed, is_scrape_record,
+    is_phone_verified, availability,
+    scrape_source, scrape_external_id,
+    geo_point, created_at, updated_at
+  ) VALUES (
+    v_provider_id, 'Fresh Eggs Direct', 'Fresh Eggs Direct', v_node_id,
+    v_city_id, 'products'::"Tab", 'individual_product'::"ListingType", '9876501008',
+    true, false, false, true, 'available'::"Availability",
+    'test_seed', 'test_prod_008',
+    ST_SetSRID(ST_MakePoint(78.495, 17.388), 4326), NOW(), NOW()
+  ) ON CONFLICT (scrape_source, scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id, provider_id, display_score, raw_score, trust_tier)
+  VALUES (v_trust_id, v_provider_id, 29, 29, 'unverified'::"TrustTier")
+  ON CONFLICT (provider_id) DO NOTHING;
+
+  -- Naturals Coconut Water
+  SELECT id INTO v_node_id FROM taxonomy_nodes
+  WHERE l4 = 'Coconut Water (Naariyal Pani)' AND tab::text = 'products' LIMIT 1;
+  v_provider_id := gen_random_uuid();
+  v_trust_id    := gen_random_uuid();
+  INSERT INTO provider_profiles(
+    id, display_name, business_name, taxonomy_node_id,
+    city_id, tab, listing_type, phone,
+    is_active, is_claimed, is_scrape_record,
+    is_phone_verified, availability,
+    scrape_source, scrape_external_id,
+    geo_point, created_at, updated_at
+  ) VALUES (
+    v_provider_id, 'Naturals Coconut Water', 'Naturals Coconut Water', v_node_id,
+    v_city_id, 'products'::"Tab", 'individual_product'::"ListingType", '9876501009',
+    true, true, false, true, 'available'::"Availability",
+    'test_seed', 'test_prod_009',
+    ST_SetSRID(ST_MakePoint(78.472, 17.362), 4326), NOW(), NOW()
+  ) ON CONFLICT (scrape_source, scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id, provider_id, display_score, raw_score, trust_tier)
+  VALUES (v_trust_id, v_provider_id, 61, 61, 'trusted'::"TrustTier")
+  ON CONFLICT (provider_id) DO NOTHING;
+
+  -- Maa Ki Dal
+  SELECT id INTO v_node_id FROM taxonomy_nodes
+  WHERE l4 = 'Toor Dal' AND tab::text = 'products' LIMIT 1;
+  v_provider_id := gen_random_uuid();
+  v_trust_id    := gen_random_uuid();
+  INSERT INTO provider_profiles(
+    id, display_name, business_name, taxonomy_node_id,
+    city_id, tab, listing_type, phone,
+    is_active, is_claimed, is_scrape_record,
+    is_phone_verified, availability,
+    scrape_source, scrape_external_id,
+    geo_point, created_at, updated_at
+  ) VALUES (
+    v_provider_id, 'Maa Ki Dal & Pulses', 'Maa Ki Dal & Pulses', v_node_id,
+    v_city_id, 'products'::"Tab", 'individual_product'::"ListingType", '9876501010',
+    true, true, false, true, 'available'::"Availability",
+    'test_seed', 'test_prod_010',
+    ST_SetSRID(ST_MakePoint(78.483, 17.392), 4326), NOW(), NOW()
+  ) ON CONFLICT (scrape_source, scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id, provider_id, display_score, raw_score, trust_tier)
+  VALUES (v_trust_id, v_provider_id, 74, 74, 'trusted'::"TrustTier")
+  ON CONFLICT (provider_id) DO NOTHING;
+
