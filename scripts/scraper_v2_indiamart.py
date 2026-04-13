@@ -204,7 +204,10 @@ def existing_count(node_id, city_id):
         WHERE taxonomy_node_id = '{node_id}'
           AND city_id = '{city_id}'
           AND is_active = true
-          AND phone IS NOT NULL AND phone != ''
+          AND phone IS NOT NULL
+          AND phone != ''
+          AND phone != '0000000000'
+          AND LENGTH(phone) = 10
     """)
     try: return int(rows[0][0])
     except: return 0
