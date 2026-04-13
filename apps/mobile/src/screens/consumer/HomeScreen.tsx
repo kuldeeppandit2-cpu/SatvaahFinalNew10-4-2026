@@ -240,7 +240,7 @@ const HomeScreen: React.FC = () => {
 
   // ── State ──────────────────────────────────────────────────────────────────
   const setGlobalTab = useTabStore((s) => s.setActiveTab);
-  const [activeTab, setActiveTabLocal] = useState<Tab>('products');
+  const [activeTab, setActiveTabLocal] = useState<Tab>(() => { setGlobalTab('products'); return 'products'; });
   const setActiveTab = (tab: Tab) => { setActiveTabLocal(tab); setGlobalTab(tab); };
   const [consumerProfile, setConsumerProfile] = useState<ConsumerProfile | null>(null);
   const [trustedCircle, setTrustedCircle] = useState<TrustedProvider[]>([]);
