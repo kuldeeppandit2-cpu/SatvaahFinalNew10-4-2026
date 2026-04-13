@@ -993,3 +993,104 @@ COMMIT;
   VALUES (v_trust_id, v_provider_id, 74, 74, 'trusted'::"TrustTier")
   ON CONFLICT (provider_id) DO NOTHING;
 
+
+  -- ── More services providers (4 more plumbers) ──────────────────────────────
+
+  SELECT id INTO v_node_id FROM taxonomy_nodes
+  WHERE l4 = 'Pipe Fitting & Repair' AND tab::text = 'services' LIMIT 1;
+
+  v_provider_id := gen_random_uuid(); v_trust_id := gen_random_uuid();
+  INSERT INTO provider_profiles(id,display_name,business_name,taxonomy_node_id,city_id,tab,listing_type,phone,is_active,is_claimed,is_scrape_record,is_phone_verified,availability,scrape_source,scrape_external_id,geo_point,created_at,updated_at)
+  VALUES(v_provider_id,'Suresh Plumbing Works','Suresh Plumbing Works',v_node_id,v_city_id,'services'::"Tab",'individual_service'::"ListingType",'9876502001',true,true,false,true,'available'::"Availability",'test_seed','test_svc_s02',ST_SetSRID(ST_MakePoint(78.481,17.391),4326),NOW(),NOW()) ON CONFLICT(scrape_source,scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id,provider_id,display_score,raw_score,trust_tier) VALUES(v_trust_id,v_provider_id,55,55,'trusted'::"TrustTier") ON CONFLICT(provider_id) DO NOTHING;
+
+  v_provider_id := gen_random_uuid(); v_trust_id := gen_random_uuid();
+  INSERT INTO provider_profiles(id,display_name,business_name,taxonomy_node_id,city_id,tab,listing_type,phone,is_active,is_claimed,is_scrape_record,is_phone_verified,availability,scrape_source,scrape_external_id,geo_point,created_at,updated_at)
+  VALUES(v_provider_id,'Mahesh Pipe Services','Mahesh Pipe Services',v_node_id,v_city_id,'services'::"Tab",'individual_service'::"ListingType",'9876502002',true,false,false,true,'available'::"Availability",'test_seed','test_svc_s03',ST_SetSRID(ST_MakePoint(78.471,17.401),4326),NOW(),NOW()) ON CONFLICT(scrape_source,scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id,provider_id,display_score,raw_score,trust_tier) VALUES(v_trust_id,v_provider_id,38,38,'basic'::"TrustTier") ON CONFLICT(provider_id) DO NOTHING;
+
+  v_provider_id := gen_random_uuid(); v_trust_id := gen_random_uuid();
+  INSERT INTO provider_profiles(id,display_name,business_name,taxonomy_node_id,city_id,tab,listing_type,phone,is_active,is_claimed,is_scrape_record,is_phone_verified,availability,scrape_source,scrape_external_id,geo_point,created_at,updated_at)
+  VALUES(v_provider_id,'Ramesh Plumbing Hyderabad','Ramesh Plumbing Hyderabad',v_node_id,v_city_id,'services'::"Tab",'individual_service'::"ListingType",'9876502003',true,true,false,true,'available'::"Availability",'test_seed','test_svc_s04',ST_SetSRID(ST_MakePoint(78.486,17.378),4326),NOW(),NOW()) ON CONFLICT(scrape_source,scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id,provider_id,display_score,raw_score,trust_tier) VALUES(v_trust_id,v_provider_id,67,67,'trusted'::"TrustTier") ON CONFLICT(provider_id) DO NOTHING;
+
+  v_provider_id := gen_random_uuid(); v_trust_id := gen_random_uuid();
+  INSERT INTO provider_profiles(id,display_name,business_name,taxonomy_node_id,city_id,tab,listing_type,phone,is_active,is_claimed,is_scrape_record,is_phone_verified,availability,scrape_source,scrape_external_id,geo_point,created_at,updated_at)
+  VALUES(v_provider_id,'Kumar Water Solutions','Kumar Water Solutions',v_node_id,v_city_id,'services'::"Tab",'individual_service'::"ListingType",'9876502004',true,false,false,true,'available'::"Availability",'test_seed','test_svc_s05',ST_SetSRID(ST_MakePoint(78.498,17.393),4326),NOW(),NOW()) ON CONFLICT(scrape_source,scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id,provider_id,display_score,raw_score,trust_tier) VALUES(v_trust_id,v_provider_id,29,29,'unverified'::"TrustTier") ON CONFLICT(provider_id) DO NOTHING;
+
+  -- ── More expertise providers (4 more cardiologists) ────────────────────────
+
+  SELECT id INTO v_node_id FROM taxonomy_nodes
+  WHERE l4 = 'General Cardiologist' AND tab::text = 'expertise' LIMIT 1;
+
+  v_provider_id := gen_random_uuid(); v_trust_id := gen_random_uuid();
+  INSERT INTO provider_profiles(id,display_name,business_name,taxonomy_node_id,city_id,tab,listing_type,phone,is_active,is_claimed,is_scrape_record,is_phone_verified,availability,scrape_source,scrape_external_id,geo_point,created_at,updated_at)
+  VALUES(v_provider_id,'Dr. Venkat Rao Cardiology','Dr. Venkat Rao Cardiology',v_node_id,v_city_id,'expertise'::"Tab",'individual_expertise'::"ListingType",'9876503001',true,true,false,true,'available'::"Availability",'test_seed','test_exp_e02',ST_SetSRID(ST_MakePoint(78.479,17.389),4326),NOW(),NOW()) ON CONFLICT(scrape_source,scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id,provider_id,display_score,raw_score,trust_tier) VALUES(v_trust_id,v_provider_id,82,82,'highly_trusted'::"TrustTier") ON CONFLICT(provider_id) DO NOTHING;
+
+  v_provider_id := gen_random_uuid(); v_trust_id := gen_random_uuid();
+  INSERT INTO provider_profiles(id,display_name,business_name,taxonomy_node_id,city_id,tab,listing_type,phone,is_active,is_claimed,is_scrape_record,is_phone_verified,availability,scrape_source,scrape_external_id,geo_point,created_at,updated_at)
+  VALUES(v_provider_id,'Dr. Priya Heart Clinic','Dr. Priya Heart Clinic',v_node_id,v_city_id,'expertise'::"Tab",'individual_expertise'::"ListingType",'9876503002',true,true,false,true,'available'::"Availability",'test_seed','test_exp_e03',ST_SetSRID(ST_MakePoint(78.494,17.372),4326),NOW(),NOW()) ON CONFLICT(scrape_source,scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id,provider_id,display_score,raw_score,trust_tier) VALUES(v_trust_id,v_provider_id,75,75,'trusted'::"TrustTier") ON CONFLICT(provider_id) DO NOTHING;
+
+  v_provider_id := gen_random_uuid(); v_trust_id := gen_random_uuid();
+  INSERT INTO provider_profiles(id,display_name,business_name,taxonomy_node_id,city_id,tab,listing_type,phone,is_active,is_claimed,is_scrape_record,is_phone_verified,availability,scrape_source,scrape_external_id,geo_point,created_at,updated_at)
+  VALUES(v_provider_id,'Apollo Heart Specialist','Apollo Heart Specialist',v_node_id,v_city_id,'expertise'::"Tab",'individual_expertise'::"ListingType",'9876503003',true,false,false,true,'available'::"Availability",'test_seed','test_exp_e04',ST_SetSRID(ST_MakePoint(78.462,17.404),4326),NOW(),NOW()) ON CONFLICT(scrape_source,scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id,provider_id,display_score,raw_score,trust_tier) VALUES(v_trust_id,v_provider_id,44,44,'basic'::"TrustTier") ON CONFLICT(provider_id) DO NOTHING;
+
+  v_provider_id := gen_random_uuid(); v_trust_id := gen_random_uuid();
+  INSERT INTO provider_profiles(id,display_name,business_name,taxonomy_node_id,city_id,tab,listing_type,phone,is_active,is_claimed,is_scrape_record,is_phone_verified,availability,scrape_source,scrape_external_id,geo_point,created_at,updated_at)
+  VALUES(v_provider_id,'Dr. Anjali Cardiac Care','Dr. Anjali Cardiac Care',v_node_id,v_city_id,'expertise'::"Tab",'individual_expertise'::"ListingType",'9876503004',true,true,false,true,'available'::"Availability",'test_seed','test_exp_e05',ST_SetSRID(ST_MakePoint(78.489,17.368),4326),NOW(),NOW()) ON CONFLICT(scrape_source,scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id,provider_id,display_score,raw_score,trust_tier) VALUES(v_trust_id,v_provider_id,61,61,'trusted'::"TrustTier") ON CONFLICT(provider_id) DO NOTHING;
+
+  -- ── More establishments (4 more kirana stores) ─────────────────────────────
+
+  SELECT id INTO v_node_id FROM taxonomy_nodes
+  WHERE l4 = 'Kirana Store — Full Range Home Delivery' AND tab::text = 'establishments' LIMIT 1;
+
+  v_provider_id := gen_random_uuid(); v_trust_id := gen_random_uuid();
+  INSERT INTO provider_profiles(id,display_name,business_name,taxonomy_node_id,city_id,tab,listing_type,phone,is_active,is_claimed,is_scrape_record,is_phone_verified,availability,scrape_source,scrape_external_id,geo_point,created_at,updated_at)
+  VALUES(v_provider_id,'Srinivas Kirana Store','Srinivas Kirana Store',v_node_id,v_city_id,'establishments'::"Tab",'establishment'::"ListingType",'9876504001',true,true,false,true,'available'::"Availability",'test_seed','test_est_e02',ST_SetSRID(ST_MakePoint(78.483,17.387),4326),NOW(),NOW()) ON CONFLICT(scrape_source,scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id,provider_id,display_score,raw_score,trust_tier) VALUES(v_trust_id,v_provider_id,58,58,'trusted'::"TrustTier") ON CONFLICT(provider_id) DO NOTHING;
+
+  v_provider_id := gen_random_uuid(); v_trust_id := gen_random_uuid();
+  INSERT INTO provider_profiles(id,display_name,business_name,taxonomy_node_id,city_id,tab,listing_type,phone,is_active,is_claimed,is_scrape_record,is_phone_verified,availability,scrape_source,scrape_external_id,geo_point,created_at,updated_at)
+  VALUES(v_provider_id,'Laxmi General Store','Laxmi General Store',v_node_id,v_city_id,'establishments'::"Tab",'establishment'::"ListingType",'9876504002',true,false,false,true,'available'::"Availability",'test_seed','test_est_e03',ST_SetSRID(ST_MakePoint(78.475,17.396),4326),NOW(),NOW()) ON CONFLICT(scrape_source,scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id,provider_id,display_score,raw_score,trust_tier) VALUES(v_trust_id,v_provider_id,35,35,'basic'::"TrustTier") ON CONFLICT(provider_id) DO NOTHING;
+
+  v_provider_id := gen_random_uuid(); v_trust_id := gen_random_uuid();
+  INSERT INTO provider_profiles(id,display_name,business_name,taxonomy_node_id,city_id,tab,listing_type,phone,is_active,is_claimed,is_scrape_record,is_phone_verified,availability,scrape_source,scrape_external_id,geo_point,created_at,updated_at)
+  VALUES(v_provider_id,'Ganesh Provisions','Ganesh Provisions',v_node_id,v_city_id,'establishments'::"Tab",'establishment'::"ListingType",'9876504003',true,true,false,true,'available'::"Availability",'test_seed','test_est_e04',ST_SetSRID(ST_MakePoint(78.491,17.381),4326),NOW(),NOW()) ON CONFLICT(scrape_source,scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id,provider_id,display_score,raw_score,trust_tier) VALUES(v_trust_id,v_provider_id,71,71,'trusted'::"TrustTier") ON CONFLICT(provider_id) DO NOTHING;
+
+  v_provider_id := gen_random_uuid(); v_trust_id := gen_random_uuid();
+  INSERT INTO provider_profiles(id,display_name,business_name,taxonomy_node_id,city_id,tab,listing_type,phone,is_active,is_claimed,is_scrape_record,is_phone_verified,availability,scrape_source,scrape_external_id,geo_point,created_at,updated_at)
+  VALUES(v_provider_id,'Balaji Mini Supermarket','Balaji Mini Supermarket',v_node_id,v_city_id,'establishments'::"Tab",'establishment'::"ListingType",'9876504004',true,true,false,true,'available'::"Availability",'test_seed','test_est_e05',ST_SetSRID(ST_MakePoint(78.468,17.411),4326),NOW(),NOW()) ON CONFLICT(scrape_source,scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id,provider_id,display_score,raw_score,trust_tier) VALUES(v_trust_id,v_provider_id,84,84,'highly_trusted'::"TrustTier") ON CONFLICT(provider_id) DO NOTHING;
+
+  -- ── More A2 Cow Milk providers ──────────────────────────────────────────────
+
+  SELECT id INTO v_node_id FROM taxonomy_nodes
+  WHERE l4 = 'A2 Cow Milk' AND tab::text = 'products' LIMIT 1;
+
+  v_provider_id := gen_random_uuid(); v_trust_id := gen_random_uuid();
+  INSERT INTO provider_profiles(id,display_name,business_name,taxonomy_node_id,city_id,tab,listing_type,phone,is_active,is_claimed,is_scrape_record,is_phone_verified,availability,scrape_source,scrape_external_id,geo_point,created_at,updated_at)
+  VALUES(v_provider_id,'Gir Cow Dairy Hyderabad','Gir Cow Dairy Hyderabad',v_node_id,v_city_id,'products'::"Tab",'individual_product'::"ListingType",'9876505001',true,true,false,true,'available'::"Availability",'test_seed','test_prd_p02',ST_SetSRID(ST_MakePoint(78.474,17.399),4326),NOW(),NOW()) ON CONFLICT(scrape_source,scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id,provider_id,display_score,raw_score,trust_tier) VALUES(v_trust_id,v_provider_id,69,69,'trusted'::"TrustTier") ON CONFLICT(provider_id) DO NOTHING;
+
+  v_provider_id := gen_random_uuid(); v_trust_id := gen_random_uuid();
+  INSERT INTO provider_profiles(id,display_name,business_name,taxonomy_node_id,city_id,tab,listing_type,phone,is_active,is_claimed,is_scrape_record,is_phone_verified,availability,scrape_source,scrape_external_id,geo_point,created_at,updated_at)
+  VALUES(v_provider_id,'Pure A2 Milk Delivery','Pure A2 Milk Delivery',v_node_id,v_city_id,'products'::"Tab",'individual_product'::"ListingType",'9876505002',true,false,false,true,'available'::"Availability",'test_seed','test_prd_p03',ST_SetSRID(ST_MakePoint(78.490,17.376),4326),NOW(),NOW()) ON CONFLICT(scrape_source,scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id,provider_id,display_score,raw_score,trust_tier) VALUES(v_trust_id,v_provider_id,41,41,'basic'::"TrustTier") ON CONFLICT(provider_id) DO NOTHING;
+
+  v_provider_id := gen_random_uuid(); v_trust_id := gen_random_uuid();
+  INSERT INTO provider_profiles(id,display_name,business_name,taxonomy_node_id,city_id,tab,listing_type,phone,is_active,is_claimed,is_scrape_record,is_phone_verified,availability,scrape_source,scrape_external_id,geo_point,created_at,updated_at)
+  VALUES(v_provider_id,'Organic Farm Milk','Organic Farm Milk',v_node_id,v_city_id,'products'::"Tab",'individual_product'::"ListingType",'9876505003',true,true,false,true,'available'::"Availability",'test_seed','test_prd_p04',ST_SetSRID(ST_MakePoint(78.465,17.407),4326),NOW(),NOW()) ON CONFLICT(scrape_source,scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id,provider_id,display_score,raw_score,trust_tier) VALUES(v_trust_id,v_provider_id,77,77,'trusted'::"TrustTier") ON CONFLICT(provider_id) DO NOTHING;
+
+  v_provider_id := gen_random_uuid(); v_trust_id := gen_random_uuid();
+  INSERT INTO provider_profiles(id,display_name,business_name,taxonomy_node_id,city_id,tab,listing_type,phone,is_active,is_claimed,is_scrape_record,is_phone_verified,availability,scrape_source,scrape_external_id,geo_point,created_at,updated_at)
+  VALUES(v_provider_id,'Desi Cow Milk Co.','Desi Cow Milk Co.',v_node_id,v_city_id,'products'::"Tab",'individual_product'::"ListingType",'9876505004',true,true,false,true,'available'::"Availability",'test_seed','test_prd_p05',ST_SetSRID(ST_MakePoint(78.497,17.384),4326),NOW(),NOW()) ON CONFLICT(scrape_source,scrape_external_id) DO NOTHING;
+  INSERT INTO trust_scores(id,provider_id,display_score,raw_score,trust_tier) VALUES(v_trust_id,v_provider_id,88,88,'highly_trusted'::"TrustTier") ON CONFLICT(provider_id) DO NOTHING;
+

@@ -127,7 +127,7 @@ function getBuckets(tab: string | undefined): Bucket[] {
   const b5max  = cfg('search_bucket_5_max_km', 50);
   const b6max  = cfg('search_bucket_6_max_km', 50);
   const b7max  = cfg('search_bucket_7_max_km', 1000);
-  const b7tabs = cfgStr('search_bucket_7_tabs', 'services,expertise')
+  const b7tabs = cfgStr('search_bucket_7_tabs', 'services,expertise,products,establishments')
     .split(',').map(s => s.trim()).filter(Boolean);
 
   const all: Bucket[] = [
@@ -352,8 +352,9 @@ export async function expandingRingSearch(
 ): Promise<RingSearchResult> {
   const { page, locationName = 'your location', correlationId } = input;
 
-  const maxResults = cfg('search_bucket_max_results', 5);
-  const from       = (page - 1) * maxResults;
+  const maxResults  = cfg('search_bucket_max_results', 20);
+  const minResults  = cfg('search_min_results', 5);
+  const from        = (page - 1) * maxResults;
   const osClient   = getOpenSearchClient();
 
   const requestedLabel = input.taxonomyL4 ?? input.q ?? 'providers';
@@ -384,9 +385,14 @@ export async function expandingRingSearch(
     };
   }
 
-  // Waterfall through buckets
+  // Waterfall through buckets — accumulate until minResults reached
+  const accumulated: ProviderHit[] = [];
+  const seenIds = new Set<string>();
+  let bestBucket: Bucket | null = null;
+  let bestTotal = 0;
+
   for (const bucket of buckets) {
-    const query    = buildOsQuery(input, bucket, from, maxResults);
+    const query = buildOsQuery(input, bucket, 0, maxResults);
 
     logger.info('search.bucket.trying', {
       correlationId,
@@ -404,27 +410,51 @@ export async function expandingRingSearch(
       ? hits.total : (hits.total as any).value ?? 0;
 
     if (total > 0) {
-      const results  = (hits.hits as any[]).map(mapHit);
-      const narration = buildNarration(total, bucket, requestedLabel, locationName);
+      const bucketResults = (hits.hits as any[]).map(mapHit);
+
+      // Add deduplicated results
+      for (const r of bucketResults) {
+        if (!seenIds.has(r.providerId)) {
+          seenIds.add(r.providerId);
+          accumulated.push(r);
+        }
+      }
+
+      if (bestBucket === null) {
+        bestBucket = bucket;
+        bestTotal  = total;
+      }
 
       logger.info('search.bucket.hit', {
-        correlationId, bucketId: bucket.id, total, returned: results.length,
+        correlationId, bucketId: bucket.id, total, accumulated: accumulated.length,
       });
 
-      return {
-        results, total, page: input.page, page_size: maxResults,
-        has_more: from + results.length < total,
-        ring_km: bucket.maxKm, ring_label: `${bucket.maxKm}km`,
-        narration, expanded: bucket.id > 1,
-        taxonomy_level_used: bucket.useL3Fallback ? 'l3' : 'l4',
-        bucket_used: bucket.id,
-        bucket_label: bucket.label,
-      };
+      // Stop once we have enough results
+      if (accumulated.length >= minResults) break;
+    } else {
+      logger.info('search.bucket.miss', {
+        correlationId, bucketId: bucket.id, label: bucket.label,
+      });
     }
+  }
 
-    logger.info('search.bucket.miss', {
-      correlationId, bucketId: bucket.id, label: bucket.label,
-    });
+  if (accumulated.length > 0 && bestBucket !== null) {
+    const pageSlice = accumulated.slice(from, from + maxResults);
+    const narration = buildNarration(bestTotal, bestBucket, requestedLabel, locationName);
+    return {
+      results: pageSlice,
+      total: accumulated.length,
+      page: input.page,
+      page_size: maxResults,
+      has_more: from + pageSlice.length < accumulated.length,
+      ring_km: bestBucket.maxKm,
+      ring_label: `${bestBucket.maxKm}km`,
+      narration,
+      expanded: bestBucket.id > 1,
+      taxonomy_level_used: bestBucket.useL3Fallback ? 'l3' : 'l4',
+      bucket_used: bestBucket.id,
+      bucket_label: bestBucket.label,
+    };
   }
 
   // All buckets exhausted — return empty with helpful narration
