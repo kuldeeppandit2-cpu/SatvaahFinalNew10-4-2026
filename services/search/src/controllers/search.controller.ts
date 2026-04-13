@@ -138,6 +138,7 @@ export const searchProviders = async (
     taxonomyL1:     taxonomy_l1?.trim()     || undefined,
   });
 
+  res.set('Cache-Control', 'no-store');
   res.status(200).json({ success: true, data: result });
 };
 
@@ -171,6 +172,7 @@ export const suggestQuery = async (
   // it throws SUGGEST_QUERY_TOO_SHORT (400) if q is below the threshold.
   const results = await suggestService({ q, tab, correlationId });
 
+  res.set('Cache-Control', 'no-store');
   res.status(200).json({ success: true, data: results });
 };
 
@@ -349,6 +351,7 @@ export const getCategories = async (
   const cached = await redisGet<object>(cacheKey);
   if (cached) {
     logger.info('categories.cache.hit');
+    res.set('Cache-Control', 'no-store');
     res.status(200).json({ success: true, data: cached, meta: { from_cache: true } });
     return;
   }
@@ -433,6 +436,7 @@ export const getCategories = async (
 
   void redisSet(cacheKey, data, CATEGORIES_CACHE_TTL_SECONDS);
 
+  res.set('Cache-Control', 'no-store');
   res.status(200).json({ success: true, data, meta: { from_cache: false } });
 };
 
@@ -468,6 +472,7 @@ export const getCategoriesL2 = async (
   const cacheKey = `categories:v2:l2:${tab}:${l1}`;
   const cached = await redisGet<object>(cacheKey);
   if (cached) {
+    res.set('Cache-Control', 'no-store');
     res.status(200).json({ success: true, data: cached, meta: { from_cache: true } });
     return;
   }
@@ -499,6 +504,7 @@ export const getCategoriesL2 = async (
   };
 
   void redisSet(cacheKey, data, CATEGORIES_CACHE_TTL_SECONDS);
+  res.set('Cache-Control', 'no-store');
   res.status(200).json({ success: true, data, meta: { from_cache: false } });
 };
 
@@ -542,6 +548,7 @@ export const getCategoriesL3 = async (
   const cacheKey = `categories:v2:l3:${tab}:${l1}:${l2}`;
   const cached = await redisGet<object>(cacheKey);
   if (cached) {
+    res.set('Cache-Control', 'no-store');
     res.status(200).json({ success: true, data: cached, meta: { from_cache: true } });
     return;
   }
@@ -615,6 +622,7 @@ export const getCategoriesL3 = async (
   };
 
   void redisSet(cacheKey, data, CATEGORIES_CACHE_TTL_SECONDS);
+  res.set('Cache-Control', 'no-store');
   res.status(200).json({ success: true, data, meta: { from_cache: false } });
 };
 
@@ -784,6 +792,7 @@ export const getProviderProfile = async (
   // Cache for 5 minutes — fire-and-forget
   void redisSet(profileCacheKey, data, 5 * 60);
 
+  res.set('Cache-Control', 'no-store');
   res.status(200).json({ success: true, data });
 };
 
@@ -865,6 +874,7 @@ export const getAvailabilityChanges = async (
 
   logger.info('availability.changes.result');
 
+  res.set('Cache-Control', 'no-store');
   res.status(200).json({
     success: true,
     data: {
