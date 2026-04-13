@@ -153,7 +153,14 @@ def load_l4_nodes():
         WHERE is_active = true
           AND tab::text != 'products'
           AND l4 IS NOT NULL
-        ORDER BY tab, l1, l3, l4
+        ORDER BY
+          CASE tab::text
+            WHEN 'services'       THEN 1
+            WHEN 'expertise'      THEN 2
+            WHEN 'establishments' THEN 3
+            ELSE 4
+          END,
+          l1, l3, l4
     """)
     nodes = []
     for row in rows:
@@ -425,8 +432,11 @@ def main():
 
     # Test mode: first 10 nodes, Hyderabad only
     if args.test:
-        nodes = nodes[:10]
+        # Force services tab for test — most likely to have phones on Google
+        services_nodes = [n for n in nodes if n['tab'] == 'services']
+        nodes = services_nodes[:10]
         cities_to_run = ['hyderabad']
+        log(f"TEST: using services tab (best phone hit rate on Google)")
         log(f"TEST MODE: {len(nodes)} L4s × 1 city = {len(nodes)} max records")
         log(f"Estimated cost: ${len(nodes) * 2 * 0.017:.2f} "
             f"(Rs {len(nodes) * 2 * 0.017 * 83:.0f})")
