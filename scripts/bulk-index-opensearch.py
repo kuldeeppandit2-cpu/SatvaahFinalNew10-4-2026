@@ -40,17 +40,20 @@ def os_request(method, path, body=None):
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
-            return json.loads(resp.read())
+            body = resp.read()
+            return json.loads(body) if body else {}
     except urllib.error.HTTPError as e:
-        return json.loads(e.read())
+        body = e.read()
+        try:
+            return json.loads(body) if body else {'error': e.code}
+        except Exception:
+            return {'error': e.code}
     except Exception as e:
         print(f"  OS ERROR: {e}")
         return {}
 
 def ensure_index():
     """Create index with correct mapping if it doesn't exist."""
-    r = os_request('HEAD', f'/{INDEX}')
-    # HEAD returns nothing on success, check by trying GET
     r = os_request('GET', f'/{INDEX}/_mapping')
     if 'error' in r:
         print(f"  Creating index {INDEX}...")
