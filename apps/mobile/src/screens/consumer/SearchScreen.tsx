@@ -28,6 +28,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useLocationStore } from '../../stores/location.store';
+import { useTabStore } from '../../stores/tab.store';
 import {
   getSearchSuggestions,
   storeSearchIntent,
@@ -92,7 +93,9 @@ const VOICE_LANGS = [
 const SearchScreen: React.FC = () => {
   const navigation  = useNavigation<Nav>();
   const route       = useRoute<Route>();
-  const { tab = 'services', initialQuery } = route.params ?? {};
+  const { tab: routeTab, initialQuery } = route.params ?? {};
+  const globalActiveTab = useTabStore((s) => s.activeTab);
+  const tab: Tab = routeTab ?? globalActiveTab;
 
   const { lat, lng } = useLocationStore();
   const locationName  = useLocationStore(s => {

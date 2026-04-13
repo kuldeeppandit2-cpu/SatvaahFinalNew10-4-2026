@@ -59,6 +59,7 @@ import {
 } from '../../api/search.api';
 import { apiClient } from '../../api/client';
 import { useAuthStore } from '../../stores/auth.store';
+import { useTabStore } from '../../stores/tab.store';
 
 // ─── Navigation ────────────────────────────────────────────────────────────────
 
@@ -238,7 +239,9 @@ const HomeScreen: React.FC = () => {
   const userId = useAuthStore((s) => s.userId); // for future personalization
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<Tab>('products');
+  const setGlobalTab = useTabStore((s) => s.setActiveTab);
+  const [activeTab, setActiveTabLocal] = useState<Tab>('products');
+  const setActiveTab = (tab: Tab) => { setActiveTabLocal(tab); setGlobalTab(tab); };
   const [consumerProfile, setConsumerProfile] = useState<ConsumerProfile | null>(null);
   const [trustedCircle, setTrustedCircle] = useState<TrustedProvider[]>([]);
   const [risingBrands, setRisingBrands] = useState<RisingBrand[]>([]);
