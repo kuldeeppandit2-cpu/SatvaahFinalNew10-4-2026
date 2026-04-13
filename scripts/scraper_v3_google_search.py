@@ -148,6 +148,22 @@ def google_search(query, city_name):
             log(f"  HTTP {r.status_code} for '{full_query}'")
             return []
 
+        # Debug: save raw HTML to check what Google returned
+        with open('google_debug.html', 'w') as df:
+            df.write(r.text[:5000])
+        
+        # Check if we got blocked or CAPTCHA
+        if 'captcha' in r.text.lower() or 'unusual traffic' in r.text.lower():
+            log(f"  ⚠️  Google CAPTCHA detected")
+            return 'BLOCKED'
+        
+        # Check if response has any phone-like content at all
+        import re as re2
+        raw_phones = re2.findall(r'[6-9]\d{9}', r.text)
+        log(f"  Debug: response size={len(r.text)}, raw 10-digit numbers found={len(raw_phones)}")
+        if raw_phones:
+            log(f"  Debug: sample numbers: {raw_phones[:5]}")
+        
         return parse_google_results(r.text, full_query)
 
     except Exception as e:
@@ -427,7 +443,9 @@ def scrape(cities_to_run, nodes, city_ids, test_mode):
             city_id = city_ids.get(city['slug'])
             if not city_id: continue
 
-            if existing_count(node['id'], city_id) >= 1:
+            cnt = existing_count(node['id'], city_id)
+            if cnt >= 1:
+                log(f"  ⏭  {node['l4'][:40]} | {city['name']} — already has {cnt} real phone record(s)")
                 continue
 
             # Polite sleep — avoid Google blocking
