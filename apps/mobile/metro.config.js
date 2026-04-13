@@ -13,6 +13,18 @@ const config = getDefaultConfig(projectRoot);
 
 config.watchFolders = [workspaceRoot];
 
+// Prevent Metro from watching Docker service files (services/, packages/)
+// ts-node-dev touching these files causes spurious hot reloads that break
+// the expo-font singleton deduplication
+const { exclusionList } = require('metro-config');
+config.resolver.blockList = exclusionList([
+  /.*\/services\/.*/,
+  /.*\/packages\/.*/,
+  /.*\/scripts\/.*/,
+  /.*\/nginx\.conf/,
+  /.*\/docker-compose.*/,
+]);
+
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
   path.resolve(workspaceRoot, 'node_modules'),
