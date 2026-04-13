@@ -432,11 +432,28 @@ def main():
 
     # Test mode: first 10 nodes, Hyderabad only
     if args.test:
-        # Force services tab for test — most likely to have phones on Google
-        services_nodes = [n for n in nodes if n['tab'] == 'services']
-        nodes = services_nodes[:10]
+        # Use specific high-demand tradesmen L4s — these businesses
+        # actively want customers to call them and register phones on Google
+        PRIORITY_L4S = [
+            'Geyser / Water Heater Repair',
+            'Cockroach Control Treatment',
+            'Fan & Light Fitting',
+            'Full Home Deep Cleaning',
+            'Exterior Wall Painting',
+            'Home Shifting (within city)',
+            'AC Servicing & Deep Cleaning',
+            'Drain Cleaning & Unblocking',
+            'Bathroom Fittings Installation',
+            'Carpentry — Furniture Repair',
+        ]
+        priority = [n for n in nodes if n['l4'] in PRIORITY_L4S or n['display'] in PRIORITY_L4S]
+        # Fill remaining slots from services tab if priority list is short
+        remaining = [n for n in nodes if n['tab']=='services' and n not in priority]
+        nodes = (priority + remaining)[:10]
         cities_to_run = ['hyderabad']
-        log(f"TEST: using services tab (best phone hit rate on Google)")
+        log(f"TEST: using high-demand tradesmen L4s (best phone hit rate)")
+        for n in nodes:
+            log(f"  → {n['l4']}")
         log(f"TEST MODE: {len(nodes)} L4s × 1 city = {len(nodes)} max records")
         log(f"Estimated cost: ${len(nodes) * 2 * 0.017:.2f} "
             f"(Rs {len(nodes) * 2 * 0.017 * 83:.0f})")
