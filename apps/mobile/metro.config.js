@@ -19,16 +19,6 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, 'node_modules/.pnpm/node_modules'),
 ];
 
-// Ensure @babel/runtime resolves correctly in pnpm monorepo
-// by adding it to the STUBS-like resolution via resolveRequest (below)
-const BABEL_RUNTIME_PATH = (() => {
-  try {
-    return path.dirname(require.resolve('@babel/runtime/package.json', { paths: [projectRoot] }));
-  } catch {
-    return null;
-  }
-})();
-
 config.resolver.unstable_enableSymlinks = true;
 config.resolver.unstable_enablePackageExports = false; // SDK 51 + pnpm: packageExports causes registry duplication
 
@@ -92,14 +82,6 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   // 1. Top-level stub packages
   if (STUBS[moduleName]) {
     return { filePath: STUBS[moduleName], type: 'sourceFile' };
-  }
-
-  // 1b. @babel/runtime — resolve from mobile project root to avoid pnpm symlink issues
-  if (BABEL_RUNTIME_PATH && (moduleName === '@babel/runtime' || moduleName.startsWith('@babel/runtime/'))) {
-    const subpath = moduleName.replace('@babel/runtime', '');
-    const resolved = path.join(BABEL_RUNTIME_PATH, subpath);
-    if (fs.existsSync(resolved + '.js')) return { filePath: resolved + '.js', type: 'sourceFile' };
-    if (fs.existsSync(resolved + '/index.js')) return { filePath: resolved + '/index.js', type: 'sourceFile' };
   }
 
   // 2. expo-crypto internal native modules — redirect to .web.js versions.
