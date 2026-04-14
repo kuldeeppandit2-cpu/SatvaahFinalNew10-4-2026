@@ -4,6 +4,20 @@
 # Source: User Journey v3 · Taxonomy Master v2 · Architecture v1 · GitHub Structure v1
 # DO NOT EDIT unless architecture changes. All corrections from Coherence Review v1 applied.
 
+
+---
+
+## ⛔ TRIPLE APPROVAL RULE — NO EXCEPTIONS
+
+NO CODE CHANGE WITHOUT THREE EXPLICIT APPROVALS FROM KULDEEP:
+  APPROVAL 1: State which file, which line, what it says, what will change and why.
+  APPROVAL 2: Wait for explicit "yes" from Kuldeep.
+  APPROVAL 3: After change, show exact diff. Wait for "confirmed" from Kuldeep.
+
+Applies to ALL files: .ts, .tsx, .py, .sql, .yml, .json, .md, docker-compose, nginx.conf — everything.
+IF ANY APPROVAL IS MISSING → STOP. DO NOT WRITE CODE.
+
+---
 ---
 
 ## PROJECT
@@ -181,7 +195,7 @@ All signal weights in trust_score_config table. Nothing hardcoded. Admin-editabl
 
 TRUST TIERS (CORRECTED — from Coherence Review):
   0–19:   Unverified   Grey #6B6560         Profile exists. No verified signals. Low search rank.
-  20–39:  Basic        Saffron #C8691A       OTP verified. Searchable. Features limited.
+  20–59:  Basic        Saffron #C8691A       OTP verified. Searchable. Features limited. (covers 20–59)
   60–79:  Trusted      Lt Verdigris #6BA89E  Aadhaar or credential verified. Priority search.
   80–100: Highly Trusted Verdigris #2E7D72   Full verification + customer voice. Certificate eligible.
 
@@ -384,7 +398,7 @@ GET /api/v1/search
   availability — optional filter
   home_visit — optional boolean
 
-Ring expansion: 3km → 7km → 15km → 50km (city-wide) → 150km (cross-city, high-value only)
+Ring expansion: 3km → 7km → 15km → 50km (city-wide) → 150km (cross-city) → 1000km (pan-India, V053)
 Never returns zero results. Narration banner explains each expansion step.
 
 ---
