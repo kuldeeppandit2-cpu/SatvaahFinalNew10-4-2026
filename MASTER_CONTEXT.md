@@ -470,3 +470,41 @@ Gupshup          Gupshup India          WhatsApp BSP — 16 templates, Meta pre-
 ---
 END OF MASTER_CONTEXT.md
 Version 2.0 | April 2026 | SatvAAh Technologies | CONFIDENTIAL
+
+---
+
+## SESSION 39 UPDATES (April 14, 2026)
+
+### Corrections from Session 39 Code Audit
+- Migrations: 55 total (V001–V054). NOT 31 as previously stated.
+- Prisma models: 38 total. NOT 32 as previously stated.
+- New models added: ProviderAvailabilitySlot, ProviderSlotException (V050)
+
+### Critical Bug Fixed (Session 39)
+BUG 4 — CRITICAL: OpenSearch taxonomy_node_id field was mapped as type "text".
+A term query on a "text" field returns 0 results. Fixed by deleting and recreating
+the satvaaah_providers index with taxonomy_node_id mapped as "keyword".
+RULE: taxonomy_node_id in OpenSearch MUST always be type "keyword", never "text".
+
+### Provider Data Status (Session 39)
+15,658 provider records in DB. ZERO meet all 4 bare minimums (name+phone+address+geo).
+- google_maps 7,073: phone=0000000000 placeholder (Details API never called)
+- justdial 5,203: phones JS-masked, cannot extract with requests()
+- sulekha 751: 594 real phones but no address, wrong taxonomy assignment
+- lybrate/practo/apollo 750: React-rendered, phone not in HTML
+Current focus: IndiaMART scraper for Products tab. pns field is real phone.
+
+### SESSION START PROTOCOL (mandatory)
+At the start of EVERY session, read this file + Master Logic Excel + transcript.
+Then answer these questions before touching any code:
+1. What is the audit verdict? (X/141 green)
+2. What are the 3 most critical open CHECK items?
+3. What was the last task completed in the previous session?
+4. What are we doing today?
+
+### BEFORE ANY CODE CHANGE (mandatory)
+State: which file, which line, what it currently says.
+State: what you are changing and exactly why.
+State: what other files this change affects.
+No silent edits. No deletions without quoting what is being deleted.
+
