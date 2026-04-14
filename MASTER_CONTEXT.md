@@ -18,6 +18,20 @@ Applies to ALL files: .ts, .tsx, .py, .sql, .yml, .json, .md, docker-compose, ng
 IF ANY APPROVAL IS MISSING → STOP. DO NOT WRITE CODE.
 
 ---
+
+---
+
+## 🔴 TRIPLE APPROVAL RULE — MANDATORY, NO EXCEPTIONS
+
+NO code change, NO file edit, NO deletion, NO migration, NO schema change, NO config change
+is permitted without THREE explicit approvals from Kuldeep:
+
+APPROVAL 1: State what file, what line, what it currently says.
+APPROVAL 2: State what you are changing, exactly why, what other files are affected.
+APPROVAL 3: Kuldeep explicitly says "approved" or "yes do it" before any edit begins.
+
+VIOLATION: Change made without all 3 approvals → STOP SESSION IMMEDIATELY.
+
 ---
 
 ## PROJECT
@@ -91,7 +105,7 @@ Port 3008 does not exist.
 
 ---
 
-## 9 LAMBDA FUNCTIONS (lambdas/ folder, TypeScript)
+## 10 LAMBDA FUNCTIONS (lambdas/ folder, TypeScript) — Verified by ls lambdas/
 
 lambdas/trust-recalculate/      Trigger: SQS trust-score-updates. Recalculates after any signal change.
 lambdas/certificate-generator/  Trigger: SQS when trust_tier first crosses highly_trusted.
@@ -105,13 +119,15 @@ lambdas/delivery-monitor/       Trigger: EventBridge every 15 min. Detects undel
 lambdas/anonymisation/          Trigger: SQS on account deletion. Anonymises within 72h. DPDP Act 2023.
 lambdas/ai-narration/           Trigger: EventBridge nightly. Claude Sonnet analytics per provider.
 lambdas/ratings-refresh/        Trigger: EventBridge daily. Refreshes scraped external ratings.
+lambdas/rating-reminder/         Trigger: EventBridge (scheduled). Sends rating reminders to consumers after contact events.
 
 ---
 
-## DATABASE — 31 MIGRATIONS (Prisma format)
+## DATABASE — 55 MIGRATIONS (Prisma format) — Verified by ls packages/db/prisma/migrations/
 
 TOOL: Prisma migrate. Folder: packages/db/prisma/migrations/ (auto-generated)
-CANONICAL SCHEMA: packages/db/prisma/schema.prisma — 32 models, 17 enums
+CANONICAL SCHEMA: packages/db/prisma/schema.prisma — 38 models, 17 enums
+NOTE: Two V032 migrations exist: V032_admin_users AND V032_system_config_complete — naming anomaly, both ran.
 DO NOT use Flyway or Liquibase.
 
 V001  extensions:            uuid-ossp, postgis, pg_trgm, btree_gist, pgcrypto
