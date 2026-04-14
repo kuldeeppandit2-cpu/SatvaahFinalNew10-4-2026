@@ -124,15 +124,16 @@ def search_indiamart(session, l4_name, city_name, max_results=20):
         
         # Anchor on pns (phone field), search FORWARD for companyname
         # pns comes ~30 chars BEFORE companyname in IndiaMART JSON
+        # Collect ALL results first, then sort local city first
+        all_results = []
+        
         for m in re.finditer(r'"pns"\s*:\s*"(\d{10,12})"', html):
             phone = m.group(1)
             phone = clean_phone(phone)
             if not phone or phone in seen_phones: continue
             seen_phones.add(phone)
             
-            # Search forward 2000 chars for all fields
             chunk = html[m.start():m.start()+2000]
-            
             cn_m   = re.search(r'"companyname"\s*:\s*"([^"]{3,80})"', chunk)
             city_m = re.search(r'"city"\s*:\s*"([^"]+)"', chunk)
             dist_m = re.search(r'"district"\s*:\s*"([^"]+)"', chunk)
@@ -141,25 +142,35 @@ def search_indiamart(session, l4_name, city_name, max_results=20):
             firm = cn_m.group(1).strip() if cn_m else None
             if not firm: continue
             
-            supplier_city    = city_m.group(1) if city_m else ''
-            supplier_district= dist_m.group(1) if dist_m else ''
-            supplier_state   = stat_m.group(1) if stat_m else ''
-            
-            # Address = supplier's actual location
+            supplier_city     = city_m.group(1) if city_m else ''
+            supplier_district = dist_m.group(1) if dist_m else ''
+            supplier_state    = stat_m.group(1) if stat_m else ''
             address = ', '.join(filter(None,[supplier_district, supplier_city, supplier_state]))
-            
-            # Geo = city centroid of SEARCH city
-            # Products ship nationally - supplier may be in Pune but serves Hyderabad
             geo = f"{city.get('lat','')},{city.get('lng','')}"
             
-            results.append({
+            # Is this a local supplier? (in target city or nearby)
+            local_cities = [city_name.lower(), im_city.lower(), 'secunderabad',
+                           'banjara hills', 'jubilee hills', 'kukatpally',
+                           'miyapur', 'ameerpet', 'begumpet', 'dilsukhnagar',
+                           'andheri', 'bandra', 'dadar', 'thane',  # mumbai areas
+                           'cp', 'karol bagh', 'lajpat', 'rohini',  # delhi areas
+                           'whitefield', 'indiranagar', 'koramangala',  # bangalore
+                           'anna nagar', 't nagar', 'velachery',  # chennai
+                           ]
+            is_local = any(lc in (supplier_city+supplier_district).lower() for lc in local_cities)
+            
+            all_results.append({
                 'firm':    firm,
                 'phone':   phone,
                 'address': address or city_name,
                 'geo':     geo,
                 'person':  '',
+                'is_local': is_local,
             })
-            if len(results) >= max_results: break
+        
+        # Sort: local suppliers first, then national
+        all_results.sort(key=lambda x: 0 if x['is_local'] else 1)
+        results = all_results[:max_results]
         
         return results
         
